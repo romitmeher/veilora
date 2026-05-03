@@ -134,9 +134,21 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Ensure git tag exists
+        shell: bash
+        run: |
+          if ! git describe --tags --abbrev=0 2>/dev/null; then
+            echo "No tags — creating placeholder v0.0.0"
+            git config user.email "ci@zen-desktop.local"
+            git config user.name  "Zen CI"
+            git tag v0.0.0
+          fi
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
+          check-latest: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: frontend/package.json
@@ -149,6 +161,23 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $candidates = @(
+            "C:\Program Files (x86)\NSIS",
+            "C:\Program Files\NSIS",
+            "C:\ProgramData\chocolatey\lib\nsis\tools"
+          )
+          $nsisPath = $candidates | Where-Object { Test-Path "$_\makensis.exe" } | Select-Object -First 1
+          if (-not $nsisPath) {
+            $found = Get-ChildItem "C:\" -Recurse -Filter "makensis.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            $nsisPath = $found.DirectoryName
+          }
+          if (-not $nsisPath) { Write-Error "makensis.exe not found"; exit 1 }
+          Write-Host "NSIS found at: $nsisPath"
+          $nsisPath | Out-File -Append -FilePath $env:GITHUB_PATH
       - name: Build EXEs
         run: |
           # Prepare output directories
