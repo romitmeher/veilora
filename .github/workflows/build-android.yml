@@ -1,0 +1,75 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: false
+        default: 'preview'
+        type: choice
+        options: [preview, production]
+  push:
+    branches: [main]
+    paths:
+      - 'vpn-mobile/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Android APK (${{ github.event.inputs.profile || 'preview' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: vpn-mobile
+        run: npm install
+
+      - name: Build APK
+        working-directory: vpn-mobile
+        run: eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --output ./build/app.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zen-vpn-android-${{ github.event.inputs.profile || 'preview' }}
+          path: vpn-mobile/build/app.apk
+          retention-days: 30
+
+      - name: Create GitHub Release (on production build)
+        if: github.event.inputs.profile == 'production'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Zen VPN Android v${{ github.run_number }}
+          draft: false
+          files: vpn-mobile/build/app.apk
+          body: |
+            ## Zen VPN Android APK
+
+            **Build:** ${{ github.run_number }}
+            **Profile:** production
+
+            ### How to install
+            1. Download `app.apk` below
+            2. On your Android device, enable **Install from unknown sources** in Settings
+            3. Open the downloaded APK and tap Install
+
+            ### Features
+            - VPN connection via VPNGate free servers (OpenVPN / SoftEther)
+            - Ad & tracker blocking with live stats
+            - Kill switch, custom DNS, protocol selection
