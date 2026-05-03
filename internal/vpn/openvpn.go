@@ -1,0 +1,260 @@
+package vpn
+
+import (
+	"bufio"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+)
+
+// OpenVPNEngine manages an OpenVPN subprocess.
+type OpenVPNEngine struct {
+	mu         sync.Mutex
+	cmd        *exec.Cmd
+	mgmtConn   net.Conn
+	tmpDir     string
+	cancelDone chan struct{}
+}
+
+func NewOpenVPNEngine() *OpenVPNEngine {
+	return &OpenVPNEngine{}
+}
+
+func (e *OpenVPNEngine) Name() string { return string(EngineOpenVPN) }
+
+// Available checks if openvpn binary is reachable.
+func (e *OpenVPNEngine) Available() bool {
+	_, err := exec.LookPath(e.binaryName())
+	return err == nil
+}
+
+func (e *OpenVPNEngine) binaryName() string {
+	if runtime.GOOS == "windows" {
+		return "openvpn.exe"
+	}
+	return "openvpn"
+}
+
+// Connect decodes the base64 OpenVPN config, writes it to a temp file,
+// spawns the openvpn process with a management interface, and monitors state.
+func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.cmd != nil {
+		return fmt.Errorf("openvpn: already connected")
+	}
+
+	configData, err := base64.StdEncoding.DecodeString(string(ovpnConfigB64))
+	if err != nil {
+		// Config might already be plain text.
+		configData = ovpnConfigB64
+	}
+
+	tmpDir, err := os.MkdirTemp("", "zen-vpn-*")
+	if err != nil {
+		return fmt.Errorf("openvpn: create temp dir: %w", err)
+	}
+	e.tmpDir = tmpDir
+
+	configPath := filepath.Join(tmpDir, "client.ovpn")
+	if err := os.WriteFile(configPath, configData, 0600); err != nil {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn: write config: %w", err)
+	}
+
+	// Find a free port for the management interface.
+	mgmtPort, err := freePort()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn: find management port: %w", err)
+	}
+
+	args := []string{
+		"--config", configPath,
+		"--management", "127.0.0.1", fmt.Sprintf("%d", mgmtPort),
+		"--management-hold",
+		"--connect-retry", "3",
+		"--connect-retry-max", "5",
+		"--verb", "3",
+	}
+
+	if runtime.GOOS != "windows" {
+		args = append(args, "--script-security", "1")
+	}
+
+	cmd := exec.Command(e.binaryName(), args...)
+	cmd.Dir = tmpDir
+
+	logPipe, err := cmd.StderrPipe()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn: stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn: start process: %w", err)
+	}
+
+	e.cmd = cmd
+	e.cancelDone = make(chan struct{})
+	done := e.cancelDone
+
+	go e.drainLog(logPipe)
+
+	// Connect to management interface (retry for a few seconds while process starts).
+	var mgmtConn net.Conn
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		mgmtConn, err = net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", mgmtPort), time.Second)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if err != nil {
+		e.killProcess()
+		return fmt.Errorf("openvpn: connect to management interface: %w", err)
+	}
+	e.mgmtConn = mgmtConn
+
+	// Release hold so openvpn proceeds.
+	if _, err := fmt.Fprintf(mgmtConn, "hold release\n"); err != nil {
+		e.killProcess()
+		return fmt.Errorf("openvpn: release hold: %w", err)
+	}
+
+	go e.monitorManagement(mgmtConn, statusCh, done)
+	go e.waitProcess(statusCh, done)
+
+	statusCh <- Status{State: StateConnecting, Message: "OpenVPN process started"}
+	return nil
+}
+
+func (e *OpenVPNEngine) Disconnect() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.killProcess()
+}
+
+func (e *OpenVPNEngine) killProcess() error {
+	if e.mgmtConn != nil {
+		fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
+		e.mgmtConn.Close()
+		e.mgmtConn = nil
+	}
+	if e.cmd != nil && e.cmd.Process != nil {
+		if err := e.cmd.Process.Kill(); err != nil {
+			log.Printf("openvpn: kill process: %v", err)
+		}
+	}
+	if e.cancelDone != nil {
+		select {
+		case <-e.cancelDone:
+		default:
+			close(e.cancelDone)
+		}
+		e.cancelDone = nil
+	}
+	if e.tmpDir != "" {
+		os.RemoveAll(e.tmpDir)
+		e.tmpDir = ""
+	}
+	e.cmd = nil
+	return nil
+}
+
+func (e *OpenVPNEngine) monitorManagement(conn net.Conn, statusCh chan<- Status, done <-chan struct{}) {
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		line := scanner.Text()
+		log.Printf("openvpn mgmt: %s", line)
+		if status, ok := parseManagementLine(line); ok {
+			statusCh <- status
+		}
+	}
+}
+
+func (e *OpenVPNEngine) waitProcess(statusCh chan<- Status, done <-chan struct{}) {
+	if e.cmd == nil {
+		return
+	}
+	err := e.cmd.Wait()
+
+	e.mu.Lock()
+	e.cmd = nil
+	e.mu.Unlock()
+
+	select {
+	case <-done:
+		statusCh <- Status{State: StateDisconnected, Message: "OpenVPN disconnected"}
+	default:
+		if err != nil {
+			statusCh <- Status{State: StateError, Message: fmt.Sprintf("OpenVPN exited: %v", err)}
+		} else {
+			statusCh <- Status{State: StateDisconnected, Message: "OpenVPN exited"}
+		}
+	}
+}
+
+func (e *OpenVPNEngine) drainLog(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		log.Printf("openvpn: %s", scanner.Text())
+	}
+}
+
+// parseManagementLine converts an OpenVPN management protocol line to a Status.
+func parseManagementLine(line string) (Status, bool) {
+	if !strings.HasPrefix(line, ">STATE:") {
+		return Status{}, false
+	}
+	// Format: >STATE:timestamp,state,description,local,remote,...
+	parts := strings.SplitN(strings.TrimPrefix(line, ">STATE:"), ",", 4)
+	if len(parts) < 2 {
+		return Status{}, false
+	}
+	desc := ""
+	if len(parts) >= 3 {
+		desc = parts[2]
+	}
+	switch parts[1] {
+	case "CONNECTING":
+		return Status{State: StateConnecting, Message: desc}, true
+	case "WAIT", "AUTH", "GET_CONFIG", "ASSIGN_IP", "ADD_ROUTES":
+		return Status{State: StateConnecting, Message: parts[1] + ": " + desc}, true
+	case "CONNECTED":
+		return Status{State: StateConnected, Message: desc}, true
+	case "EXITING":
+		return Status{State: StateDisconnecting, Message: desc}, true
+	case "RECONNECTING":
+		return Status{State: StateConnecting, Message: "reconnecting: " + desc}, true
+	}
+	return Status{}, false
+}
+
+// freePort finds an available TCP port on localhost.
+func freePort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	return port, nil
+}
