@@ -15,6 +15,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Windows Installer (${{ github.event.inputs.arch || 'amd64' }})
@@ -29,12 +32,12 @@ jobs:
       # ── Toolchain ───────────────────────────────────────────────────────────
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '>=1.26.1'
           cache: true
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: frontend/package.json
+          node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -52,12 +55,22 @@ jobs:
 
       # ── Install NSIS ─────────────────────────────────────────────────────────
       - name: Install NSIS
-        run: |
-          winget install --id NSIS.NSIS --accept-source-agreements --accept-package-agreements -e
-          echo "$env:ProgramFiles(x86)\NSIS" | Out-File -Append -FilePath $env:GITHUB_PATH
         shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          if (-not (Test-Path $nsisPath)) {
+            $nsisPath = "C:\Program Files\NSIS"
+          }
+          echo $nsisPath | Out-File -Append -FilePath $env:GITHUB_PATH
 
-      # ── Build installer (with self-update) ───────────────────────────────────
+      # ── Install frontend deps ─────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        shell: bash
+        working-directory: frontend
+        run: npm ci
+
+      # ── Build installer ───────────────────────────────────────────────────────
       - name: Build installer
         shell: bash
         run: task build:prod ARCH=${{ github.event.inputs.arch || 'amd64' }}
@@ -78,15 +91,14 @@ jobs:
           Copy-Item "build\bin\Zen-${arch}-installer.exe" "output\Zen-${arch}-installer.exe"
 
           # Portable zip (self-update build)
-          Copy-Item "build\bin\Zen.exe" "output\Zen.exe"
-          Compress-Archive -Path "output\Zen.exe" -DestinationPath "output\Zen_windows_${arch}.zip"
-          Remove-Item "output\Zen.exe"
+          Copy-Item "build\bin\Zen.exe" "output\Zen-selfupdate.exe"
+          Compress-Archive -Path "output\Zen-selfupdate.exe" -DestinationPath "output\Zen_windows_${arch}.zip"
+          Remove-Item "output\Zen-selfupdate.exe"
 
-          # Portable zip (no self-update build)
-          $noUpdateExe = "build\bin\Zen.exe"
-          Copy-Item $noUpdateExe "output\Zen.exe"
-          Compress-Archive -Path "output\Zen.exe" -DestinationPath "output\Zen_windows_${arch}_noselfupdate.zip"
-          Remove-Item "output\Zen.exe"
+          # Portable zip (no self-update build) — wails outputs to same path, rename first
+          Copy-Item "build\bin\Zen.exe" "output\Zen-noselfupdate.exe"
+          Compress-Archive -Path "output\Zen-noselfupdate.exe" -DestinationPath "output\Zen_windows_${arch}_noselfupdate.zip"
+          Remove-Item "output\Zen-noselfupdate.exe"
 
           Get-ChildItem output
 
