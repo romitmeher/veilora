@@ -1,14 +1,14 @@
 name: Build & Release
 
 env:
-  SIGNPATH_ORG_ID: 4e46fe22-9387-4cc4-b458-ca6542b30ae7
-  SIGNPATH_PROJECT_SLUG: zen-desktop
-  SIGNPATH_SIGNING_POLICY_SLUG: release-signing
-  SIGNPATH_ARTIFACT_CONFIG_SLUG: ci-bundle
+  SIGNPATH_ORG_ID: ${{ vars.SIGNPATH_ORG_ID }}
+  SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+  SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+  SIGNPATH_ARTIFACT_CONFIG_SLUG: ${{ vars.SIGNPATH_ARTIFACT_CONFIG_SLUG }}
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -50,18 +50,20 @@ jobs:
       - name: Build & Archive Linux binaries
         run: |
           task build:prod ARCH=${{ matrix.arch }}
-          tar -czvf Zen_linux_${{ matrix.arch }}.tar.gz -C build/bin Zen
+          tar -czvf Veilora_linux_${{ matrix.arch }}.tar.gz -C build/bin Veilora
           task build:prod-noupdate ARCH=${{ matrix.arch }}
-          tar -czvf Zen_linux_${{ matrix.arch }}_noselfupdate.tar.gz -C build/bin Zen
+          tar -czvf Veilora_linux_${{ matrix.arch }}_noselfupdate.tar.gz -C build/bin Veilora
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: linux-${{ matrix.arch }}
           path: |
-            Zen_linux_${{ matrix.arch }}.tar.gz
-            Zen_linux_${{ matrix.arch }}_noselfupdate.tar.gz
+            Veilora_linux_${{ matrix.arch }}.tar.gz
+            Veilora_linux_${{ matrix.arch }}_noselfupdate.tar.gz
 
+  # Signed macOS builds require this fork's Apple credentials.
   build-macos:
+    if: vars.MACOS_SIGNING_ENABLED == 'true'
     name: Build macOS (${{ matrix.arch }})
     runs-on: macos-latest
     strategy:
@@ -108,23 +110,23 @@ jobs:
           NOTARIZATION_TEAM_ID=$NOTARIZATION_TEAM_ID \
           NOTARIZATION_PWD=$NOTARIZATION_PWD \
           task build:prod ARCH=${{ matrix.arch }}
-          tar -czvf Zen_darwin_${{ matrix.arch }}.tar.gz -C build/bin Zen.app
-          mv build/bin/Zen.dmg build/bin/Zen-${{ matrix.arch }}.dmg
+          tar -czvf Veilora_darwin_${{ matrix.arch }}.tar.gz -C build/bin Veilora.app
+          mv build/bin/Veilora.dmg build/bin/Veilora-${{ matrix.arch }}.dmg
 
           CERTIFICATE_NAME=$CERTIFICATE_NAME \
           NOTARIZATION_APPLE_ID=$NOTARIZATION_APPLE_ID \
           NOTARIZATION_TEAM_ID=$NOTARIZATION_TEAM_ID \
           NOTARIZATION_PWD=$NOTARIZATION_PWD \
           task build:prod-noupdate ARCH=${{ matrix.arch }}
-          tar -czvf Zen_darwin_${{ matrix.arch }}_noselfupdate.tar.gz -C build/bin Zen.app
+          tar -czvf Veilora_darwin_${{ matrix.arch }}_noselfupdate.tar.gz -C build/bin Veilora.app
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: macos-${{ matrix.arch }}
           path: |
-            Zen_darwin_${{ matrix.arch }}.tar.gz
-            build/bin/Zen-${{ matrix.arch }}.dmg
-            Zen_darwin_${{ matrix.arch }}_noselfupdate.tar.gz
+            Veilora_darwin_${{ matrix.arch }}.tar.gz
+            build/bin/Veilora-${{ matrix.arch }}.dmg
+            Veilora_darwin_${{ matrix.arch }}_noselfupdate.tar.gz
 
   build-windows:
     name: Build Windows (${{ matrix.arch }})
@@ -141,8 +143,8 @@ jobs:
         run: |
           if ! git describe --tags --abbrev=0 2>/dev/null; then
             echo "No tags — creating placeholder v0.0.0"
-            git config user.email "ci@zen-desktop.local"
-            git config user.name  "Zen CI"
+            git config user.email "ci@veilora.local"
+            git config user.name  "Veilora CI"
             git tag v0.0.0
           fi
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
@@ -188,23 +190,23 @@ jobs:
 
           # build with self-update
           task build:prod ARCH=${{ matrix.arch }}
-          Copy-Item .\build\bin\Zen.exe .\ci-upload\unsigned\Zen-selfupdate.exe
-          Copy-Item .\build\bin\Zen-${{ matrix.arch }}-installer.exe .\ci-upload\unsigned\Zen-installer.exe
+          Copy-Item .\build\bin\Veilora.exe .\ci-upload\unsigned\Veilora-selfupdate.exe
+          Copy-Item .\build\bin\Veilora-${{ matrix.arch }}-installer.exe .\ci-upload\unsigned\Veilora-installer.exe
 
           # build without self-update
           task build:prod-noupdate ARCH=${{ matrix.arch }}
-          Copy-Item .\build\bin\Zen.exe .\ci-upload\unsigned\Zen-noselfupdate.exe
+          Copy-Item .\build\bin\Veilora.exe .\ci-upload\unsigned\Veilora-noselfupdate.exe
       - name: Upload intermediate unsigned artifacts
         id: unsigned
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-unsigned-${{ matrix.arch }}
           path: |
-            ci-upload/unsigned/Zen-selfupdate.exe
-            ci-upload/unsigned/Zen-noselfupdate.exe
-            ci-upload/unsigned/Zen-installer.exe
+            ci-upload/unsigned/Veilora-selfupdate.exe
+            ci-upload/unsigned/Veilora-noselfupdate.exe
+            ci-upload/unsigned/Veilora-installer.exe
       - name: Sign with SignPath
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ENABLED == 'true'
         uses: signpath/github-action-submit-signing-request@4f13d373e8f0cd8d3c0465ff4877feff27aed2ae # v1.2
         with:
           api-token:                    ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -219,57 +221,57 @@ jobs:
             arch: "${{ matrix.arch }}"
             version: "${{ github.ref }}"
       - name: Prepare final artifacts using unsigned artifacts
-        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') || vars.SIGNPATH_ENABLED != 'true' }}
         run: |
-          Move-Item -Path .\ci-upload\unsigned\Zen-installer.exe `
-                          -Destination .\ci-upload\final\Zen-${{ matrix.arch }}-installer.exe
+          Move-Item -Path .\ci-upload\unsigned\Veilora-installer.exe `
+                          -Destination .\ci-upload\final\Veilora-${{ matrix.arch }}-installer.exe
           # Build the self-update archive
           Copy-Item `
-            -Path .\ci-upload\unsigned\Zen-selfupdate.exe `
-            -Destination .\ci-upload\unsigned\Zen.exe `
+            -Path .\ci-upload\unsigned\Veilora-selfupdate.exe `
+            -Destination .\ci-upload\unsigned\Veilora.exe `
             -Force
           Compress-Archive `
-            -Path .\ci-upload\unsigned\Zen.exe `
-            -DestinationPath .\ci-upload\final\Zen_windows_${{ matrix.arch }}.zip
-          Remove-Item -Path .\ci-upload\unsigned\Zen.exe
+            -Path .\ci-upload\unsigned\Veilora.exe `
+            -DestinationPath .\ci-upload\final\Veilora_windows_${{ matrix.arch }}.zip
+          Remove-Item -Path .\ci-upload\unsigned\Veilora.exe
           # Build the no-self-update archive
           Copy-Item `
-            -Path .\ci-upload\unsigned\Zen-noselfupdate.exe `
-            -Destination .\ci-upload\unsigned\Zen.exe `
+            -Path .\ci-upload\unsigned\Veilora-noselfupdate.exe `
+            -Destination .\ci-upload\unsigned\Veilora.exe `
             -Force
           Compress-Archive `
-            -Path .\ci-upload\unsigned\Zen.exe `
-            -DestinationPath .\ci-upload\final\Zen_windows_${{ matrix.arch }}_noselfupdate.zip
+            -Path .\ci-upload\unsigned\Veilora.exe `
+            -DestinationPath .\ci-upload\final\Veilora_windows_${{ matrix.arch }}_noselfupdate.zip
       - name: Prepare final artifacts using signed artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ENABLED == 'true'
         run: |
-          Move-Item -Path .\ci-upload\signed\Zen-installer.exe `
-                          -Destination .\ci-upload\final\Zen-${{ matrix.arch }}-installer.exe
+          Move-Item -Path .\ci-upload\signed\Veilora-installer.exe `
+                          -Destination .\ci-upload\final\Veilora-${{ matrix.arch }}-installer.exe
           # Build the self-update archive
           Copy-Item `
-            -Path .\ci-upload\signed\Zen-selfupdate.exe `
-            -Destination .\ci-upload\signed\Zen.exe `
+            -Path .\ci-upload\signed\Veilora-selfupdate.exe `
+            -Destination .\ci-upload\signed\Veilora.exe `
             -Force
           Compress-Archive `
-            -Path .\ci-upload\signed\Zen.exe `
-            -DestinationPath .\ci-upload\final\Zen_windows_${{ matrix.arch }}.zip
-          Remove-Item -Path .\ci-upload\signed\Zen.exe
+            -Path .\ci-upload\signed\Veilora.exe `
+            -DestinationPath .\ci-upload\final\Veilora_windows_${{ matrix.arch }}.zip
+          Remove-Item -Path .\ci-upload\signed\Veilora.exe
           # Build the no-self-update archive
           Copy-Item `
-            -Path .\ci-upload\signed\Zen-noselfupdate.exe `
-            -Destination .\ci-upload\signed\Zen.exe `
+            -Path .\ci-upload\signed\Veilora-noselfupdate.exe `
+            -Destination .\ci-upload\signed\Veilora.exe `
             -Force
           Compress-Archive `
-            -Path .\ci-upload\signed\Zen.exe `
-            -DestinationPath .\ci-upload\final\Zen_windows_${{ matrix.arch }}_noselfupdate.zip
-      - name: Upload final signed artifacts
+            -Path .\ci-upload\signed\Veilora.exe `
+            -DestinationPath .\ci-upload\final\Veilora_windows_${{ matrix.arch }}_noselfupdate.zip
+      - name: Upload final artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-final-${{ matrix.arch }}
           path: |
-            ci-upload/final/Zen_windows_${{ matrix.arch }}.zip
-            ci-upload/final/Zen_windows_${{ matrix.arch }}_noselfupdate.zip
-            ci-upload/final/Zen-${{ matrix.arch }}-installer.exe
+            ci-upload/final/Veilora_windows_${{ matrix.arch }}.zip
+            ci-upload/final/Veilora_windows_${{ matrix.arch }}_noselfupdate.zip
+            ci-upload/final/Veilora-${{ matrix.arch }}-installer.exe
 
   release:
     permissions:

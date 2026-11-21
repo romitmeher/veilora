@@ -1,4 +1,4 @@
-import { Button, ButtonGroup, FocusStyleManager, NonIdealState } from '@blueprintjs/core';
+import { Button, FocusStyleManager, Icon } from '@blueprintjs/core';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -11,8 +11,11 @@ import { EventsOn } from 'wails/runtime/runtime';
 import { ThemeType, useTheme } from './common/ThemeManager';
 import { AppToaster } from './common/toaster';
 import { AppHeader } from './components/AppHeader';
+import { Navigation, type AppTab } from './components/Navigation';
 import { StartStopButton } from './components/StartStopButton';
+import { StatusText } from './components/StatusText';
 import { useProxyState } from './context/ProxyStateContext';
+import { useVPNState } from './context/VPNStateContext';
 import { FilterLists } from './FilterLists';
 import { Intro } from './Intro';
 import { useProxyHotkey } from './ProxyHotkey';
@@ -20,8 +23,6 @@ import { RequestLog } from './RequestLog';
 import { Rules } from './Rules';
 import { SettingsManager } from './SettingsManager';
 import { VPN } from './VPN';
-
-type Tab = 'home' | 'filterLists' | 'rules' | 'vpn' | 'settings';
 
 function App() {
   const { t } = useTranslation();
@@ -59,7 +60,8 @@ function App() {
   }, [t]);
 
   const { proxyState } = useProxyState();
-  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const { vpnState, isConnected, vpnInfo } = useVPNState();
+  const [activeTab, setActiveTab] = useState<AppTab>('home');
   const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
@@ -73,40 +75,78 @@ function App() {
       <AppHeader />
 
       {showIntro ? (
-        <Intro
-          onClose={() => {
-            setShowIntro(false);
-          }}
-        />
+        <div className="onboarding">
+          <Intro
+            onClose={() => {
+              setShowIntro(false);
+            }}
+          />
+        </div>
       ) : (
         <>
-          <ButtonGroup fill variant="minimal" className="tabs">
-            <Button icon="circle" active={activeTab === 'home'} onClick={() => setActiveTab('home')}>
-              {t('app.tabs.home')}
-            </Button>
-            <Button icon="filter" active={activeTab === 'filterLists'} onClick={() => setActiveTab('filterLists')}>
-              {t('app.tabs.filterLists')}
-            </Button>
-            <Button icon="code" active={activeTab === 'rules'} onClick={() => setActiveTab('rules')}>
-              {t('app.tabs.rules')}
-            </Button>
-            <Button icon="lock" active={activeTab === 'vpn'} onClick={() => setActiveTab('vpn')}>
-              {t('app.tabs.vpn')}
-            </Button>
-            <Button icon="settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
-              {t('app.tabs.settings')}
-            </Button>
-          </ButtonGroup>
+          <Navigation active={activeTab} onChange={setActiveTab} />
 
-          <div className="content">
+          <main className="content" id="main-content">
+            <header className="page-heading">
+              <h1>{activeTab === 'home' ? t('ui.overview') : t(`app.tabs.${activeTab}`)}</h1>
+              <p>{t(`ui.descriptions.${activeTab}`)}</p>
+            </header>
             <div style={{ display: activeTab === 'home' ? 'block' : 'none' }}>
+              <section className="service-list" aria-label={t('ui.overview')}>
+                <div className="service-row">
+                  <span className="service-icon">
+                    <Icon icon="shield" size={19} />
+                  </span>
+                  <div className="service-description">
+                    <h2>{t('ui.adBlocking')}</h2>
+                    <p>{t('ui.filterDescription')}</p>
+                  </div>
+                  <span className={`service-state ${proxyState === 'on' ? 'is-active' : ''}`} role="status">
+                    <span className="status-dot" />
+                    <StatusText>{t(`ui.shortProxy.${proxyState}`)}</StatusText>
+                  </span>
+                  <Button
+                    variant="minimal"
+                    icon="settings"
+                    aria-label={t('ui.reviewFilters')}
+                    title={t('ui.reviewFilters')}
+                    onClick={() => setActiveTab('filterLists')}
+                  />
+                </div>
+                <div className="service-row">
+                  <span className="service-icon">
+                    <Icon icon="globe-network" size={19} />
+                  </span>
+                  <div className="service-description">
+                    <h2>{t('app.tabs.vpn')}</h2>
+                    <p>{isConnected ? vpnInfo.countryLong || t('ui.unknown') : t('ui.vpnDescription')}</p>
+                  </div>
+                  <span className={`service-state ${isConnected ? 'is-active' : ''}`} role="status">
+                    <span className="status-dot" />
+                    <StatusText>{t(`ui.vpn.${vpnState}`)}</StatusText>
+                  </span>
+                  <Button
+                    variant="minimal"
+                    icon="arrow-right"
+                    aria-label={t('ui.manageVPN')}
+                    title={t('ui.manageVPN')}
+                    onClick={() => setActiveTab('vpn')}
+                  />
+                </div>
+              </section>
+              <div className="activity-heading">
+                <h2>{t('ui.activity')}</h2>
+                <span>{t('ui.session')}</span>
+              </div>
               {proxyState === 'off' ? (
-                <NonIdealState
-                  icon="lightning"
-                  title={t('app.proxy.inactive')}
-                  description={t('app.proxy.description') as string}
-                  className="request-log__non-ideal-state"
-                />
+                <div className="activity-empty">
+                  <Icon icon="inbox" size={22} />
+                  <h3>{t('ui.waiting')}</h3>
+                  <p>{t('app.proxy.description')}</p>
+                  <Button variant="outlined" icon="filter" onClick={() => setActiveTab('filterLists')}>
+                    {t('ui.reviewFilters')}
+                  </Button>
+                </div>
               ) : (
                 <RequestLog />
               )}
@@ -115,8 +155,16 @@ function App() {
             {activeTab === 'rules' && <Rules />}
             {activeTab === 'vpn' && <VPN />}
             {activeTab === 'settings' && <SettingsManager />}
-          </div>
-          <StartStopButton />
+          </main>
+          <footer className="protection-footer">
+            <div className="protection-footer__status">
+              <span className={`status-dot ${proxyState === 'on' ? 'is-active' : ''}`} />
+              <div>
+                <StatusText>{t(`ui.proxy.${proxyState}`)}</StatusText>
+              </div>
+            </div>
+            <StartStopButton />
+          </footer>
         </>
       )}
     </div>

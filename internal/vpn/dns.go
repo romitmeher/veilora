@@ -3,15 +3,17 @@ package vpn
 import (
 	"fmt"
 	"log"
+	"net"
+	"strings"
 )
 
 const defaultDNS = "1.1.1.1" // Cloudflare DNS (privacy-focused, routes through VPN tunnel)
 
 // DNSProtection overrides system DNS when the VPN is connected.
 type DNSProtection struct {
-	enabled    bool
-	resolver   string
-	prevDNS    string
+	enabled  bool
+	resolver string
+	prevDNS  string
 }
 
 func NewDNSProtection() *DNSProtection {
@@ -21,11 +23,16 @@ func NewDNSProtection() *DNSProtection {
 }
 
 // SetResolver sets the DNS resolver address to use when protection is active.
-func (d *DNSProtection) SetResolver(addr string) {
+func (d *DNSProtection) SetResolver(addr string) error {
+	addr = strings.TrimSpace(addr)
 	if addr == "" {
 		addr = defaultDNS
 	}
+	if net.ParseIP(addr) == nil {
+		return fmt.Errorf("DNS resolver must be an IPv4 or IPv6 address")
+	}
 	d.resolver = addr
+	return nil
 }
 
 // GetResolver returns the current DNS resolver address.

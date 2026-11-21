@@ -2,7 +2,7 @@
 
 ## About
 
-This is the source for Zen - a system-wide proxy-based ad-blocker and privacy guard. Built using Wails as the application framework, Go for core logic, and TS/React for the UI.
+This is the source for Veilora (a fork of Zen) - a system-wide proxy-based ad-blocker and privacy guard. Built using Wails as the application framework, Go for core logic, and TS/React for the UI.
 
 ## Commands
 

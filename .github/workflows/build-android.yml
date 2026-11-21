@@ -9,10 +9,6 @@ on:
         default: 'preview'
         type: choice
         options: [preview, production]
-  push:
-    branches: [main]
-    paths:
-      - 'vpn-mobile/**'
 
 permissions:
   contents: write
@@ -27,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -37,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: vpn-mobile
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
       - name: Build APK
         working-directory: vpn-mobile
@@ -46,13 +42,13 @@ jobs:
           eas build \
             --platform android \
             --profile ${{ github.event.inputs.profile || 'preview' }} \
-            --non-interactive \
+            --non-interactive --local \
             --output ./build/app.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zen-vpn-android-${{ github.event.inputs.profile || 'preview' }}
+          name: veilora-android-${{ github.event.inputs.profile || 'preview' }}
           path: vpn-mobile/build/app.apk
           retention-days: 30
 
@@ -61,11 +57,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-${{ github.run_number }}
-          name: Zen VPN Android v${{ github.run_number }}
-          draft: false
+          name: Veilora VPN Android v${{ github.run_number }}
+          draft: true
           files: vpn-mobile/build/app.apk
           body: |
-            ## Zen VPN Android APK
+            ## Veilora VPN Android APK
 
             **Build:** ${{ github.run_number }}
             **Profile:** production
@@ -76,6 +72,6 @@ jobs:
             3. Open the downloaded APK and tap Install
 
             ### Features
-            - VPN connection via VPNGate free servers (OpenVPN / SoftEther)
-            - Ad & tracker blocking with live stats
-            - Kill switch, custom DNS, protocol selection
+            - Preview VPN interface with simulated connections (no native tunnel)
+            - Simulated ad and tracker statistics (no device filtering)
+            - Settings UI preview; kill switch and custom DNS are not enforced

@@ -1,9 +1,5 @@
-# Code of Conduct
+# Code of conduct
 
-This project follows the [Irbis Community Code of Conduct](https://github.com/irbis-sh/community/blob/main/CODE_OF_CONDUCT.md).
+Be respectful, constructive, and considerate when participating in Veilora's development. Harassment, threats, discrimination, and disclosure of another person's private information are not acceptable.
 
-By participating in this repository and its associated social spaces, you agree to abide by the standards and expectations outlined in the community-wide Code of Conduct. These guidelines are in place to foster a respectful, inclusive, and collaborative environment for everyone involved in Irbis projects.
-
-If you have any concerns or need to report a violation, please refer to the reporting guidelines provided in the shared document.
-
-Thank you for helping make this a welcoming space for all.
+Keep feedback focused on the work. If a concern involves private information, contact the repository owner through a verified private channel rather than posting it publicly. Veilora is an independent fork; upstream Zen community contacts are not presented as this repository's moderators.

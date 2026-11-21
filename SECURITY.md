@@ -1,28 +1,17 @@
-# Security Policy
+# Veilora security notes
 
-## Supported Versions
+Veilora is a development fork of Zen. A successful build or test run is not a security audit. Live VPN connectivity, kill-switch enforcement, DNS leak prevention, and HTTPS filtering have not been validated end to end for this fork. See [validation details](docs/VALIDATION.md).
 
-Only the [latest version](https://github.com/irbis-sh/zen-desktop/releases/latest) of the app is actively supported.
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Use GitHub's private vulnerability reporting for [this repository](https://github.com/romitmeher/prototypevpn/security) if it is enabled. Otherwise, contact the repository owner through a verified channel to arrange private disclosure before sending details. Do not post exploit details, private keys, or user traffic in a public issue.
 
-If you've discovered a security issue in Zen, please disclose it privately and responsibly by emailing us at <security@irbis.sh>.
+Include the affected commit, platform, reproduction steps, and likely impact. This fork has no published response-time guarantee. Upstream-only problems should follow [Zen's security policy](https://github.com/irbis-sh/zen-desktop/security/policy).
 
-In your report, please include:
+## Boundaries
 
-- A description of the issue and how it could be exploited
-- Step-by-step instructions to reproduce the issue (if known)
-- The date and time you first identified the vulnerability
-- A list of affected platforms and versions (e.g., Windows 11, macOS 15)
-- Whether the vulnerability is already public or known to third parties (please provide details)
-- Your name and affiliation (if you'd like to be credited)
-- As much technical detail as possible
-- Any additional information that may be helpful
-
-### Report lifecycle
-
-You should receive an initial response within 72 hours. If you don't hear back, please follow up again, or send a notice (**important: without any vulnerability details**) to a project lead via personal email or a verified social platform.
-
-After you make a report, we will work with you to confirm it and assess its impact. Once we've been able to confirm the issue, we'll work to remediate it. We ask that you keep your report confidential for 90 days after you make it, to give us a chance to remediate the issue and protect our users.
-
-After we've fixed the issue - or after 90 days, whichever comes first - we will publish a summary of the vulnerability and the actions taken. You are then free to publish your own disclosure.
+- HTTPS interception uses a local root CA; only enable it after reviewing the behavior and local certificate handling.
+- VPN servers are operated by third parties. The presence of a VPN connection does not establish that an operator is trustworthy.
+- The mobile app is a simulation, not a VPN or ad blocker.
+- Self-updates are disabled. Signing and release credentials must be configured for this fork independently.
+- The inherited [architecture document](docs/internal/security-architecture.md) describes upstream design; it is not an audit or infrastructure guarantee for Veilora.

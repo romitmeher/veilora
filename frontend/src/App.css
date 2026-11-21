@@ -1,38 +1,585 @@
+/* Veilora: a restrained desktop utility. Three surfaces, one type scale. */
 #app {
-  height: 100vh;
+  --canvas: #fafafa;
+  --rail: #f4f4f4;
+  --surface: #ffffff;
+  --raised: #ededed;
+  --line: #e3e3e3;
+  --ink: #252525;
+  --muted: #707070;
+  --hover: #e9e9e9;
+  --action: #303030;
+  --action-hover: #454545;
+  --action-ink: #ffffff;
+  --positive: #258461;
+  --focus: #5275d4;
+  --fast: 80ms;
+  --moderate: 160ms;
+  --slow: 240ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --bp-text-muted-color: var(--muted);
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-rows: 60px minmax(0, 1fr) 64px;
   width: 100vw;
-  background-color: #f5f8fa;
-  color: #000;
+  height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 20px;
+  font-optical-sizing: auto;
+}
+#app.bp6-dark {
+  --canvas: #191919;
+  --rail: #161616;
+  --surface: #202020;
+  --raised: #303030;
+  --line: #303030;
+  --ink: #ededed;
+  --muted: #a1a1a1;
+  --hover: #2b2b2b;
+  --action: #e3e3e3;
+  --action-hover: #ffffff;
+  --action-ink: #242424;
+  --positive: #77c5a5;
+  --focus: #8ba8f6;
+}
+#app .heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0 20px;
+  background: var(--rail);
+  border-bottom: 1px solid var(--line);
+}
+#app .heading__branding {
+  gap: 9px;
+}
+#app .heading__logo {
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+}
+#app .heading__name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: normal;
+}
+.heading__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sidebar {
+  grid-row: 2 / 4;
   display: flex;
   flex-direction: column;
+  padding: 20px 10px 14px;
+  background: var(--rail);
+  border-right: 1px solid var(--line);
 }
-
-#app.bp6-dark {
-  background: rgb(47, 52, 60);
-  color: #fff;
+.navigation-track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  isolation: isolate;
 }
-
-.bp6-dark .heading {
-  border-bottom: 1px dotted #f5f5f5;
-}
-
-/* Light theme version of logo */
-#app:not(.bp6-dark) .heading__logo svg {
-  stroke: #394b59;
-}
-
-.tabs {
-  padding: 0 12px;
+.navigation-highlight {
+  position: absolute;
+  inset: 0 0 auto;
   height: 36px;
+  z-index: -1;
+  background: var(--hover);
+  border-radius: 5px;
+  transform: translateY(calc(var(--nav-index) * 40px));
+  transition: transform var(--moderate) var(--ease);
+}
+.navigation-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--fast) ease;
+}
+.navigation-item[aria-current='page'],
+.navigation-item:hover,
+.navigation-item:focus-visible {
+  color: var(--ink);
+}
+.navigation-item[aria-current='page'] {
+  font-weight: 600;
+  font-variation-settings: 'opsz' 18;
+}
+.navigation-item .bp6-icon {
   flex-shrink: 0;
 }
-
-.content {
-  overflow-y: auto;
-  padding: 0 12px;
-  flex-grow: 1;
+.sidebar-device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 16px 12px 0;
+  font-size: 12px;
+  color: var(--muted);
 }
-
-.tabs .bp6-button {
+.content {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: auto;
+  padding: 32px 36px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.page-heading {
+  margin-bottom: 28px;
+}
+#app h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 650;
+  color: var(--ink);
+  letter-spacing: normal;
+  text-wrap: balance;
+}
+.page-heading p {
+  color: var(--muted);
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-wrap: pretty;
+}
+.service-list {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.service-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 88px;
+  padding: 20px 0;
+}
+.service-row + .service-row {
+  border-top: 1px solid var(--line);
+}
+.service-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--raised);
+  color: var(--ink);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.service-description {
+  flex: 1;
+  min-width: 0;
+}
+.service-description h2 {
+  margin: 0 0 3px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.service-description p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.service-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.status-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.is-active {
+  color: var(--positive);
+}
+.activity-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 30px 0 14px;
+}
+.activity-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.activity-heading > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-empty {
+  display: grid;
+  justify-items: center;
+  padding: 28px 18px;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: 6px;
+}
+.activity-empty h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 10px 0 2px;
+}
+.activity-empty p {
+  font-size: 12px;
+  line-height: 18px;
+  margin: 0 0 14px;
+  text-wrap: pretty;
+}
+.protection-footer {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 36px;
+  border-top: 1px solid var(--line);
+  background: var(--canvas);
+}
+.protection-footer__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+#app .protection-footer .start-stop-btn {
+  min-width: 142px;
+  width: auto;
+  min-height: 34px;
+  border-radius: 5px !important;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+#app .bp6-button {
+  min-height: 32px;
+  border-radius: 5px;
+  box-shadow: none;
+  font-size: 13px;
+  transition:
+    background var(--fast) ease,
+    color var(--fast) ease,
+    transform var(--fast) var(--ease);
+}
+#app .bp6-button:not(.bp6-intent-danger):not(.bp6-intent-primary):not(.bp6-intent-success) {
+  color: var(--ink);
+}
+#app .bp6-button.bp6-minimal:hover {
+  background: var(--hover);
+}
+#app .bp6-button:not(.bp6-minimal):not(.bp6-intent-primary):not(.bp6-intent-success):not(.bp6-intent-danger) {
+  background: var(--raised);
+}
+#app .bp6-button:not(:disabled):active {
+  transform: translateY(1px);
+}
+#app .bp6-button.bp6-intent-primary,
+#app .bp6-button.bp6-intent-success {
+  background: var(--action);
+  color: var(--action-ink);
+  border: 1px solid transparent;
+}
+#app .bp6-button.bp6-intent-primary:hover,
+#app .bp6-button.bp6-intent-success:hover {
+  background: var(--action-hover);
+}
+#app .bp6-button .bp6-icon {
+  color: inherit;
+}
+#app .bp6-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+#app :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+#app .bp6-input,
+#app .bp6-html-select select,
+#app textarea {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 5px;
+  font-size: 13px;
+}
+#app .bp6-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+#app .bp6-input:focus,
+#app .bp6-html-select select:focus {
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+#app .bp6-control input:checked ~ .bp6-control-indicator {
+  background: var(--action);
+}
+#app .bp6-control input:checked ~ .bp6-control-indicator::before {
+  color: var(--action-ink);
+}
+#app .bp6-control .bp6-control-indicator {
+  box-shadow: none;
+}
+#app .bp6-control.bp6-switch .bp6-control-indicator {
+  transition: background var(--moderate) ease;
+}
+#app .bp6-text-muted {
+  color: var(--muted);
+}
+#app .settings-manager__section--app,
+#app .settings-manager__section--advanced,
+#app .vpn-controls,
+#app .vpn-servers {
+  background: transparent;
+  border: 0;
   border-radius: 0;
+  margin: 0 0 24px;
+}
+#app .settings-manager__section-header,
+#app .vpn-controls__header,
+#app .vpn-servers__header {
+  padding: 0 0 12px;
+  background: transparent;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0;
+}
+#app .settings-manager__section-body,
+#app .vpn-controls__body {
+  padding: 18px 0 0;
+}
+#app .settings-manager__section--links {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#app .settings-manager__about {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  text-align: left;
+  line-height: 20px;
+  color: var(--muted);
+}
+#app .filter-lists__list {
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+#app .filter-lists__list-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+#app .filter-lists__list-url {
+  font-size: 12px;
+  color: var(--muted);
+}
+#app .vpn-status {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  margin-bottom: 24px;
+}
+#app .vpn-status__header {
+  padding: 16px;
+}
+#app .vpn-status__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+#app .vpn-status__indicator {
+  width: 6px;
+  height: 6px;
+}
+#app .vpn-status--connected {
+  --vpn-status-color: var(--positive);
+}
+#app .vpn-status__message {
+  padding: 0 16px 12px;
+  font-size: 12px;
+}
+#app .vpn-controls__body {
+  gap: 16px;
+}
+#app .vpn-controls__row {
+  flex-wrap: wrap;
+}
+#app .vpn-controls__row label {
+  font-size: 13px;
+  min-width: 110px;
+}
+#app .vpn-controls__switch-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+#app .vpn-controls__switch-row label {
+  font-size: 13px;
+}
+#app .vpn-controls__switch-row .bp6-switch {
+  margin-bottom: 0;
+}
+#app .vpn-controls__dns-resolver {
+  flex-wrap: wrap;
+  padding-left: 0;
+  gap: 8px;
+}
+#app .vpn-connect-btn {
+  border-radius: 5px !important;
+  min-height: 36px;
+  font-size: 13px;
+}
+#app .vpn-readiness {
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+}
+#app .vpn-readiness .bp6-heading {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+#app .vpn-readiness p {
+  color: var(--muted);
+  line-height: 18px;
+}
+#app .vpn-servers__toolbar {
+  padding: 14px 0 0;
+}
+#app .vpn-servers__search {
+  padding: 12px 0;
+}
+#app .vpn-servers__list {
+  padding: 0;
+  gap: 4px;
+}
+#app .vpn-server-row {
+  background: transparent;
+  color: var(--ink);
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: inherit;
+  text-align: left;
+  transition: background var(--fast) ease;
+}
+#app .vpn-server-row:hover,
+#app .vpn-server-row--selected {
+  background: var(--hover);
+}
+#app .vpn-server-row--selected {
+  border-color: var(--line);
+}
+#app .vpn-server-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+#app .vpn-servers__empty {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+}
+#app .rules {
+  min-height: 300px;
+  height: calc(100% - 94px);
+}
+#app .bp6-card {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.onboarding {
+  grid-column: 1 / -1;
+  grid-row: 2 / 4;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.onboarding .content {
+  padding: 0 12px;
+  flex: 1;
+}
+@media (max-width: 800px) {
+  #app {
+    grid-template-columns: 154px minmax(0, 1fr);
+  }
+  .content {
+    padding: 24px;
+  }
+  .protection-footer {
+    padding: 12px 24px;
+  }
+  .service-row {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .service-description {
+    flex-basis: calc(100% - 54px);
+  }
+  .service-state {
+    margin-left: 48px;
+  }
+  .service-row > .bp6-button {
+    margin-left: auto;
+  }
+  #app h1 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app *,
+  #app *::before,
+  #app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  .navigation-item[aria-current='page'] {
+    outline: 1px solid Highlight;
+  }
+  .status-dot {
+    border: 1px solid CanvasText;
+  }
 }

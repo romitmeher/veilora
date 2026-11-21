@@ -13,15 +13,15 @@
     "update": {
       "restart": "Yeniden başlat",
       "restartFailed": "Uygulama yeniden başlatılamadı: {{error}}",
-      "updateAvailable": "Zen'in yeni bir sürümü mevcut."
+      "updateAvailable": "Veilora'in yeni bir sürümü mevcut."
     }
   },
   "appRoutingSettings": {
     "addApp": "Uygulama ekle",
     "allowlistMode": "Yalnızca seçili uygulamaları proxy üzerinden yönlendir",
     "blocklistMode": "Seçilinler hariç tüm uygulamaları proxy üzerinden yönlendir",
-    "description": "Zen'in proxy'sini hangi uygulamaların kullanacağını seçin.",
-    "emptyAllowlistWarning": "Hiç uygulama seçilmedi. Tüm trafik Zen'i atlayacak.",
+    "description": "Veilora'in proxy'sini hangi uygulamaların kullanacağını seçin.",
+    "emptyAllowlistWarning": "Hiç uygulama seçilmedi. Tüm trafik Veilora'i atlayacak.",
     "label": "Uygulama yönlendirme",
     "removeApp": "Uygulamayı kaldır",
     "saveError": "Uygulama yönlendirme ayarları kaydedilemedi: {{error}}",
@@ -34,7 +34,7 @@
     "setError": "Varlık sunucusu portu ayarlanamadı: {{error}}"
   },
   "autoStartSwitch": {
-    "description": "Oturum açtığınızda Zen'i otomatik başlat",
+    "description": "Oturum açtığınızda Veilora'i otomatik başlat",
     "disableError": "Otomatik başlatma devre dışı bırakılamadı: {{error}}",
     "enableError": "Otomatik başlatma etkinleştirilemedi: {{error}}",
     "label": "Otomatik başlatma"
@@ -104,14 +104,14 @@
       "skip": "Tanıtımı atla"
     },
     "connect": {
-      "caNote": "İlk başlatmada Zen, yerel bir kök CA sertifikası yüklemenizi isteyebilir. Bu, HTTPS filtrelemeyi etkinleştirir ve Zen'in tüm sitelerdeki reklam ve izleyicileri engellemesini sağlar. Her şey yerel olarak gerçekleşir – <strong>hiçbir veri cihazınızdan çıkmaz</strong>.<br />Teknik detaylar için GitHub sayfamıza bakın.",
-      "description": "Başlamaya hazırsınız. Zen'in kapsamlı ağ korumasını etkinleştirmek için \"Başlat\"a basın.",
+      "caNote": "İlk başlatmada Veilora, yerel bir kök CA sertifikası yüklemenizi isteyebilir. Bu, HTTPS filtrelemeyi etkinleştirir ve Veilora'in tüm sitelerdeki reklam ve izleyicileri engellemesini sağlar. Her şey yerel olarak gerçekleşir – <strong>hiçbir veri cihazınızdan çıkmaz</strong>.<br />Teknik detaylar için GitHub sayfamıza bakın.",
+      "description": "Başlamaya hazırsınız. Veilora'in kapsamlı ağ korumasını etkinleştirmek için \"Başlat\"a basın.",
       "donateText": "Ve bağış yapmayı düşünün:",
       "socialText": "İsterseniz sosyal medya hesaplarımıza göz atın:",
       "title": "Her şey hazır!"
     },
     "filterLists": {
-      "description": "Reklam engelleme ve gizlilik koruması için Zen, <strong>filtre listeleri</strong> kullanır. Bunları uygulamada daha sonra da ayarlayabilirsiniz.",
+      "description": "Reklam engelleme ve gizlilik koruması için Veilora, <strong>filtre listeleri</strong> kullanır. Bunları uygulamada daha sonra da ayarlayabilirsiniz.",
       "recommendation": "Yerel ayarınıza göre aşağıdaki filtre listelerini etkinleştirmenizi öneririz:",
       "title": "Filtre listeleri"
     },
@@ -122,7 +122,7 @@
     },
     "welcome": {
       "description": "Dilinizi seçin:",
-      "title": "Zen'e Hoş Geldiniz!"
+      "title": "Veilora'e Hoş Geldiniz!"
     }
   },
   "portInput": {
@@ -159,9 +159,9 @@
       "errorMessage": "CA kaldırılamadı: {{error}}",
       "reasons": {
         "malfunctioning": "CA kurulumunuzun arızalandığından şüpheleniyorsunuz. Bu sorun, HTTPS web sitelerini ziyaret ederken tarayıcı hatası olarak veya diğer uygulamaların internete bağlanamaması şeklinde kendini gösterebilir.",
-        "uninstall": "Zen'i tamamen kaldırmak istiyorsunuz."
+        "uninstall": "Veilora'i tamamen kaldırmak istiyorsunuz."
       },
-      "reinstallInfo": "Zen'i tekrar başlatırsanız yeni bir CA yüklenecektir.",
+      "reinstallInfo": "Veilora'i tekrar başlatırsanız yeni bir CA yüklenecektir.",
       "stopProxyTooltip": "CA'yı kaldırmak için proxy'yi durdurun",
       "successMessage": "CA başarıyla kaldırıldı",
       "uninstallButton": "CA'yı kaldır",
@@ -184,7 +184,7 @@
     },
     "updates": {
       "automaticUpdates": "Güncellemeleri otomatik indir",
-      "description": "Etkinleştirildiğinde Zen otomatik olarak güncellemeleri kontrol eder",
+      "description": "Etkinleştirildiğinde Veilora otomatik olarak güncellemeleri kontrol eder",
       "disableError": "Otomatik güncellemeler devre dışı bırakılamadı: {{error}}",
       "enableError": "Otomatik güncellemeler etkinleştirilemedi: {{error}}"
     }

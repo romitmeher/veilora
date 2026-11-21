@@ -1,5 +1,5 @@
 import { Button, Spinner, HTMLSelect } from '@blueprintjs/core';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { VPNGetServers, VPNGetCountries, VPNRefreshServers } from 'wails/go/app/App';
@@ -35,16 +35,28 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
   const [countries, setCountries] = useState<string[]>([]);
   const [country, setCountry] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [query, setQuery] = useState('');
+  const requestId = useRef(0);
+  const invalidateRequests = useCallback(() => {
+    requestId.current++;
+  }, []);
 
-  const loadServers = useCallback(async (countryFilter: string) => {
+  const loadServers = useCallback(async (countryFilter: string, refresh = false) => {
+    const id = ++requestId.current;
     setLoading(true);
+    setLoadError(false);
     try {
+      if (refresh) await VPNRefreshServers();
       const result = await VPNGetServers(countryFilter, true);
-      setServers(result ?? []);
+      if (id === requestId.current) setServers(result ?? []);
     } catch {
-      setServers([]);
+      if (id === requestId.current) {
+        setServers([]);
+        setLoadError(true);
+      }
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, []);
 
@@ -53,12 +65,15 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
       .then((c: string[]) => setCountries((c ?? []).sort()))
       .catch(() => {});
     loadServers('');
-  }, [loadServers]);
+    return invalidateRequests;
+  }, [loadServers, invalidateRequests]);
 
   const handleRefresh = () => {
-    VPNRefreshServers();
-    loadServers(country);
+    loadServers(country, true);
   };
+  const visibleServers = servers.filter((s) =>
+    `${s.hostName} ${s.countryLong} ${s.countryShort}`.toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   return (
     <div className="vpn-servers">
@@ -67,6 +82,7 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
       </div>
       <div className="vpn-servers__toolbar">
         <HTMLSelect
+          aria-label={t('vpn.controls.country')}
           value={country}
           onChange={(e) => {
             setCountry(e.target.value);
@@ -76,7 +92,9 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
         >
           <option value="">{t('vpn.servers.allCountries')}</option>
           {countries.map((c) => (
-            <option key={c} value={c}>{c}</option>
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </HTMLSelect>
         <Button
@@ -85,28 +103,53 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
           onClick={handleRefresh}
           disabled={disabled || loading}
           title={t('vpn.servers.refresh')}
+          aria-label={t('vpn.servers.refresh')}
+        />
+      </div>
+      <div className="vpn-servers__search">
+        <input
+          className="bp6-input bp6-fill"
+          aria-label={t('vpn.feedback.search')}
+          placeholder={t('vpn.feedback.search')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          disabled={loading}
         />
       </div>
 
-      <div className="vpn-servers__list">
+      <div className="vpn-servers__list" aria-busy={loading}>
         {loading ? (
           <Spinner size={20} style={{ margin: '12px auto' }} />
-        ) : servers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem', color: 'var(--bp-text-muted-color)' }}>
-            {t('vpn.servers.empty')}
+        ) : loadError ? (
+          <div role="alert" className="vpn-servers__empty">
+            <p>{t('vpn.feedback.serversError')}</p>
+            <Button onClick={handleRefresh} disabled={disabled}>
+              {t('vpn.feedback.retry')}
+            </Button>
+          </div>
+        ) : visibleServers.length === 0 ? (
+          <div
+            style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem', color: 'var(--bp-text-muted-color)' }}
+          >
+            {query ? t('vpn.feedback.noMatches') : t('vpn.servers.empty')}
           </div>
         ) : (
-          servers.slice(0, 80).map((s) => (
-            <div
+          visibleServers.slice(0, 80).map((s) => (
+            <button
+              type="button"
+              disabled={disabled}
+              aria-pressed={selectedHost === s.hostName}
               key={s.hostName}
               className={`vpn-server-row${selectedHost === s.hostName ? ' vpn-server-row--selected' : ''}`}
               onClick={() => !disabled && onSelect(s)}
             >
-              <div className="vpn-server-row__name" title={s.hostName}>{s.hostName}</div>
-              <div className="vpn-server-row__country">{s.countryShort}</div>
-              <div className="vpn-server-row__ping">{s.ping > 0 ? `${s.ping}ms` : '—'}</div>
-              <div className="vpn-server-row__speed">{formatSpeed(s.speed)}</div>
-            </div>
+              <span className="vpn-server-row__name" title={s.hostName}>
+                {s.hostName}
+              </span>
+              <span className="vpn-server-row__country">{s.countryShort}</span>
+              <span className="vpn-server-row__ping">{s.ping > 0 ? `${s.ping}ms` : '—'}</span>
+              <span className="vpn-server-row__speed">{formatSpeed(s.speed)}</span>
+            </button>
           ))
         )}
       </div>

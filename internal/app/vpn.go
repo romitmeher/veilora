@@ -94,9 +94,9 @@ func (a *App) VPNSetKillSwitch(enabled bool) error {
 }
 
 // VPNSetDNSResolver sets a custom DNS resolver for DNS leak protection.
-func (a *App) VPNSetDNSResolver(addr string) {
+func (a *App) VPNSetDNSResolver(addr string) error {
 	<-a.startupDone
-	a.vpnManager.SetDNSResolver(addr)
+	return a.vpnManager.SetDNSResolver(addr)
 }
 
 // VPNGetDNSResolver returns the current DNS resolver address.

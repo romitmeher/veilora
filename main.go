@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	windowWidth  = 450
-	windowHeight = 670
+	windowWidth  = 980
+	windowHeight = 760
 )
 
 //go:embed all:frontend/dist
@@ -65,7 +65,9 @@ func main() {
 		Title:         constants.AppName,
 		Width:         windowWidth,
 		Height:        windowHeight,
-		DisableResize: true,
+		MinWidth:      720,
+		MinHeight:     600,
+		DisableResize: false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

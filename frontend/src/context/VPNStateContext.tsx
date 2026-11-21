@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 
 import { VPNGetStatus } from 'wails/go/app/App';
+import { vpn } from 'wails/go/models';
 import { EventsOn } from 'wails/runtime/runtime';
 
 export type VPNState = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error';
@@ -42,19 +43,34 @@ interface VPNStateContextType {
 
 const VPNStateContext = createContext<VPNStateContextType | undefined>(undefined);
 
+function normalizeInfo(info: vpn.ConnectionInfo): VPNConnectionInfo {
+  const state = info.status?.state;
+  const knownState: VPNState =
+    state === 'connected' ||
+    state === 'connecting' ||
+    state === 'disconnecting' ||
+    state === 'disconnected' ||
+    state === 'error'
+      ? state
+      : 'error';
+  return { ...info, status: { state: knownState, message: info.status?.message ?? '' } };
+}
+
 export function VPNStateProvider({ children }: { children: ReactNode }) {
   const [vpnInfo, setVpnInfo] = useState<VPNConnectionInfo>(defaultInfo);
 
   const refreshStatus = useCallback(() => {
-    VPNGetStatus().then((info: VPNConnectionInfo) => {
-      if (info) setVpnInfo(info);
-    }).catch(() => {});
+    VPNGetStatus()
+      .then((info) => {
+        if (info) setVpnInfo(normalizeInfo(info));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     refreshStatus();
-    const cancel = EventsOn('vpn:statusChanged', (info: VPNConnectionInfo) => {
-      if (info) setVpnInfo(info);
+    const cancel = EventsOn('vpn:statusChanged', (info: vpn.ConnectionInfo) => {
+      if (info) setVpnInfo(normalizeInfo(info));
     });
     return cancel;
   }, [refreshStatus]);
@@ -63,13 +79,16 @@ export function VPNStateProvider({ children }: { children: ReactNode }) {
   const isConnected = vpnState === 'connected';
   const isTransitioning = vpnState === 'connecting' || vpnState === 'disconnecting';
 
-  const value = useMemo(() => ({
-    vpnInfo,
-    vpnState,
-    isConnected,
-    isTransitioning,
-    refreshStatus,
-  }), [vpnInfo, vpnState, isConnected, isTransitioning, refreshStatus]);
+  const value = useMemo(
+    () => ({
+      vpnInfo,
+      vpnState,
+      isConnected,
+      isTransitioning,
+      refreshStatus,
+    }),
+    [vpnInfo, vpnState, isConnected, isTransitioning, refreshStatus],
+  );
 
   return <VPNStateContext.Provider value={value}>{children}</VPNStateContext.Provider>;
 }

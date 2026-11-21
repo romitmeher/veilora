@@ -58,10 +58,10 @@ export default function HomeScreen() {
 
   const statusLabel =
     status === "connected"
-      ? "PROTECTED"
+      ? "DEMO CONNECTED"
       : status === "connecting"
-      ? "CONNECTING..."
-      : "UNPROTECTED";
+      ? "SIMULATING..."
+      : "DEMO DISCONNECTED";
 
   const glowColor = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -88,7 +88,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset + 16, paddingBottom: bottomInset + 90 }]}>
-      <Text style={[styles.appTitle, { color: colors.foreground }]}>Zen VPN</Text>
+      <Text style={[styles.appTitle, { color: colors.foreground }]}>Veilora</Text>
 
       <View style={styles.centerArea}>
         <Animated.View

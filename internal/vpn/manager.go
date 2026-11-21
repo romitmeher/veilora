@@ -27,15 +27,15 @@ type ConnectionInfo struct {
 type Manager struct {
 	mu sync.Mutex
 
-	engines    map[EngineType]Engine
-	active     Engine
-	connInfo   ConnectionInfo
-	statusCh   chan Status
-	stopMon    chan struct{}
+	engines  map[EngineType]Engine
+	active   Engine
+	connInfo ConnectionInfo
+	statusCh chan Status
+	stopMon  chan struct{}
 
-	killSwitch     *KillSwitch
-	dnsProtection  *DNSProtection
-	vpngateClient  *vpngate.Client
+	killSwitch    *KillSwitch
+	dnsProtection *DNSProtection
+	vpngateClient *vpngate.Client
 
 	// onStatusChange is called each time the connection status changes.
 	onStatusChange func(ConnectionInfo)
@@ -175,8 +175,8 @@ func (m *Manager) SetKillSwitch(enabled bool) error {
 }
 
 // SetDNSResolver sets a custom DNS resolver address.
-func (m *Manager) SetDNSResolver(addr string) {
-	m.dnsProtection.SetResolver(addr)
+func (m *Manager) SetDNSResolver(addr string) error {
+	return m.dnsProtection.SetResolver(addr)
 }
 
 // GetDNSResolver returns the current DNS resolver address.

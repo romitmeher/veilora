@@ -20,8 +20,8 @@
     "addApp": "Ajouter une application",
     "allowlistMode": "Utiliser le proxy uniquement pour les applications sélectionnées",
     "blocklistMode": "Utiliser le proxy pour toutes les applications sauf celles sélectionnées",
-    "description": "Choisissez les applications qui doivent utiliser le proxy de Zen.",
-    "emptyAllowlistWarning": "Aucune application n'est sélectionnée. Tout le trafic contournera Zen.",
+    "description": "Choisissez les applications qui doivent utiliser le proxy de Veilora.",
+    "emptyAllowlistWarning": "Aucune application n'est sélectionnée. Tout le trafic contournera Veilora.",
     "label": "Routage des applications",
     "removeApp": "Supprimer l'application",
     "saveError": "Échec de l'enregistrement des paramètres de routage des applications : {{error}}",
@@ -34,7 +34,7 @@
     "setError": "Échec de la définition du port du serveur d'assets : {{error}}"
   },
   "autoStartSwitch": {
-    "description": "Démarrer Zen automatiquement lors de la connexion",
+    "description": "Démarrer Veilora automatiquement lors de la connexion",
     "disableError": "Échec de la désactivation du démarrage automatique : {{error}}",
     "enableError": "Échec de l'activation du démarrage automatique : {{error}}",
     "label": "Démarrage automatique"
@@ -104,14 +104,14 @@
       "skip": "Passer l'introduction"
     },
     "connect": {
-      "caNote": "Lors du premier démarrage, Zen peut vous demander d'installer un certificat CA racine local. Cela permet le filtrage HTTPS afin que Zen puisse bloquer les publicités et les traqueurs sur tous les sites. Tout se passe localement – <strong>aucune donnée ne quitte jamais votre appareil</strong>.<br />Consultez notre GitHub pour des détails techniques complets.",
-      "description": "Et voilà ! Appuyez sur \"Démarrer\" pour activer la protection réseau de Zen.",
+      "caNote": "Lors du premier démarrage, Veilora peut vous demander d'installer un certificat CA racine local. Cela permet le filtrage HTTPS afin que Veilora puisse bloquer les publicités et les traqueurs sur tous les sites. Tout se passe localement – <strong>aucune donnée ne quitte jamais votre appareil</strong>.<br />Consultez notre GitHub pour des détails techniques complets.",
+      "description": "Et voilà ! Appuyez sur \"Démarrer\" pour activer la protection réseau de Veilora.",
       "donateText": "Et envisagez de faire un don sur :",
       "socialText": "Si vous le souhaitez, consultez nos réseaux sociaux :",
       "title": "Tout est prêt !"
     },
     "filterLists": {
-      "description": "Pour activer le blocage des publicités et la protection de la vie privée, Zen utilise des <strong>listes de filtres</strong>. Vous pouvez également les configurer plus tard dans l'application.",
+      "description": "Pour activer le blocage des publicités et la protection de la vie privée, Veilora utilise des <strong>listes de filtres</strong>. Vous pouvez également les configurer plus tard dans l'application.",
       "recommendation": "D'après votre localisation, il vous est recommandé d'activer les listes de filtres suivantes :",
       "title": "Listes de filtres"
     },
@@ -122,7 +122,7 @@
     },
     "welcome": {
       "description": "Sélectionnez votre langue :",
-      "title": "Bienvenue dans Zen !"
+      "title": "Bienvenue dans Veilora !"
     }
   },
   "portInput": {
@@ -159,9 +159,9 @@
       "errorMessage": "Échec de la désinstallation de l'Autorité de certification : {{error}}",
       "reasons": {
         "malfunctioning": "Vous soupçonnez que l'installation de l'Autorité de certification ne fonctionne pas correctement. Sachez que ce problème peut se manifester par une erreur du navigateur lors de la visite de sites Web HTTPS, ou si d'autres applications ne parviennent pas à se connecter à Internet.",
-        "uninstall": "Vous souhaitez désinstaller Zen complètement."
+        "uninstall": "Vous souhaitez désinstaller Veilora complètement."
       },
-      "reinstallInfo": "Si vous redémarrez Zen, une nouvelle Autorité de certification sera installée.",
+      "reinstallInfo": "Si vous redémarrez Veilora, une nouvelle Autorité de certification sera installée.",
       "stopProxyTooltip": "Arrêtez le proxy pour désinstaller l'Autorité de certification",
       "successMessage": "Autorité de certification désinstallée avec succès",
       "uninstallButton": "Désinstaller l'Autorité de certification",

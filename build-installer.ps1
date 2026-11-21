@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds the Zen Desktop Windows installer (.exe) from source.
+    Builds the Veilora Desktop Windows installer (.exe) from source.
 
 .DESCRIPTION
     Checks for required tools (Go, Node.js, Task, Wails, NSIS),
@@ -131,7 +131,7 @@ if (-not $SkipDepsCheck) {
 # ──────────────────────────────────────────────────────────────────────────────
 # Build
 # ──────────────────────────────────────────────────────────────────────────────
-Write-Step "Building Zen Desktop ($Arch)$(if($NoSelfUpdate){' [no self-update]'})"
+Write-Step "Building Veilora Desktop ($Arch)$(if($NoSelfUpdate){' [no self-update]'})"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $scriptDir
@@ -141,12 +141,12 @@ try {
         Write-Host "  Running: task build:prod-noupdate ARCH=$Arch"
         task build:prod-noupdate ARCH=$Arch
         if ($LASTEXITCODE -ne 0) { Abort "Build failed (exit $LASTEXITCODE)" }
-        $artifact = "build\bin\Zen.exe"
+        $artifact = "build\bin\Veilora.exe"
     } else {
         Write-Host "  Running: task build:prod ARCH=$Arch"
         task build:prod ARCH=$Arch
         if ($LASTEXITCODE -ne 0) { Abort "Build failed (exit $LASTEXITCODE)" }
-        $installer = "build\bin\Zen-$Arch-installer.exe"
+        $installer = "build\bin\Veilora-$Arch-installer.exe"
         $artifact  = $installer
     }
 
@@ -162,7 +162,7 @@ try {
     Write-Host "  Output: $fullPath" -ForegroundColor Green
     if (-not $NoSelfUpdate) {
         Write-Host "  This installer includes the WebView2 bootstrapper and will" -ForegroundColor Green
-        Write-Host "  install Zen to %LOCALAPPDATA%\Programs\Zen Desktop\Zen." -ForegroundColor Green
+        Write-Host "  install Veilora to %LOCALAPPDATA%\Programs\Veilora Desktop\Veilora." -ForegroundColor Green
     }
     Write-Host "================================================================" -ForegroundColor Green
 

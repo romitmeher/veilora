@@ -45,7 +45,7 @@ VIAddVersionKey "FileVersion"     "${INFO_PRODUCTVERSION}"
 VIAddVersionKey "LegalCopyright"  "${INFO_COPYRIGHT}"
 VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 
-BrandingText "Zen v${INFO_PRODUCTVERSION}"
+BrandingText "Veilora v${INFO_PRODUCTVERSION}"
 
 
 !include MUI2.nsh

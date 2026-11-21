@@ -1,135 +1,108 @@
-<p align="center">
-  <picture>
-    <img src="https://github.com/irbis-sh/zen-desktop/blob/master/assets/appicon.png?raw=true" alt="Zen's Blue Shield Logo" width="150" />
-  </picture>
-</p>
+<p align="center"><img src="assets/brand/veilora.png" width="96" alt="Veilora ribbon logo" /></p>
+<h1 align="center">Veilora</h1>
+<p align="center">Desktop ad blocking and VPN controls. Clear status, local configuration.</p>
+<p align="center"><a href="#getting-started">Get started</a> · <a href="docs/VALIDATION.md">Validation</a> · <a href="PRIVACY_POLICY.md">Privacy</a> · <a href="LICENSE">MIT license</a></p>
 
-<h3 align="center">
-  Zen: Your Comprehensive Ad-Blocker and Privacy Guard
-</h3>
-<blockquote align="center">
-There is, simply, no way, to ignore privacy. Because a citizenry’s freedoms are interdependent, to surrender your own privacy is really to surrender everyone’s.
+Veilora is a Go/Wails desktop application with a React interface, built on [Zen](https://github.com/irbis-sh/zen-desktop). It brings system-proxy filtering, request history, filter subscriptions, custom rules, and OpenVPN/SoftEther controls into one app.
 
-Edward Snowden, Permanent Record
+## Interface
 
-</blockquote>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/veilora-dark.png" />
+  <img src="assets/screenshots/veilora-light.png" alt="Veilora overview with separate ad-blocking and VPN status, compact navigation, and an enable-blocking control" width="980" />
+</picture>
 
-![GitHub License](https://img.shields.io/github/license/irbis-sh/zen-desktop)
-![GitHub release](https://img.shields.io/github/v/release/irbis-sh/zen-desktop)
-![GitHub download counter](https://img.shields.io/github/downloads/irbis-sh/zen-desktop/total)
-<a href="https://discord.gg/zGeQVatAUm">
-  <img alt="Discord" src="https://img.shields.io/discord/1334633399490711685?logo=discord&logoColor=fff&label=Discord&color=5865F2"/>
-</a>
+The desktop interface uses restrained light/dark surfaces, keyboard-accessible navigation, and [Torph](https://torph.lochie.me/) status transitions. Typography and interaction design draw on [Fluid Functionalism](https://www.fluidfunctionalism.com/). Reduced-motion preferences are respected.
 
-Zen is an open-source system-wide ad-blocker and privacy guard for Windows, macOS, and Linux. It works by setting up a proxy that intercepts HTTP requests from all applications, and blocks those serving ads, tracking scripts that monitor your behavior, malware, and other unwanted content. By operating at the system level, Zen can protect against threats that browser extensions cannot, such as trackers embedded in desktop applications and operating system components. Zen comes with many pre-installed filters, but also allows you to easily add hosts files and EasyList-style filters, enabling you to tailor your protection to your specific needs.
+## What works—and what is still a prototype
 
-## Downloads
+| Area | Implementation and validation |
+| --- | --- |
+| Desktop application | Windows executable builds and launches; overview, navigation, settings, and both themes inspected. |
+| Ad blocking | Local HTTP/HTTPS proxy, filter subscriptions, custom rules, app routing, and request history are implemented. Live filtering has not been verified in this fork. |
+| VPN | OpenVPN/SoftEther integration, server selection/search, DNS controls, and kill-switch code are present. An installed compatible client is required. Live connectivity and leak protection remain unverified. |
+| Mobile | Expo UI prototype. Connections and blocking statistics are simulated; it does not protect device traffic. Type checking and web export pass. |
+| Updates | Automatic updates are disabled to prevent this fork from installing upstream Zen releases. |
 
-During the first run, Zen will prompt you to install a root certificate. This is required for Zen to be able to intercept and modify HTTPS requests. This certificate is generated locally and never leaves your device. For details on how this works and the steps we take to secure it, see our [security architecture](/docs/internal/security-architecture.md).
+HTTPS filtering requires a locally generated root certificate. Read the [privacy notes](PRIVACY_POLICY.md) and [security notes](SECURITY.md) before enabling it. A successful build is not proof of working VPN protection.
 
-### Windows
+## Getting started
 
-- x64: [💾 Installer](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen-amd64-installer.exe) | [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_windows_amd64.zip)
-- ARM64: [💾 Installer](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen-arm64-installer.exe) | [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_windows_arm64.zip)
+Requirements:
 
-Unsure which version to download? Click on 'Start' and type 'View processor info'. The 'System type' field under 'Device specifications' will tell you which one you need.
+- Go **1.26.1+**, as declared in [go.mod](go.mod).
+- Node.js **24.14.1+** and npm.
+- Wails **v2.11.0**, matching the Go dependency.
+- Windows: WebView2. See [platform prerequisites](docs/internal/requirements.md) for other systems.
+- Optional: Go Task and golangci-lint v2 for the repository commands.
 
-#### Winget
-
-Zen is available via [Winget (Windows Package Manager)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/z/ZenPrivacy). To install, run:
-
-```bash
-winget install ZenPrivacy.ZenDesktop
+```powershell
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+cd frontend
+npm ci
+cd ..
+wails dev
 ```
 
-### macOS
+Build a Windows executable:
 
-- x64 (Intel): [💾 Installer](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen-amd64.dmg) | [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_darwin_amd64.tar.gz)
-- ARM64 (Apple Silicon): [💾 Installer](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen-arm64.dmg) | [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_darwin_arm64.tar.gz)
-
-Unsure which version to download? Learn at [Apple's website](https://support.apple.com/en-us/HT211814).
-
-#### 🍺 Homebrew
-
-Zen is available via [Homebrew](https://formulae.brew.sh/cask/zen-privacy) for both Intel and Apple Silicon. To install it, run:
-
-```bash
-brew install --cask zen-privacy
+```powershell
+wails build
+# Output: build/bin/Veilora.exe
 ```
 
-### Linux
+For the NSIS installer, use [build-installer.ps1](build-installer.ps1). Built executables are ignored by Git; this source update does not publish a binary release.
 
-- AUR: [👾 zen-adblocker-bin](https://aur.archlinux.org/packages/zen-adblocker-bin)
-- x64: [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_linux_amd64.tar.gz)
-- ARM64: [📦 Portable](https://github.com/irbis-sh/zen-desktop/releases/latest/download/Zen_linux_arm64.tar.gz)
+### Checks
 
-On Linux, automatic proxy configuration is currently only supported on GNOME- and KDE-based desktop environments.
+```powershell
+task lint
+task test
+task build-dev
+```
 
-## Screenshots
+Without Go Task:
 
-<table>
-  <thead>
-    <tr>
-        <th>Request history</th>
-        <th>Filter list manager</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        Request history shows all requests blocked by Zen. Each request can be inspected to see which filter and rule blocked it.
-      </td>
-      <td>
-        Zen comes with many pre-installed filters. You can also add your own by providing a URL to a hosts file or an EasyList-style filter.
-      </td>
-    </tr>
-    <tr>
-      <td align="center" valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/main-dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="assets/screenshots/main-light.png">
-          <img alt="Screenshot of Zen's Home screen showing blocked network requests. One entry details a blocked request to a Marketo tracking script from politico.com, with several other advertising and analytics domains listed below. Navigation tabs and a Donate button appear at the top, and a blue Stop button is visible at the bottom." src="assets/screenshots/main-light.png">
-        </picture>
-      </td>
-      <td align="center" valign="top">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/regional-dark.png">
-          <source media="(prefers-color-scheme: light)" srcset="assets/screenshots/regional-light.png">
-          <img alt="Screenshot of Zen's Filter lists screen showing a regional category with multiple ad-block filter lists from different countries. Each list includes a name, a source URL, and toggle switches indicating whether it is enabled." src="assets/screenshots/regional-light.png">
-        </picture>
-      </td>
-    </tr>
-  </tbody>
-</table>
+```powershell
+cd frontend
+npm run build
+npm run lint
+cd ..
+go test ./...
+golangci-lint run
+```
 
-## Development
+`task test` also enables Go's race detector and requires a supported C toolchain. Current checks and known lint findings are recorded in [VALIDATION.md](docs/VALIDATION.md).
 
-Follow the [getting started guide](docs/internal/index.md#getting-started) to begin working on Zen development. If you have any questions, feel free to ask in the [Discussions](https://github.com/irbis-sh/zen-desktop/discussions/categories/q-a).
+### Mobile preview
 
-## Contributing
+```powershell
+cd vpn-mobile
+npm ci
+npx expo start
+# Static web build:
+npx expo export --platform web
+```
 
-Zen needs your help! You can report bugs, suggest and implement features, improve the codebase, or help translate Zen into your language. Please refer to the [Contributing Guidelines](CONTRIBUTING.md) for more information.
+Android/iOS distribution requires separate Expo configuration and credentials. The mobile UI explicitly labels simulated protection.
 
-## Special Thanks
+## Repository map
 
-Zen exists thanks to the support of many incredible people and organizations, including:
+| Path | Purpose |
+| --- | --- |
+| `main.go`, `internal/` | Native app, filtering, configuration, VPN engines and platform integration |
+| `frontend/` | React desktop interface and Wails bindings |
+| `vpn-mobile/` | Expo prototype |
+| `assets/brand/` | Logo source and generation provenance |
+| `scripts/export-brand.ps1` | Reproducible PNG/ICO exports from the logo source |
+| `docs/` | Development notes and validation limits |
 
-- Our contributors
-  <a href="https://github.com/irbis-sh/zen-desktop/graphs/contributors">
-  <img src="https://opencollective.com/zen-privacy/contributors.svg?width=890&button=false" alt="Avatars of all GitHub contributors to Zen" />
-  </a>
+Veilora stores application data separately from Zen. Existing Zen settings are not automatically migrated. The upstream Go module path and filter-provider names remain for compatibility and attribution.
 
-- Our sponsors
-  <a href="https://opencollective.com/zen-privacy#backers" target="_blank" rel="noreferrer noopener">
-  <img src="https://opencollective.com/zen-privacy/backers.svg?width=890&button=false" alt="Avatars of all backers of Zen on Open Collective" />
-  </a>
+## Attribution and license
 
-- [SignPath](https://signpath.io) and [SignPath Foundation](https://signpath.org/), who generously provide a free Windows certificate and code signing
+Veilora is a fork maintained in [romitmeher/prototypevpn](https://github.com/romitmeher/prototypevpn). Original Zen contributions and historical release notes remain credited. See [CHANGELOG.md](CHANGELOG.md), [LICENSE](LICENSE), and [COPYING.md](COPYING.md). This fork does not claim upstream signing, sponsorship, release infrastructure, or support guarantees.
 
-  <a href="https://signpath.io" target="_blank" rel="noreferrer noopener">
-  <img src="./assets/signpath-logo.png" width="260" />
-  </a>
+## CI and release setup
 
-## License
-
-This project is licensed under the [MIT License](https://github.com/irbis-sh/zen-desktop/blob/master/LICENSE). Some code and assets included with Zen are licensed under different terms. For more information, see the [COPYING](https://github.com/irbis-sh/zen-desktop/blob/master/COPYING.md) file.
+Build and lint workflows track `main`. Windows artifacts are unsigned unless repository variable `SIGNPATH_ENABLED=true` and the fork's SignPath variables/token are configured. Signed macOS builds require `MACOS_SIGNING_ENABLED=true` and Apple credentials; the combined release job requires all platform builds. Android builds are manual local EAS builds on the runner and require Expo configuration and credentials. Release outputs remain drafts. Inherited updater-manifest and automated PR workflows are disabled for this fork.

@@ -6,6 +6,8 @@ on:
 
 jobs:
   update-changelog:
+    # Inherited upstream automation; disabled for this fork.
+    if: github.repository == 'irbis-sh/zen-desktop'
     runs-on: ubuntu-latest
     permissions:
       contents: write
