@@ -1,4 +1,4 @@
-import { Button, Callout, HTMLSelect, Switch, Tag, InputGroup } from '@blueprintjs/core';
+import { Button, Callout, HTMLSelect, Switch, Tag, InputGroup, ProgressBar, Icon } from '@blueprintjs/core';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -10,9 +10,11 @@ import {
   VPNConnectToServer,
   VPNDisconnect,
   VPNAvailableEngines,
+  VPNInstallEngine,
   VPNGetDNSResolver,
   VPNSetDNSResolver,
 } from 'wails/go/app/App';
+import { EventsOn } from 'wails/runtime/runtime';
 
 import { ServerList } from './ServerList';
 import type { VPNServer } from './ServerList';
@@ -54,6 +56,17 @@ export function VPN() {
   const [dnsDraft, setDnsDraft] = useState('');
   const [dnsSaving, setDnsSaving] = useState(false);
 
+  const [installing, setInstalling] = useState(false);
+  const [installProgress, setInstallProgress] = useState<{
+    stage: string;
+    percent: number;
+    message: string;
+  }>({
+    stage: '',
+    percent: 0,
+    message: '',
+  });
+
   const loadEngines = useCallback(async () => {
     setEnginesLoading(true);
     setEnginesError(false);
@@ -71,6 +84,36 @@ export function VPN() {
       setEnginesLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const cancel = EventsOn('vpn:engine:progress', (data: { stage: string; percent: number; message: string }) => {
+      setInstallProgress(data);
+      if (data.stage === 'ready') {
+        setInstalling(false);
+        AppToaster.show({ message: 'VPN engine installed successfully!', intent: 'success' });
+        loadEngines();
+      } else if (data.stage === 'error') {
+        setInstalling(false);
+        AppToaster.show({ message: data.message || 'Installation failed', intent: 'danger' });
+      }
+    });
+    return cancel;
+  }, [loadEngines]);
+
+  const handleInstallEngine = async () => {
+    setInstalling(true);
+    setInstallProgress({ stage: 'starting', percent: 10, message: 'Starting engine setup...' });
+    try {
+      await VPNInstallEngine();
+      await loadEngines();
+    } catch (err) {
+      setInstalling(false);
+      AppToaster.show({
+        message: `Install failed: ${err instanceof Error ? err.message : String(err)}`,
+        intent: 'danger',
+      });
+    }
+  };
 
   useEffect(() => {
     loadEngines();
@@ -126,26 +169,47 @@ export function VPN() {
   return (
     <div className="vpn">
       {!isConnected && (enginesLoading || enginesError || availableEngines.length === 0) && (
-        <Callout
-          className="vpn-readiness"
-          intent={enginesLoading ? 'none' : 'warning'}
-          title={t(
-            enginesLoading
-              ? 'vpn.feedback.checking'
-              : enginesError
-                ? 'vpn.feedback.engineError'
-                : 'vpn.feedback.noEngine',
-          )}
-        >
-          {!enginesLoading && (
-            <>
-              <p>{t('vpn.feedback.installEngine')}</p>
-              <Button icon="refresh" onClick={loadEngines}>
-                {t('vpn.feedback.retry')}
+        <div className="vpn-engine-installer-card">
+          <div className="vpn-engine-installer-header">
+            <div className="vpn-engine-installer-icon">
+              <Icon icon="shield" size={24} intent="primary" />
+            </div>
+            <div className="vpn-engine-installer-title">
+              <h3>Secure Tunnel Engine Required</h3>
+              <p>Veilora requires the OpenVPN tunneling engine to encrypt and route your internet traffic.</p>
+            </div>
+          </div>
+
+          {installing ? (
+            <div className="vpn-engine-installer-progress">
+              <div className="vpn-engine-progress-header">
+                <span>{installProgress.message || 'Installing OpenVPN engine...'}</span>
+                <span>{installProgress.percent}%</span>
+              </div>
+              <ProgressBar
+                value={installProgress.percent / 100}
+                intent="primary"
+                animate={installProgress.stage !== 'ready'}
+                stripes
+              />
+            </div>
+          ) : (
+            <div className="vpn-engine-installer-actions">
+              <Button
+                intent="primary"
+                icon="download"
+                size="large"
+                onClick={handleInstallEngine}
+                loading={enginesLoading}
+              >
+                Install Tunnel Engine
               </Button>
-            </>
+              <Button icon="refresh" variant="minimal" onClick={loadEngines}>
+                Check Again
+              </Button>
+            </div>
           )}
-        </Callout>
+        </div>
       )}
       {/* Status card */}
       <div className={statusClass}>

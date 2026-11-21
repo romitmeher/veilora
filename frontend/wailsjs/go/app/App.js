@@ -42,48 +42,50 @@ export function UninstallCA() {
   return window['go']['app']['App']['UninstallCA']();
 }
 
-// VPN methods
-
-export function VPNGetServers(country, autoRank) {
-  return window['go']['app']['App']['VPNGetServers'](country, autoRank);
-}
-
-export function VPNGetCountries() {
-  return window['go']['app']['App']['VPNGetCountries']();
-}
-
 export function VPNAvailableEngines() {
   return window['go']['app']['App']['VPNAvailableEngines']();
 }
 
-export function VPNConnectBest(country, engine, killSwitch, dnsProtect) {
-  return window['go']['app']['App']['VPNConnectBest'](country, engine, killSwitch, dnsProtect);
+export function VPNConnectBest(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['VPNConnectBest'](arg1, arg2, arg3, arg4);
 }
 
-export function VPNConnectToServer(hostName, engine, killSwitch, dnsProtect) {
-  return window['go']['app']['App']['VPNConnectToServer'](hostName, engine, killSwitch, dnsProtect);
+export function VPNConnectToServer(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['VPNConnectToServer'](arg1, arg2, arg3, arg4);
 }
 
 export function VPNDisconnect() {
   return window['go']['app']['App']['VPNDisconnect']();
 }
 
-export function VPNGetStatus() {
-  return window['go']['app']['App']['VPNGetStatus']();
-}
-
-export function VPNSetKillSwitch(enabled) {
-  return window['go']['app']['App']['VPNSetKillSwitch'](enabled);
-}
-
-export function VPNSetDNSResolver(addr) {
-  return window['go']['app']['App']['VPNSetDNSResolver'](addr);
+export function VPNGetCountries() {
+  return window['go']['app']['App']['VPNGetCountries']();
 }
 
 export function VPNGetDNSResolver() {
   return window['go']['app']['App']['VPNGetDNSResolver']();
 }
 
+export function VPNGetServers(arg1, arg2) {
+  return window['go']['app']['App']['VPNGetServers'](arg1, arg2);
+}
+
+export function VPNGetStatus() {
+  return window['go']['app']['App']['VPNGetStatus']();
+}
+
+export function VPNInstallEngine() {
+  return window['go']['app']['App']['VPNInstallEngine']();
+}
+
 export function VPNRefreshServers() {
   return window['go']['app']['App']['VPNRefreshServers']();
+}
+
+export function VPNSetDNSResolver(arg1) {
+  return window['go']['app']['App']['VPNSetDNSResolver'](arg1);
+}
+
+export function VPNSetKillSwitch(arg1) {
+  return window['go']['app']['App']['VPNSetKillSwitch'](arg1);
 }

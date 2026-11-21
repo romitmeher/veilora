@@ -6,6 +6,7 @@ import (
 
 	"github.com/irbis-sh/zen-desktop/internal/vpn"
 	"github.com/irbis-sh/zen-desktop/internal/vpngate"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // VPNGetServers returns the VPNGate server list.
@@ -109,4 +110,12 @@ func (a *App) VPNGetDNSResolver() string {
 func (a *App) VPNRefreshServers() {
 	<-a.startupDone
 	a.vpnManager.RefreshServers()
+}
+
+// VPNInstallEngine runs the in-app engine installer to download and configure OpenVPN.
+func (a *App) VPNInstallEngine() error {
+	<-a.startupDone
+	return vpn.InstallEngine(a.ctx, func(progress vpn.EngineInstallProgress) {
+		runtime.EventsEmit(a.ctx, "vpn:engine:progress", progress)
+	})
 }

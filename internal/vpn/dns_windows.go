@@ -4,12 +4,11 @@ package vpn
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
 func getSystemDNS() (string, error) {
-	out, err := exec.Command("powershell", "-Command",
+	out, err := hiddenCommand("powershell", "-NoProfile", "-Command",
 		"Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object -ExpandProperty ServerAddresses | Select-Object -First 1",
 	).Output()
 	if err != nil {
@@ -23,7 +22,7 @@ func setSystemDNS(resolver string) error {
 		`Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ServerAddresses "%s" }`,
 		resolver,
 	)
-	out, err := exec.Command("powershell", "-Command", script).CombinedOutput()
+	out, err := hiddenCommand("powershell", "-NoProfile", "-Command", script).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("set DNS: %w (%s)", err, out)
 	}
@@ -39,7 +38,7 @@ func restoreSystemDNS(prev string) error {
 		`Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ServerAddresses "%s" }`,
 		server,
 	)
-	out, err := exec.Command("powershell", "-Command", script).CombinedOutput()
+	out, err := hiddenCommand("powershell", "-NoProfile", "-Command", script).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("restore DNS: %w (%s)", err, out)
 	}
