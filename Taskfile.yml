@@ -23,7 +23,7 @@ tasks:
   test-go:
     desc: Run Go tests.
     cmds:
-      - go test -cover -race ./...
+      - go test -cover -race . ./internal/...
 
   test:
     desc: Run Go tests.
@@ -43,7 +43,7 @@ tasks:
   lint-go:
     desc: Run Go linters.
     cmds:
-      - golangci-lint run
+      - golangci-lint run . ./internal/...
 
   fmt-go:
     desc: Run go fmt on improperly formatted Go files.

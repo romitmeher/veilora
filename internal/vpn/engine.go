@@ -17,8 +17,8 @@ type Engine interface {
 type EngineType string
 
 const (
-	EngineOpenVPN    EngineType = "openvpn"
-	EngineSoftEther  EngineType = "softether"
+	EngineOpenVPN   EngineType = "openvpn"
+	EngineSoftEther EngineType = "softether"
 )
 
 // State represents the current connection state.

@@ -1,4 +1,6 @@
-# Veilora validation — 2026-11-21
+# Veilora validation â€” 2026-11-21
+
+See the newer [headless standalone audit](HEADLESS-AUDIT.md) for reproduced VPN bugs, fixes, and remaining packaging/protection blockers. The native UI checks below were performed earlier, before the headless-only constraint.
 
 ## Passed
 
@@ -13,7 +15,7 @@
 
 ## Existing issues and limits
 
-- Go lint v2.15.0 reports 10 findings: three formatting findings in existing Go files, three subprocess-input security findings in OpenVPN/SoftEther code, two unused SoftEther parameters, and two govet findings in the npm dependency flatted's bundled Go code.
+- Follow-up CI cleanup: Go lint v2.15.0 reports zero issues for `. ./internal/...`. Earlier formatting/unused-parameter findings were fixed; subprocess/path false positives have narrow explanations, and npm dependency Go files are excluded from application checks. Frontend formatting and Linux-targeted npm lockfile validation also pass.
 - VPN connectivity, DNS leak protection, kill-switch enforcement, HTTPS filtering, and blocking against live sites have NOT been verified. The smoke test did not enable the system proxy, install the root CA, or connect to a VPN server.
 - The mobile app simulates connections and blocked traffic. It has no native tunnel or traffic-filtering implementation; a persistent preview notice now explains this. Android/iOS native packages were not built.
 - Veilora icons now cover desktop, tray, installer, and mobile assets. Compact-window and full keyboard review remain incomplete.

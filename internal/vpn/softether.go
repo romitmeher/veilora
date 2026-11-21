@@ -92,15 +92,9 @@ func (e *SoftEtherEngine) Connect(ovpnConfig []byte, statusCh chan<- Status) err
 		defer os.RemoveAll(tmpDir)
 		statusCh <- Status{State: StateConnecting, Message: "SoftEther connecting to " + host}
 
-		if err := e.runVpnClient(statusCh); err != nil {
-			statusCh <- Status{State: StateError, Message: fmt.Sprintf("vpnclient: %v", err)}
-			e.mu.Lock()
-			e.running = false
-			e.mu.Unlock()
-			return
-		}
+		e.runVpnClient()
 
-		if err := e.runConnect(scriptPath, host, port, statusCh); err != nil {
+		if err := e.runConnect(scriptPath); err != nil {
 			statusCh <- Status{State: StateError, Message: fmt.Sprintf("vpncmd connect: %v", err)}
 			e.mu.Lock()
 			e.running = false
@@ -137,7 +131,7 @@ func (e *SoftEtherEngine) disconnect(statusCh chan<- Status) {
 	statusCh <- Status{State: StateDisconnecting, Message: "SoftEther disconnecting"}
 
 	args := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", "ZenVPN", "AccountDelete", "ZenVPN"}
-	cmd := exec.Command(e.cmdBinary(), args...)
+	cmd := exec.Command(e.cmdBinary(), args...) // #nosec G204 -- executable and disconnect arguments are fixed by this package.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("softether: disconnect: %v: %s", err, out)
@@ -146,19 +140,18 @@ func (e *SoftEtherEngine) disconnect(statusCh chan<- Status) {
 	statusCh <- Status{State: StateDisconnected, Message: "SoftEther disconnected"}
 }
 
-func (e *SoftEtherEngine) runVpnClient(statusCh chan<- Status) error {
-	cmd := exec.Command(e.clientBinary(), "start")
+func (e *SoftEtherEngine) runVpnClient() {
+	cmd := exec.Command(e.clientBinary(), "start") // #nosec G204 -- executable name is selected from fixed OS-specific constants.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// May already be running — not an error.
 		log.Printf("softether: vpnclient start: %v: %s", err, out)
 	}
 	time.Sleep(2 * time.Second)
-	return nil
 }
 
-func (e *SoftEtherEngine) runConnect(scriptPath, host, port string, statusCh chan<- Status) error {
-	cmd := exec.Command(e.cmdBinary(), "/CLIENT", "localhost", "/IN", scriptPath)
+func (e *SoftEtherEngine) runConnect(scriptPath string) error {
+	cmd := exec.Command(e.cmdBinary(), "/CLIENT", "localhost", "/IN", scriptPath) // #nosec G204 -- fixed executable; scriptPath is created in the private temp directory above, not a shell command.
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

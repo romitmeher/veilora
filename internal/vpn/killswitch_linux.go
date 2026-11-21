@@ -17,7 +17,7 @@ func enableKillSwitch() error {
 		{"iptables", "-A", "OUTPUT", "-p", "udp", "--dport", "53", "-o", "tun0", "-j", "ACCEPT"},
 	}
 	for _, rule := range rules {
-		if out, err := exec.Command(rule[0], rule[1:]...).CombinedOutput(); err != nil {
+		if out, err := exec.Command(rule[0], rule[1:]...).CombinedOutput(); err != nil { // #nosec G204 -- all rule elements are package-local literals, not caller input.
 			return fmt.Errorf("iptables rule %v: %w (%s)", rule, err, out)
 		}
 	}
@@ -31,7 +31,7 @@ func disableKillSwitch() error {
 		{"iptables", "-F", "OUTPUT"},
 	}
 	for _, rule := range rules {
-		if out, err := exec.Command(rule[0], rule[1:]...).CombinedOutput(); err != nil {
+		if out, err := exec.Command(rule[0], rule[1:]...).CombinedOutput(); err != nil { // #nosec G204 -- all rule elements are package-local literals, not caller input.
 			return fmt.Errorf("iptables rule %v: %w (%s)", rule, err, out)
 		}
 	}

@@ -33,7 +33,7 @@ func enableKillSwitch() error {
 	}
 	f.Close()
 
-	if out, err := exec.Command("pfctl", "-a", pfAnchor, "-f", f.Name()).CombinedOutput(); err != nil {
+	if out, err := exec.Command("pfctl", "-a", pfAnchor, "-f", f.Name()).CombinedOutput(); err != nil { // #nosec G204 -- fixed command and anchor; file is created by os.CreateTemp above.
 		return fmt.Errorf("pfctl load rules: %w (%s)", err, out)
 	}
 	if out, err := exec.Command("pfctl", "-e").CombinedOutput(); err != nil {
