@@ -92,7 +92,7 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		args = append(args, "--script-security", "1")
 	}
 
-	cmd := exec.Command(e.binaryName(), args...)
+	cmd := exec.Command(e.binaryName(), args...) // #nosec G204 -- fixed executable; arguments contain an app-created temp path and numeric loopback port, with no shell.
 	cmd.Dir = tmpDir
 
 	logPipe, err := cmd.StderrPipe()
@@ -128,17 +128,22 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	}
 	e.mgmtConn = mgmtConn
 
-	// Release hold so openvpn proceeds.
-	if _, err := fmt.Fprintf(mgmtConn, "hold release\n"); err != nil {
+	// Subscribe before releasing hold, otherwise CONNECTED is never reported.
+	if err := startManagement(mgmtConn); err != nil {
 		e.killProcess()
-		return fmt.Errorf("openvpn: release hold: %w", err)
+		return fmt.Errorf("openvpn: initialize management: %w", err)
 	}
 
-	go e.monitorManagement(mgmtConn, statusCh, done)
-	go e.waitProcess(statusCh, done)
-
 	statusCh <- Status{State: StateConnecting, Message: "OpenVPN process started"}
+	go e.monitorManagement(mgmtConn, statusCh, done)
+	go e.waitProcess(cmd, statusCh, done)
+
 	return nil
+}
+
+func startManagement(conn io.Writer) error {
+	_, err := io.WriteString(conn, "state on\nhold release\n")
+	return err
 }
 
 func (e *OpenVPNEngine) Disconnect() error {
@@ -190,14 +195,13 @@ func (e *OpenVPNEngine) monitorManagement(conn net.Conn, statusCh chan<- Status,
 	}
 }
 
-func (e *OpenVPNEngine) waitProcess(statusCh chan<- Status, done <-chan struct{}) {
-	if e.cmd == nil {
-		return
-	}
-	err := e.cmd.Wait()
+func (e *OpenVPNEngine) waitProcess(cmd *exec.Cmd, statusCh chan<- Status, done <-chan struct{}) {
+	err := cmd.Wait()
 
 	e.mu.Lock()
-	e.cmd = nil
+	if e.cmd == cmd {
+		e.cmd = nil
+	}
 	e.mu.Unlock()
 
 	select {

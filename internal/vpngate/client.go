@@ -13,17 +13,17 @@ import (
 )
 
 const (
-	apiURL          = "https://www.vpngate.net/api/iphone/"
-	cacheExpiry     = 10 * time.Minute
-	requestTimeout  = 30 * time.Second
+	apiURL         = "https://www.vpngate.net/api/iphone/"
+	cacheExpiry    = 10 * time.Minute
+	requestTimeout = 30 * time.Second
 )
 
 // Client fetches and caches the VPNGate server list.
 type Client struct {
-	mu          sync.RWMutex
-	cached      []Server
-	cachedAt    time.Time
-	httpClient  *http.Client
+	mu         sync.RWMutex
+	cached     []Server
+	cachedAt   time.Time
+	httpClient *http.Client
 }
 
 // NewClient creates a new VPNGate API client.

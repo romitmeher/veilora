@@ -26,7 +26,7 @@ func setSystemDNS(resolver string) error {
 	if err != nil {
 		return fmt.Errorf("read resolv.conf: %w", err)
 	}
-	if err := os.WriteFile(resolvConfBackup, orig, 0644); err != nil {
+	if err := os.WriteFile(resolvConfBackup, orig, 0644); err != nil { // #nosec G703 -- destination is a fixed /etc path; file contents do not control the path.
 		return fmt.Errorf("backup resolv.conf: %w", err)
 	}
 
@@ -50,7 +50,7 @@ func restoreSystemDNS(prev string) error {
 			if err != nil {
 				return fmt.Errorf("read backup resolv.conf: %w", err)
 			}
-			if err := os.WriteFile(resolvConf, backup, 0644); err != nil {
+			if err := os.WriteFile(resolvConf, backup, 0644); err != nil { // #nosec G703 -- destination is the fixed resolvConf constant.
 				return fmt.Errorf("restore resolv.conf: %w", err)
 			}
 			os.Remove(resolvConfBackup)

@@ -3,7 +3,6 @@
 package vpn
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
@@ -91,7 +90,13 @@ func (m *Manager) ConnectBest(country string, engine EngineType, killSwitch, dns
 // ConnectToServer connects to a specific VPNGate server.
 func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, killSwitch, dnsProtect bool) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	var failedInfo *ConnectionInfo
+	defer func() {
+		m.mu.Unlock()
+		if failedInfo != nil && m.onStatusChange != nil {
+			m.onStatusChange(*failedInfo)
+		}
+	}()
 
 	if m.active != nil {
 		return fmt.Errorf("already connected — disconnect first")
@@ -125,19 +130,19 @@ func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, kill
 		Status:          Status{State: StateConnecting},
 	}
 
-	go m.monitorStatus(statusCh, stopMon, killSwitch, dnsProtect)
-
-	config := []byte(base64.StdEncoding.EncodeToString([]byte(server.OpenVPNConfigBase64)))
-	if engine == EngineSoftEther {
-		config = []byte(server.OpenVPNConfigBase64)
-	}
+	// VPNGate already encodes the profile. Each engine decodes it once.
+	config := []byte(server.OpenVPNConfigBase64)
 
 	if err := eng.Connect(config, statusCh); err != nil {
 		m.active = nil
 		close(stopMon)
+		m.connInfo.Status = Status{State: StateError, Message: fmt.Sprintf("connect: %v", err)}
+		info := m.connInfo
+		failedInfo = &info
 		return fmt.Errorf("connect: %w", err)
 	}
 
+	go m.monitorStatus(statusCh, stopMon, killSwitch, dnsProtect)
 	return nil
 }
 
