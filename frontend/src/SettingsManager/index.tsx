@@ -22,7 +22,7 @@ import { PortInput } from './PortInput';
 import { ThemeSelector } from './ThemeSelector';
 import { UninstallCADialog } from './UninstallCADialog';
 
-const GITHUB_URL = 'https://github.com/romitmeher/prototypevpn';
+const GITHUB_URL = 'https://github.com/romitmeher/veilora';
 const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 
 export function SettingsManager() {
