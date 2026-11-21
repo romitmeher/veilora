@@ -13,15 +13,15 @@
     "update": {
       "restart": "Riavvia",
       "restartFailed": "Impossibile riavviare l'app: {{error}}",
-      "updateAvailable": "È disponibile una nuova versione di Zen."
+      "updateAvailable": "È disponibile una nuova versione di Veilora."
     }
   },
   "appRoutingSettings": {
     "addApp": "Aggiungi app",
     "allowlistMode": "Usa il proxy solo per le app selezionate",
     "blocklistMode": "Usa il proxy per tutte le app tranne quelle selezionate",
-    "description": "Scegli quali app devono usare il proxy di Zen.",
-    "emptyAllowlistWarning": "Nessuna app selezionata. Tutto il traffico bypasserà Zen.",
+    "description": "Scegli quali app devono usare il proxy di Veilora.",
+    "emptyAllowlistWarning": "Nessuna app selezionata. Tutto il traffico bypasserà Veilora.",
     "label": "Instradamento delle app",
     "removeApp": "Rimuovi app",
     "saveError": "Impossibile salvare le impostazioni di instradamento delle app: {{error}}",
@@ -34,7 +34,7 @@
     "setError": "Impossibile impostare la porta del server asset: {{error}}"
   },
   "autoStartSwitch": {
-    "description": "Avvia Zen automaticamente al login",
+    "description": "Avvia Veilora automaticamente al login",
     "disableError": "Impossibile disattivare l’avvio automatico: {{error}}",
     "enableError": "Impossibile attivare l’avvio automatico: {{error}}",
     "label": "Avvio automatico"
@@ -104,14 +104,14 @@
       "skip": "Salta l’introduzione"
     },
     "connect": {
-      "caNote": "Al primo avvio, Zen potrebbe chiederti di installare un certificato root CA locale. Questo consente il filtraggio HTTPS in modo che Zen possa bloccare pubblicità e tracker su tutti i siti. Tutto avviene localmente – <strong>nessun dato lascia mai il tuo dispositivo</strong>.<br />Per i dettagli tecnici completi, consulta il nostro GitHub.",
-      "description": "Sei pronto per partire. Premi \"Avvia\" per attivare la protezione completa della rete di Zen.",
+      "caNote": "Al primo avvio, Veilora potrebbe chiederti di installare un certificato root CA locale. Questo consente il filtraggio HTTPS in modo che Veilora possa bloccare pubblicità e tracker su tutti i siti. Tutto avviene localmente – <strong>nessun dato lascia mai il tuo dispositivo</strong>.<br />Per i dettagli tecnici completi, consulta il nostro GitHub.",
+      "description": "Sei pronto per partire. Premi \"Avvia\" per attivare la protezione completa della rete di Veilora.",
       "donateText": "E considera una donazione su:",
       "socialText": "Se vuoi, dai un’occhiata ai nostri social:",
       "title": "Tutto pronto!"
     },
     "filterLists": {
-      "description": "Per abilitare il blocco delle pubblicità e la protezione della privacy, Zen utilizza <strong>liste di filtri</strong>. Puoi configurarle anche in seguito nell’app.",
+      "description": "Per abilitare il blocco delle pubblicità e la protezione della privacy, Veilora utilizza <strong>liste di filtri</strong>. Puoi configurarle anche in seguito nell’app.",
       "recommendation": "In base alla tua posizione, ti consigliamo di abilitare le seguenti liste di filtri:",
       "title": "Liste di filtri"
     },
@@ -122,7 +122,7 @@
     },
     "welcome": {
       "description": "Seleziona la tua lingua:",
-      "title": "Benvenuto in Zen!"
+      "title": "Benvenuto in Veilora!"
     }
   },
   "portInput": {
@@ -159,9 +159,9 @@
       "errorMessage": "Impossibile disinstallare la CA: {{error}}",
       "reasons": {
         "malfunctioning": "Sospetti che la tua installazione della CA non funzioni correttamente. Questo problema può manifestarsi come errore del browser durante la visita a siti HTTPS o come l’impossibilità per altre applicazioni di connettersi a Internet.",
-        "uninstall": "Vuoi disinstallare completamente Zen."
+        "uninstall": "Vuoi disinstallare completamente Veilora."
       },
-      "reinstallInfo": "Se avvii nuovamente Zen, verrà installata una nuova CA.",
+      "reinstallInfo": "Se avvii nuovamente Veilora, verrà installata una nuova CA.",
       "stopProxyTooltip": "Ferma il proxy per disinstallare la CA",
       "successMessage": "CA disinstallata con successo",
       "uninstallButton": "Disinstalla CA",
@@ -184,7 +184,7 @@
     },
     "updates": {
       "automaticUpdates": "Scarica aggiornamenti automaticamente",
-      "description": "Se abilitato, Zen controllerà automaticamente gli aggiornamenti.",
+      "description": "Se abilitato, Veilora controllerà automaticamente gli aggiornamenti.",
       "disableError": "Impossibile disabilitare gli aggiornamenti automatici: {{error}}",
       "enableError": "Impossibile abilitare gli aggiornamenti automatici: {{error}}"
     }

@@ -1,4 +1,7 @@
-# Zen: Internal documentation index
+# Veilora: Internal documentation index
+
+These architecture notes were inherited from Zen. Use the root README for current fork setup and validation limits.
+
 ## Getting started
 - [Install the dependencies](requirements.md).
 - [Optional: Check out the useful articles](useful-articles.md).

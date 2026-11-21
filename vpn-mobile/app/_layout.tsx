@@ -6,6 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Text, View } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -53,7 +54,12 @@ export default function RootLayout() {
             <KeyboardProvider>
               <VPNProvider>
                 <BlockerProvider>
-                  <RootLayoutNav />
+                  <View style={{ flex: 1 }}>
+                    <View style={{ backgroundColor: "#134e4a", padding: 12, paddingTop: 40 }}>
+                      <Text accessibilityRole="alert" style={{ color: "#ffffff", textAlign: "center" }}>Veilora preview · VPN connections and blocked traffic are simulated. No traffic protection is active.</Text>
+                    </View>
+                    <RootLayoutNav />
+                  </View>
                 </BlockerProvider>
               </VPNProvider>
             </KeyboardProvider>

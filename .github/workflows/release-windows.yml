@@ -35,8 +35,8 @@ jobs:
         run: |
           if ! git describe --tags --abbrev=0 2>/dev/null; then
             echo "No tags found — creating placeholder v0.0.0"
-            git config user.email "ci@zen-desktop.local"
-            git config user.name  "Zen CI"
+            git config user.email "ci@veilora.local"
+            git config user.name  "Veilora CI"
             git tag v0.0.0
           fi
 
@@ -93,17 +93,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # ── Build installer (self-update enabled, produces Zen-amd64-installer.exe) ─
+      # ── Build installer (automatic updates disabled, produces Veilora-amd64-installer.exe) ─
       - name: Build installer
         shell: bash
         run: task build:prod ARCH=${{ github.event.inputs.arch || 'amd64' }}
 
-      # Save the self-update Zen.exe NOW before prod-noupdate overwrites it
+      # Save the self-update Veilora.exe NOW before prod-noupdate overwrites it
       - name: Stage self-update binary
         shell: pwsh
         run: |
           New-Item -Path output -ItemType Directory -Force
-          Copy-Item "build\bin\Zen.exe" "output\Zen-selfupdate.exe"
+          Copy-Item "build\bin\Veilora.exe" "output\Veilora-selfupdate.exe"
           Write-Host "Staged self-update binary"
 
       # ── Build portable (no self-update) ──────────────────────────────────────
@@ -118,16 +118,16 @@ jobs:
           $arch = "${{ github.event.inputs.arch || 'amd64' }}"
 
           # Installer exe (produced by -nsis flag in prod task)
-          Copy-Item "build\bin\Zen-${arch}-installer.exe" "output\Zen-${arch}-installer.exe"
+          Copy-Item "build\bin\Veilora-${arch}-installer.exe" "output\Veilora-${arch}-installer.exe"
 
           # Portable zip — self-update build (staged before prod-noupdate ran)
-          Compress-Archive -Path "output\Zen-selfupdate.exe" -DestinationPath "output\Zen_windows_${arch}.zip"
-          Remove-Item "output\Zen-selfupdate.exe"
+          Compress-Archive -Path "output\Veilora-selfupdate.exe" -DestinationPath "output\Veilora_windows_${arch}.zip"
+          Remove-Item "output\Veilora-selfupdate.exe"
 
-          # Portable zip — no self-update build (current build\bin\Zen.exe)
-          Copy-Item "build\bin\Zen.exe" "output\Zen-noselfupdate.exe"
-          Compress-Archive -Path "output\Zen-noselfupdate.exe" -DestinationPath "output\Zen_windows_${arch}_noselfupdate.zip"
-          Remove-Item "output\Zen-noselfupdate.exe"
+          # Portable zip — no self-update build (current build\bin\Veilora.exe)
+          Copy-Item "build\bin\Veilora.exe" "output\Veilora-noselfupdate.exe"
+          Compress-Archive -Path "output\Veilora-noselfupdate.exe" -DestinationPath "output\Veilora_windows_${arch}_noselfupdate.zip"
+          Remove-Item "output\Veilora-noselfupdate.exe"
 
           Write-Host "Output contents:"
           Get-ChildItem output | Format-Table Name, Length
@@ -148,17 +148,17 @@ jobs:
           files: output/*
           name: ${{ github.ref_name }}
           body: |
-            ## Zen Desktop ${{ github.ref_name }}
+            ## Veilora Desktop ${{ github.ref_name }}
 
             ### Windows Downloads
             | File | Description |
             |------|-------------|
-            | `Zen-amd64-installer.exe` | NSIS installer with WebView2 bootstrapper |
-            | `Zen_windows_amd64.zip` | Portable executable (self-update enabled) |
-            | `Zen_windows_amd64_noselfupdate.zip` | Portable executable (no self-update) |
+            | `Veilora-amd64-installer.exe` | NSIS installer with WebView2 bootstrapper |
+            | `Veilora_windows_amd64.zip` | Portable executable (automatic updates disabled) |
+            | `Veilora_windows_amd64_noselfupdate.zip` | Portable executable (no self-update) |
 
             ### What's included
-            - Ad-blocking proxy (Zen core)
+            - Ad-blocking proxy (Veilora core)
             - VPN support via OpenVPN and SoftEther
             - Free VPN servers from VPNGate (updated automatically)
             - Kill switch and DNS leak protection

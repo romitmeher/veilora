@@ -21,7 +21,8 @@ import (
 
 // NoSelfUpdate is set to "true" for builds distributed to package managers to prevent auto-updating. It is typed as a string because the linker allows only setting string variables at compile time (see https://pkg.go.dev/cmd/link).
 // Set at compile time using ldflags (see the prod-noupdate task in the /tasks/build directory).
-var NoSelfUpdate = "false"
+// Fork builds must not install upstream Zen releases. Enable only after configuring a fork release channel.
+var NoSelfUpdate = "true"
 
 const (
 	// releaseTrack is the release track to follow for updates. It currently only takes the value "stable".

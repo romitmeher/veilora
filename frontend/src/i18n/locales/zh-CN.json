@@ -13,15 +13,15 @@
     "update": {
       "restart": "重启",
       "restartFailed": "重新启动应用失败: {{error}}",
-      "updateAvailable": "Zen 有新版本可用。"
+      "updateAvailable": "Veilora 有新版本可用。"
     }
   },
   "appRoutingSettings": {
     "addApp": "添加应用",
     "allowlistMode": "仅代理选中的应用",
     "blocklistMode": "代理除选中项以外的所有应用",
-    "description": "选择哪些应用应使用 Zen 的代理。",
-    "emptyAllowlistWarning": "未选择任何应用。所有流量都将绕过 Zen。",
+    "description": "选择哪些应用应使用 Veilora 的代理。",
+    "emptyAllowlistWarning": "未选择任何应用。所有流量都将绕过 Veilora。",
     "label": "应用路由",
     "removeApp": "移除应用",
     "saveError": "保存应用路由设置失败：{{error}}",
@@ -34,7 +34,7 @@
     "setError": "设置资源服务器端口失败：{{error}}"
   },
   "autoStartSwitch": {
-    "description": "登录时自动启动 Zen",
+    "description": "登录时自动启动 Veilora",
     "disableError": "禁用自动启动失败：{{error}}",
     "enableError": "启用自动启动失败：{{error}}",
     "label": "自动启动"
@@ -104,14 +104,14 @@
       "skip": "跳过介绍"
     },
     "connect": {
-      "caNote": "首次启动时，Zen 可能会提示您安装本地根 CA 证书。这将启用 HTTPS 过滤，使 Zen 能够在所有网站上拦截广告和跟踪器。所有操作均在本地进行——<strong>您的数据永不会离开您的设备</strong>。<br />详细技术信息请查看我们的 GitHub。",
-      "description": "您已准备就绪。点击“开始”以启用 Zen 的全面网络保护。",
+      "caNote": "首次启动时，Veilora 可能会提示您安装本地根 CA 证书。这将启用 HTTPS 过滤，使 Veilora 能够在所有网站上拦截广告和跟踪器。所有操作均在本地进行——<strong>您的数据永不会离开您的设备</strong>。<br />详细技术信息请查看我们的 GitHub。",
+      "description": "您已准备就绪。点击“开始”以启用 Veilora 的全面网络保护。",
       "donateText": "并考虑在以下平台捐赠：",
       "socialText": "如果您愿意，可以关注我们的社交媒体：",
       "title": "一切就绪！"
     },
     "filterLists": {
-      "description": "为了启用广告拦截和隐私保护，Zen 使用了<strong>过滤列表</strong>。您也可以稍后在应用中进行设置。",
+      "description": "为了启用广告拦截和隐私保护，Veilora 使用了<strong>过滤列表</strong>。您也可以稍后在应用中进行设置。",
       "recommendation": "根据您的地区，我们建议启用以下过滤列表：",
       "title": "过滤列表"
     },
@@ -122,7 +122,7 @@
     },
     "welcome": {
       "description": "选择您的语言：",
-      "title": "欢迎使用 Zen！"
+      "title": "欢迎使用 Veilora！"
     }
   },
   "portInput": {
@@ -159,9 +159,9 @@
       "errorMessage": "卸载 CA 失败：{{error}}",
       "reasons": {
         "malfunctioning": "您怀疑 CA 安装异常，可能表现为浏览器访问 HTTPS 网站时出错，或其他应用无法连接网络。",
-        "uninstall": "您希望完全卸载 Zen。"
+        "uninstall": "您希望完全卸载 Veilora。"
       },
-      "reinstallInfo": "如果您再次启动 Zen，将安装新的 CA。",
+      "reinstallInfo": "如果您再次启动 Veilora，将安装新的 CA。",
       "stopProxyTooltip": "停止代理以卸载 CA",
       "successMessage": "CA 卸载成功",
       "uninstallButton": "卸载 CA",
@@ -184,7 +184,7 @@
     },
     "updates": {
       "automaticUpdates": "自动下载更新",
-      "description": "启用后，Zen 将自动检查更新。",
+      "description": "启用后，Veilora 将自动检查更新。",
       "disableError": "无法禁用自动更新：{{error}}",
       "enableError": "无法启用自动更新：{{error}}"
     }

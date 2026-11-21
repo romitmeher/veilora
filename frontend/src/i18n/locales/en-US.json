@@ -1,7 +1,7 @@
 {
   "app": {
     "proxy": {
-      "description": "The proxy is not active. Click the button below to activate it.",
+      "description": "Requests appear here when blocking is enabled.",
       "inactive": "Activate the proxy to see blocked requests"
     },
     "tabs": {
@@ -14,15 +14,15 @@
     "update": {
       "restart": "Restart",
       "restartFailed": "Failed to restart app: {{error}}",
-      "updateAvailable": "A new version of Zen is available."
+      "updateAvailable": "A new version of Veilora is available."
     }
   },
   "appRoutingSettings": {
     "addApp": "Add app",
     "allowlistMode": "Proxy only selected apps",
     "blocklistMode": "Proxy all apps except selected",
-    "description": "Choose which apps should use Zen's proxy.",
-    "emptyAllowlistWarning": "No apps are selected. All traffic will bypass Zen.",
+    "description": "Choose which apps should use Veilora's proxy.",
+    "emptyAllowlistWarning": "No apps are selected. All traffic will bypass Veilora.",
     "label": "App routing",
     "removeApp": "Remove app",
     "saveError": "Failed to save app routing settings: {{error}}",
@@ -35,7 +35,7 @@
     "setError": "Failed to set asset server port: {{error}}"
   },
   "autoStartSwitch": {
-    "description": "Start Zen automatically when you log in",
+    "description": "Start Veilora automatically when you log in",
     "disableError": "Failed to disable autostart: {{error}}",
     "enableError": "Failed to enable autostart: {{error}}",
     "label": "Autostart"
@@ -105,14 +105,14 @@
       "skip": "Skip introduction"
     },
     "connect": {
-      "caNote": "On first start, Zen may prompt you to install a local root CA certificate. This enables HTTPS filtering so Zen can block ads and trackers on all sites. Everything happens locally – <strong>no data ever leaves your device</strong>.<br />See our GitHub for full technical details.",
-      "description": "You're ready to go. Press \"Start\" to enable Zen's comprehensive network protection.",
+      "caNote": "On first start, Veilora may prompt you to install a local root CA certificate. This enables HTTPS filtering so Veilora can block ads and trackers on all sites. Everything happens locally – <strong>no data ever leaves your device</strong>.<br />See our GitHub for full technical details.",
+      "description": "You're ready to go. Press \"Start\" to enable Veilora's comprehensive network protection.",
       "donateText": "And consider donating on:",
-      "socialText": "If you'd like, check out our socials:",
+      "socialText": "Source code and project updates:",
       "title": "All set!"
     },
     "filterLists": {
-      "description": "To enable ad-blocking and privacy protection, Zen uses <strong>filter lists</strong>. You can also set them up later in the app.",
+      "description": "To enable ad-blocking and privacy protection, Veilora uses <strong>filter lists</strong>. You can also set them up later in the app.",
       "recommendation": "Based on your locale, we recommend enabling the following filter lists:",
       "title": "Filter lists"
     },
@@ -123,7 +123,7 @@
     },
     "welcome": {
       "description": "Select your language:",
-      "title": "Welcome to Zen!"
+      "title": "Welcome to Veilora!"
     }
   },
   "portInput": {
@@ -160,9 +160,9 @@
       "errorMessage": "Failed to uninstall CA: {{error}}",
       "reasons": {
         "malfunctioning": "You suspect that your CA installation is malfunctioning. This issue may manifest as a browser error when visiting HTTPS websites, or as other applications being unable to connect to the internet.",
-        "uninstall": "You want to uninstall Zen completely."
+        "uninstall": "You want to uninstall Veilora completely."
       },
-      "reinstallInfo": "If you start Zen again, a new CA will be installed.",
+      "reinstallInfo": "If you start Veilora again, a new CA will be installed.",
       "stopProxyTooltip": "Stop the proxy to uninstall the CA",
       "successMessage": "CA uninstalled successfully",
       "uninstallButton": "Uninstall CA",
@@ -185,15 +185,15 @@
     },
     "updates": {
       "automaticUpdates": "Automatically download updates",
-      "description": "When enabled, Zen will automatically check for updates",
+      "description": "When enabled, Veilora will automatically check for updates",
       "disableError": "Failed to disable automatic updates: {{error}}",
       "enableError": "Failed to enable automatic updates: {{error}}"
     }
   },
   "startStopButton": {
-    "start": "Start",
+    "start": "Enable blocking",
     "startError": "Failed to start proxy: {{error}}",
-    "stop": "Stop",
+    "stop": "Pause blocking",
     "stopError": "Failed to stop proxy: {{error}}",
     "unsupportedDEGuide": "Automatic system proxy configuration is currently only supported on GNOME and KDE.<br />Please follow <guide-link>this guide</guide-link> to set the proxy on a per-app basis."
   },
@@ -221,6 +221,61 @@
       "allCountries": "All countries",
       "refresh": "Refresh server list",
       "empty": "No servers found. Try a different country or refresh."
+    },
+    "feedback": {
+      "checking": "Checking VPN clients…",
+      "engineError": "Could not check VPN clients",
+      "noEngine": "A VPN client is needed",
+      "installEngine": "Install OpenVPN or SoftEther and make its client commands available on your system, then check again.",
+      "retry": "Check again",
+      "cancel": "Cancel",
+      "dnsSaved": "DNS resolver saved.",
+      "dnsError": "Could not save DNS resolver: {{error}}",
+      "search": "Search servers or countries",
+      "serversError": "Could not load servers. Check your internet connection and try again.",
+      "noMatches": "No servers match your search."
+    }
+  },
+  "ui": {
+    "navigation": "Main navigation",
+    "workspace": "Workspace",
+    "localControl": "Privacy controls, on your terms.",
+    "overview": "Overview",
+    "adBlocking": "Ad & tracker blocking",
+    "independent": "Manage ad blocking and your VPN connection independently.",
+    "proxy": {
+      "on": "Blocking is active",
+      "off": "Blocking is paused",
+      "loading": "Updating protection…"
+    },
+    "vpn": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting…",
+      "disconnecting": "Disconnecting…",
+      "error": "Connection error"
+    },
+    "location": "VPN location",
+    "unknown": "Unavailable",
+    "manageVPN": "Manage VPN",
+    "activity": "Request activity",
+    "session": "This session",
+    "waiting": "No requests to show",
+    "reviewFilters": "Manage filters",
+    "descriptions": {
+      "home": "Your connection, at a glance.",
+      "vpn": "Connection and routing preferences.",
+      "filterLists": "Subscriptions that decide what gets blocked.",
+      "rules": "Add exceptions or write your own filtering rules.",
+      "settings": "Application preferences and advanced controls."
+    },
+    "thisDevice": "This device",
+    "filterDescription": "Filter ads and trackers across your apps.",
+    "vpnDescription": "Route your traffic through a VPN server.",
+    "shortProxy": {
+      "on": "Enabled",
+      "off": "Paused",
+      "loading": "Updating…"
     }
   }
 }

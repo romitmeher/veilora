@@ -1,7 +1,7 @@
 package constants
 
 const (
-	AppName          = "Zen"
-	AppNameLowercase = "zen"
-	OrgName          = "Irbis"
+	AppName          = "Veilora"
+	AppNameLowercase = "veilora"
+	OrgName          = "Veilora"
 )

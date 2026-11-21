@@ -1,5 +1,9 @@
 # Copyright and Licenses
 
+## Veilora
+
+Veilora is a fork of Zen distributed under the MIT license. Original notices below are retained. The interface also uses Torph (MIT); see its license in the installed package.
+
 ## Zen
 
 Zen, including its source code and all attached documentation, is licensed under the MIT License.

@@ -22,8 +22,8 @@ import { PortInput } from './PortInput';
 import { ThemeSelector } from './ThemeSelector';
 import { UninstallCADialog } from './UninstallCADialog';
 
-const GITHUB_URL = 'https://github.com/irbis-sh/zen-desktop';
-const CHANGELOG_URL = `${GITHUB_URL}/blob/master/CHANGELOG.md`;
+const GITHUB_URL = 'https://github.com/romitmeher/prototypevpn';
+const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 
 export function SettingsManager() {
   const { t } = useTranslation();
@@ -81,7 +81,7 @@ export function SettingsManager() {
 
       <div className="settings-manager__about bp6-text-muted">
         <div>
-          <strong>Zen</strong>
+          <strong>Veilora</strong>
         </div>
         <div>{t('settings.about.tagline')}</div>
         <div>
@@ -90,7 +90,7 @@ export function SettingsManager() {
             (<BrowserLink href={CHANGELOG_URL}>{t('settings.about.changelog')}</BrowserLink>)
           </span>
         </div>
-        <div>© 2026 Zen contributors</div>
+        <div>Based on Zen · © 2026 Zen contributors</div>
         <Button
           variant="minimal"
           size="small"

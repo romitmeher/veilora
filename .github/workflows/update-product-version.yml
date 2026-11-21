@@ -9,6 +9,8 @@ on:
 
 jobs:
   update-product-version:
+    # Inherited upstream automation; disabled for this fork.
+    if: github.repository == 'irbis-sh/zen-desktop'
     runs-on: ubuntu-latest
     permissions:
       contents: write

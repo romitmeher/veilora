@@ -1,5 +1,19 @@
 # Changelog
 
+## Veilora — Unreleased
+
+- Rebrand desktop and mobile surfaces, icons, installers, and documentation.
+- Refine desktop navigation, themes, typography, and reduced-motion-aware status transitions.
+- Improve VPN status handling, server search, error recovery, and validated DNS saves.
+- Label the mobile simulation and repair dependencies and type checking.
+- Disable upstream self-updates and separate app data and instance IDs.
+
+See [validation notes](docs/VALIDATION.md) for checks and limits.
+
+## Upstream Zen history
+
+The entries below describe upstream releases, not Veilora releases.
+
 ## v0.21.1
 
 ### What's New

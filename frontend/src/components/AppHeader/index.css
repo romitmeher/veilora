@@ -1,7 +1,7 @@
 .heading {
   margin: 0 12px;
-  padding: 6px 0;
-  border-bottom: 1px dotted #333;
+  padding: 12px 0;
+  border-bottom: 1px solid #0f766e40;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -10,17 +10,32 @@
 .heading__branding {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
-.heading__logo,
-.heading__zen {
-  height: 20px;
-  width: auto;
-  fill: rgb(28, 33, 39);
+.heading__logo {
+  height: 32px;
+  width: 32px;
+  color: #0f766e;
 }
 
-#app.bp6-dark .heading__logo,
-#app.bp6-dark .heading__zen {
-  fill: #fff;
+.heading__name {
+  display: block;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+
+.heading__tagline {
+  display: block;
+  font-size: 10px;
+  color: #52656a;
+}
+
+#app.bp6-dark .heading__logo {
+  color: #5eead4;
+}
+
+#app.bp6-dark .heading__tagline {
+  color: #a6bcb9;
 }

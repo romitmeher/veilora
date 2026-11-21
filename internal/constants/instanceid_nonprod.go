@@ -2,4 +2,4 @@
 
 package constants
 
-const InstanceID = "340f21c9-4827-4ba0-9c2b-c4ec2b8b01d5"
+const InstanceID = "bfb6c133-45d1-4f58-ae74-e81eb05f6752"

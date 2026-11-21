@@ -104,7 +104,7 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
     setLoadingServers(true);
     try {
       const res = await fetch("https://www.vpngate.net/api/iphone/", {
-        headers: { "User-Agent": "ZenVPN/1.0" },
+        headers: { "User-Agent": "Veilora/1.0" },
       });
       const text = await res.text();
       const lines = text.split("\n").filter((l) => l && !l.startsWith("*") && !l.startsWith("#"));

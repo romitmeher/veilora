@@ -14,19 +14,19 @@ tasks:
       - task: app
       - task: codesign
         vars:
-          FILENAME: build/bin/Zen.app
+          FILENAME: build/bin/Veilora.app
       - task: notarize
         vars:
-          FILENAME: build/bin/Zen.app
+          FILENAME: build/bin/Veilora.app
       - task: dmg
         vars:
-          APP_FILENAME: build/bin/Zen.app
+          APP_FILENAME: build/bin/Veilora.app
       - task: codesign
         vars:
-          FILENAME: build/bin/Zen.dmg
+          FILENAME: build/bin/Veilora.dmg
       - task: notarize
         vars:
-          FILENAME: build/bin/Zen.dmg
+          FILENAME: build/bin/Veilora.dmg
 
   prod-noupdate:
     desc: Create a production build of the application with self-updates disabled. Only recommended for use in CI/CD pipelines. Doesn't include a DMG installer.
@@ -34,10 +34,10 @@ tasks:
       - task: app-noupdate
       - task: codesign
         vars:
-          FILENAME: build/bin/Zen.app
+          FILENAME: build/bin/Veilora.app
       - task: notarize
         vars:
-          FILENAME: build/bin/Zen.app
+          FILENAME: build/bin/Veilora.app
 
   deps:
     desc: Install the dependencies required to create a production build.
@@ -58,10 +58,10 @@ tasks:
     desc: Create a DMG installer for the application. The DMG file will be placed in the build/bin directory.
     cmds:
       - create-dmg "{{default .DEFAULT_APP_FILENAME .APP_FILENAME}}" --overwrite --no-code-sign
-      - mv Zen*.dmg build/bin/Zen.dmg # create-dmg creates the disk image in the current directory
-      - echo "Built Zen.dmg"
+      - mv Veilora*.dmg build/bin/Veilora.dmg # create-dmg creates the disk image in the current directory
+      - echo "Built Veilora.dmg"
     vars:
-      DEFAULT_APP_FILENAME: build/bin/Zen.app
+      DEFAULT_APP_FILENAME: build/bin/Veilora.app
 
   setup-keychain:
     desc: Set up the keychain profile for signing the application.

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Zen VPN",
-    "slug": "vpn-mobile",
+    "name": "Veilora",
+    "slug": "veilora",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "vpn-mobile",
+    "scheme": "veilora",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {

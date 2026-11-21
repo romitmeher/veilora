@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { BrowserLink } from '@/common/BrowserLink';
 import { AppToaster } from '@/common/toaster';
+import { StatusText } from '@/components/StatusText';
 import { useProxyState } from '@/context/ProxyStateContext';
 import { StartProxy, StopProxy } from 'wails/go/app/App';
 import { EventsOn } from 'wails/runtime/runtime';
@@ -92,10 +93,11 @@ export function StartStopButton() {
       fill
       intent="primary"
       className="start-stop-btn"
+      icon={proxyState === 'off' ? 'power' : 'pause'}
       size="large"
       loading={proxyState === 'loading'}
     >
-      {proxyState === 'off' ? t('startStopButton.start') : t('startStopButton.stop')}
+      <StatusText>{proxyState === 'off' ? t('startStopButton.start') : t('startStopButton.stop')}</StatusText>
     </Button>
   );
 }

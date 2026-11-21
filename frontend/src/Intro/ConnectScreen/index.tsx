@@ -1,11 +1,7 @@
-import { Button, Card, Divider } from '@blueprintjs/core';
+import { Button, Card } from '@blueprintjs/core';
 import { Trans, useTranslation } from 'react-i18next';
 
-import BlueSkyLogo from '@/assets/icons/bluesky.svg';
-import DiscordIcon from '@/assets/icons/discord.svg';
 import GithubIcon from '@/assets/icons/github.svg';
-import OpenCollectiveIcon from '@/assets/icons/osc.svg';
-import RedditIcon from '@/assets/icons/reddit.svg';
 import { SOCIAL_LINKS } from '@/constants/urls';
 import { BrowserOpenURL } from 'wails/runtime/runtime';
 
@@ -39,35 +35,8 @@ export function ConnectScreen() {
               <img src={GithubIcon} className="social-icon" alt="GitHub" />
               GitHub
             </Button>
-
-            <Button fill onClick={() => BrowserOpenURL(SOCIAL_LINKS.BLUESKY)} className="social-button">
-              <img src={BlueSkyLogo} className="social-icon" alt="Bluesky" />
-              Bluesky
-            </Button>
-          </div>
-
-          <div className="social-row">
-            <Button fill onClick={() => BrowserOpenURL(SOCIAL_LINKS.REDDIT)} className="social-button">
-              <img src={RedditIcon} className="social-icon" alt="Reddit" />
-              Reddit
-            </Button>
-
-            <Button fill onClick={() => BrowserOpenURL(SOCIAL_LINKS.DISCORD)} className="social-button">
-              <img src={DiscordIcon} className="social-icon" alt="Discord" />
-              Discord
-            </Button>
           </div>
         </div>
-
-        <Divider className="section-divider" />
-
-        <p>{t('intro.connect.donateText')}</p>
-        <Button
-          icon={<img src={OpenCollectiveIcon} className="social-icon" alt="Open Collective" />}
-          onClick={() => BrowserOpenURL(SOCIAL_LINKS.OPEN_COLLECTIVE)}
-        >
-          Open Collective
-        </Button>
       </Card>
     </div>
   );

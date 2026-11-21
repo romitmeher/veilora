@@ -1,19 +1,18 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Zen",
-  "outputfilename": "Zen",
+  "name": "Veilora",
+  "outputfilename": "Veilora",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "Irbis and Zen contributors",
-    "email": "contact@irbis.sh"
+    "name": "Veilora contributors"
   },
   "info": {
-    "productName": "Zen",
+    "productName": "Veilora",
     "productVersion": "0.21.1",
-    "comments": "Zen is a simple, free and efficient ad-blocker and privacy guard for Windows, macOS and Linux. Visit https://irbis.sh/zen for more information.",
+    "comments": "Veilora — Your connection. Your space. Desktop ad blocking and VPN controls.",
     "copyright": "Copyright (c) 2026 Irbis and Zen contributors. Licensed under MIT License."
   }
 }

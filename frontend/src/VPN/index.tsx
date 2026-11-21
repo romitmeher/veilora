@@ -1,8 +1,9 @@
-import { Button, HTMLSelect, Switch, Tag, InputGroup } from '@blueprintjs/core';
+import { Button, Callout, HTMLSelect, Switch, Tag, InputGroup } from '@blueprintjs/core';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
+import { StatusText } from '@/components/StatusText';
 import { useVPNState } from '@/context/VPNStateContext';
 import {
   VPNConnectBest,
@@ -22,11 +23,16 @@ type EngineType = 'openvpn' | 'softether';
 
 function stateLabel(state: string): string {
   switch (state) {
-    case 'connected': return 'Connected';
-    case 'connecting': return 'Connecting…';
-    case 'disconnecting': return 'Disconnecting…';
-    case 'error': return 'Error';
-    default: return 'Disconnected';
+    case 'connected':
+      return 'Connected';
+    case 'connecting':
+      return 'Connecting…';
+    case 'disconnecting':
+      return 'Disconnecting…';
+    case 'error':
+      return 'Error';
+    default:
+      return 'Disconnected';
   }
 }
 
@@ -35,7 +41,9 @@ export function VPN() {
   const { vpnInfo, vpnState, isConnected, isTransitioning } = useVPNState();
 
   const [engine, setEngine] = useState<EngineType>('openvpn');
-  const [availableEngines, setAvailableEngines] = useState<EngineType[]>(['openvpn']);
+  const [availableEngines, setAvailableEngines] = useState<EngineType[]>([]);
+  const [enginesLoading, setEnginesLoading] = useState(true);
+  const [enginesError, setEnginesError] = useState(false);
   const [country, setCountry] = useState('');
   const [autoSelect, setAutoSelect] = useState(true);
   const [selectedServer, setSelectedServer] = useState<VPNServer | null>(null);
@@ -43,18 +51,36 @@ export function VPN() {
   const [dnsProtect, setDnsProtect] = useState(true);
   const [dnsResolver, setDnsResolver] = useState('1.1.1.1');
   const [editingDns, setEditingDns] = useState(false);
+  const [dnsDraft, setDnsDraft] = useState('');
+  const [dnsSaving, setDnsSaving] = useState(false);
+
+  const loadEngines = useCallback(async () => {
+    setEnginesLoading(true);
+    setEnginesError(false);
+    try {
+      const engines = await VPNAvailableEngines();
+      const supported = (engines ?? [])
+        .filter((value): value is EngineType => value === 'openvpn' || value === 'softether')
+        .sort();
+      setAvailableEngines(supported);
+      if (supported.length) setEngine(supported[0]);
+    } catch {
+      setAvailableEngines([]);
+      setEnginesError(true);
+    } finally {
+      setEnginesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    VPNAvailableEngines()
-      .then((engines: EngineType[]) => {
-        if (engines?.length) setAvailableEngines(engines);
-      })
-      .catch(() => {});
+    loadEngines();
 
     VPNGetDNSResolver()
-      .then((r: string) => { if (r) setDnsResolver(r); })
+      .then((r: string) => {
+        if (r) setDnsResolver(r);
+      })
       .catch(() => {});
-  }, []);
+  }, [loadEngines]);
 
   const handleConnect = useCallback(async () => {
     try {
@@ -80,9 +106,18 @@ export function VPN() {
     }
   }, [t]);
 
-  const handleDnsResolverSave = () => {
-    VPNSetDNSResolver(dnsResolver);
-    setEditingDns(false);
+  const handleDnsResolverSave = async () => {
+    setDnsSaving(true);
+    try {
+      await VPNSetDNSResolver(dnsDraft.trim());
+      setDnsResolver(await VPNGetDNSResolver());
+      setEditingDns(false);
+      AppToaster.show({ message: t('vpn.feedback.dnsSaved'), intent: 'success' });
+    } catch (error) {
+      AppToaster.show({ message: t('vpn.feedback.dnsError', { error }), intent: 'danger' });
+    } finally {
+      setDnsSaving(false);
+    }
   };
 
   const canAct = !isTransitioning;
@@ -90,21 +125,45 @@ export function VPN() {
 
   return (
     <div className="vpn">
+      {!isConnected && (enginesLoading || enginesError || availableEngines.length === 0) && (
+        <Callout
+          className="vpn-readiness"
+          intent={enginesLoading ? 'none' : 'warning'}
+          title={t(
+            enginesLoading
+              ? 'vpn.feedback.checking'
+              : enginesError
+                ? 'vpn.feedback.engineError'
+                : 'vpn.feedback.noEngine',
+          )}
+        >
+          {!enginesLoading && (
+            <>
+              <p>{t('vpn.feedback.installEngine')}</p>
+              <Button icon="refresh" onClick={loadEngines}>
+                {t('vpn.feedback.retry')}
+              </Button>
+            </>
+          )}
+        </Callout>
+      )}
       {/* Status card */}
       <div className={statusClass}>
         <div className="vpn-status__header">
           <div className="vpn-status__indicator" />
-          <span className="vpn-status__label">{stateLabel(vpnState)}</span>
+          <span className="vpn-status__label" role="status">
+            <StatusText>{stateLabel(vpnState)}</StatusText>
+          </span>
           {isConnected && vpnInfo.serverHostName && (
             <div className="vpn-status__meta">
               <div>{vpnInfo.serverHostName}</div>
-              <div>{vpnInfo.countryLong} · {vpnInfo.engine?.toUpperCase()}</div>
+              <div>
+                {vpnInfo.countryLong} · {vpnInfo.engine?.toUpperCase()}
+              </div>
             </div>
           )}
         </div>
-        {vpnInfo.status?.message ? (
-          <div className="vpn-status__message">{vpnInfo.status.message}</div>
-        ) : null}
+        {vpnInfo.status?.message ? <div className="vpn-status__message">{vpnInfo.status.message}</div> : null}
       </div>
 
       {/* Controls */}
@@ -113,22 +172,18 @@ export function VPN() {
           {t('vpn.controls.title')}
         </Tag>
         <div className="vpn-controls__body">
-
           {/* Engine */}
           <div className="vpn-controls__row">
-            <label>{t('vpn.controls.engine')}</label>
+            <label htmlFor="vpn-engine">{t('vpn.controls.engine')}</label>
             <HTMLSelect
+              id="vpn-engine"
               value={engine}
               onChange={(e) => setEngine(e.target.value as EngineType)}
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              {availableEngines.includes('openvpn') && (
-                <option value="openvpn">OpenVPN</option>
-              )}
-              {availableEngines.includes('softether') && (
-                <option value="softether">SoftEther</option>
-              )}
+              {availableEngines.includes('openvpn') && <option value="openvpn">OpenVPN</option>}
+              {availableEngines.includes('softether') && <option value="softether">SoftEther</option>}
               {!availableEngines.includes('openvpn') && !availableEngines.includes('softether') && (
                 <option value="openvpn">OpenVPN (not found)</option>
               )}
@@ -137,8 +192,9 @@ export function VPN() {
 
           {/* Country */}
           <div className="vpn-controls__row">
-            <label>{t('vpn.controls.country')}</label>
+            <label htmlFor="vpn-country">{t('vpn.controls.country')}</label>
             <InputGroup
+              id="vpn-country"
               value={country}
               onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
               placeholder={t('vpn.controls.countryPlaceholder')}
@@ -154,6 +210,7 @@ export function VPN() {
           <div className="vpn-controls__switch-row">
             <label>{t('vpn.controls.autoSelect')}</label>
             <Switch
+              aria-label={t('vpn.controls.autoSelect')}
               checked={autoSelect}
               onChange={(e) => setAutoSelect(e.currentTarget.checked)}
               disabled={!canAct || isConnected}
@@ -165,6 +222,7 @@ export function VPN() {
           <div className="vpn-controls__switch-row">
             <label>{t('vpn.controls.killSwitch')}</label>
             <Switch
+              aria-label={t('vpn.controls.killSwitch')}
               checked={killSwitch}
               onChange={(e) => setKillSwitch(e.currentTarget.checked)}
               disabled={!canAct || isConnected}
@@ -176,6 +234,7 @@ export function VPN() {
           <div className="vpn-controls__switch-row">
             <label>{t('vpn.controls.dnsProtection')}</label>
             <Switch
+              aria-label={t('vpn.controls.dnsProtection')}
               checked={dnsProtect}
               onChange={(e) => setDnsProtect(e.currentTarget.checked)}
               disabled={!canAct || isConnected}
@@ -192,15 +251,20 @@ export function VPN() {
               {editingDns ? (
                 <>
                   <InputGroup
-                    value={dnsResolver}
-                    onChange={(e) => setDnsResolver(e.target.value)}
+                    aria-label={t('vpn.controls.resolver')}
+                    value={dnsDraft}
+                    disabled={dnsSaving}
+                    onChange={(e) => setDnsDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleDnsResolverSave()}
                     small
                     style={{ maxWidth: 140 }}
                     autoFocus
                   />
-                  <Button size="small" intent="primary" onClick={handleDnsResolverSave}>
+                  <Button size="small" intent="primary" loading={dnsSaving} onClick={handleDnsResolverSave}>
                     {t('vpn.controls.save')}
+                  </Button>
+                  <Button size="small" disabled={dnsSaving} onClick={() => setEditingDns(false)}>
+                    {t('vpn.feedback.cancel')}
                   </Button>
                 </>
               ) : (
@@ -210,8 +274,12 @@ export function VPN() {
                     size="small"
                     variant="minimal"
                     icon="edit"
+                    aria-label={t('vpn.controls.resolver')}
                     disabled={isConnected}
-                    onClick={() => setEditingDns(true)}
+                    onClick={() => {
+                      setDnsDraft(dnsResolver);
+                      setEditingDns(true);
+                    }}
                   />
                 </>
               )}
@@ -236,7 +304,11 @@ export function VPN() {
         intent={isConnected ? 'danger' : 'success'}
         className="vpn-connect-btn"
         loading={isTransitioning}
-        disabled={!canAct && !isConnected}
+        disabled={
+          isTransitioning ||
+          (!isConnected &&
+            (enginesLoading || !availableEngines.includes(engine) || (!autoSelect && !selectedServer) || editingDns))
+        }
         onClick={isConnected ? handleDisconnect : handleConnect}
       >
         {isConnected

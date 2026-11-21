@@ -1,5 +1,5 @@
 @echo off
-:: Zen Desktop — Windows Installer Builder
+:: Veilora Desktop — Windows Installer Builder
 :: Launches build-installer.ps1 with the correct execution policy.
 :: Usage:
 ::   build-installer.bat              (amd64, with self-update)
