@@ -33,8 +33,43 @@ func (e *OpenVPNEngine) Name() string { return string(EngineOpenVPN) }
 
 // Available checks if openvpn binary is reachable.
 func (e *OpenVPNEngine) Available() bool {
-	_, err := exec.LookPath(e.binaryName())
-	return err == nil
+	return e.FindBinary() != ""
+}
+
+// FindBinary searches for the openvpn executable in known directories and PATH.
+func (e *OpenVPNEngine) FindBinary() string {
+	if runtime.GOOS == "windows" {
+		// 1. Check %LOCALAPPDATA%\Veilora\bin\openvpn.exe
+		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+			candidate := filepath.Join(localAppData, "Veilora", "bin", "openvpn.exe")
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+		// 2. Check standard Program Files installation paths
+		for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
+			if pf != "" {
+				candidate := filepath.Join(pf, "OpenVPN", "bin", "openvpn.exe")
+				if _, err := os.Stat(candidate); err == nil {
+					return candidate
+				}
+			}
+		}
+		// 3. Check next to current executable
+		if exe, err := os.Executable(); err == nil {
+			candidate := filepath.Join(filepath.Dir(exe), "bin", "openvpn.exe")
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+	}
+
+	// 4. Check system PATH
+	if path, err := exec.LookPath(e.binaryName()); err == nil {
+		return path
+	}
+
+	return ""
 }
 
 func (e *OpenVPNEngine) binaryName() string {
@@ -92,10 +127,22 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		args = append(args, "--script-security", "1")
 	}
 
-	cmd := exec.Command(e.binaryName(), args...) // #nosec G204 -- fixed executable; arguments contain an app-created temp path and numeric loopback port, with no shell.
+	binPath := e.FindBinary()
+	if binPath == "" {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn binary not found")
+	}
+
+	cmd := hiddenCommand(binPath, args...) // #nosec G204 -- fixed executable; arguments contain an app-created temp path and numeric loopback port, with no shell.
 	cmd.Dir = tmpDir
 
-	logPipe, err := cmd.StderrPipe()
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("openvpn: stdout pipe: %w", err)
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
 		os.RemoveAll(tmpDir)
 		return fmt.Errorf("openvpn: stderr pipe: %w", err)
@@ -110,7 +157,8 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	e.cancelDone = make(chan struct{})
 	done := e.cancelDone
 
-	go e.drainLog(logPipe)
+	go e.drainLog(stdoutPipe)
+	go e.drainLog(stderrPipe)
 
 	// Connect to management interface (retry for a few seconds while process starts).
 	var mgmtConn net.Conn

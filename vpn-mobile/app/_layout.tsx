@@ -54,12 +54,7 @@ export default function RootLayout() {
             <KeyboardProvider>
               <VPNProvider>
                 <BlockerProvider>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ backgroundColor: "#134e4a", padding: 12, paddingTop: 40 }}>
-                      <Text accessibilityRole="alert" style={{ color: "#ffffff", textAlign: "center" }}>Veilora preview · VPN connections and blocked traffic are simulated. No traffic protection is active.</Text>
-                    </View>
-                    <RootLayoutNav />
-                  </View>
+                  <RootLayoutNav />
                 </BlockerProvider>
               </VPNProvider>
             </KeyboardProvider>
