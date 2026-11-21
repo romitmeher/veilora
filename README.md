@@ -101,7 +101,7 @@ Veilora stores application data separately from Zen. Existing Zen settings are n
 
 ## Attribution and license
 
-Veilora is a fork maintained in [romitmeher/prototypevpn](https://github.com/romitmeher/prototypevpn). Original Zen contributions and historical release notes remain credited. See [CHANGELOG.md](CHANGELOG.md), [LICENSE](LICENSE), and [COPYING.md](COPYING.md). This fork does not claim upstream signing, sponsorship, release infrastructure, or support guarantees.
+Veilora is a fork maintained in [romitmeher/veilora](https://github.com/romitmeher/veilora). Original Zen contributions and historical release notes remain credited. See [CHANGELOG.md](CHANGELOG.md), [LICENSE](LICENSE), and [COPYING.md](COPYING.md). This fork does not claim upstream signing, sponsorship, release infrastructure, or support guarantees.
 
 ## CI and release setup
 

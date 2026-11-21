@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thank you for taking the time to report a bug in Veilora.
-        Before submitting this issue, please search the [issue tracker](https://github.com/romitmeher/prototypevpn/issues?q=is%3Aissue) to see if it has already been reported.
+        Before submitting this issue, please search the [issue tracker](https://github.com/romitmeher/veilora/issues?q=is%3Aissue) to see if it has already been reported.
         Please fill out the information below to help us reproduce and fix the issue you are experiencing.
   - type: textarea
     id: description

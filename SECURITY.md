@@ -4,7 +4,7 @@ Veilora is a development fork of Zen. A successful build or test run is not a se
 
 ## Reporting a vulnerability
 
-Use GitHub's private vulnerability reporting for [this repository](https://github.com/romitmeher/prototypevpn/security) if it is enabled. Otherwise, contact the repository owner through a verified channel to arrange private disclosure before sending details. Do not post exploit details, private keys, or user traffic in a public issue.
+Use GitHub's private vulnerability reporting for [this repository](https://github.com/romitmeher/veilora/security) if it is enabled. Otherwise, contact the repository owner through a verified channel to arrange private disclosure before sending details. Do not post exploit details, private keys, or user traffic in a public issue.
 
 Include the affected commit, platform, reproduction steps, and likely impact. This fork has no published response-time guarantee. Upstream-only problems should follow [Zen's security policy](https://github.com/irbis-sh/zen-desktop/security/policy).
 

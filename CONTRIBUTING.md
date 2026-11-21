@@ -1,6 +1,6 @@
 # Contributing to Veilora
 
-This repository is a fork of Zen. Work on Veilora belongs in [romitmeher/prototypevpn](https://github.com/romitmeher/prototypevpn); upstream Zen maintainers do not provide support for changes made here.
+This repository is a fork of Zen. Work on Veilora belongs in [romitmeher/veilora](https://github.com/romitmeher/veilora); upstream Zen maintainers do not provide support for changes made here.
 
 ## Development
 
