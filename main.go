@@ -7,11 +7,13 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/irbis-sh/zen-desktop/internal/app"
 	"github.com/irbis-sh/zen-desktop/internal/autostart"
 	"github.com/irbis-sh/zen-desktop/internal/config"
 	"github.com/irbis-sh/zen-desktop/internal/constants"
+	"github.com/irbis-sh/zen-desktop/internal/elevate"
 	"github.com/irbis-sh/zen-desktop/internal/logger"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -31,7 +33,24 @@ func main() {
 	startOnDomReady := flag.Bool("start", false, "Start the service when DOM is ready")
 	startHidden := flag.Bool("hidden", false, "Start the application in hidden mode")
 	uninstallCA := flag.Bool("uninstall-ca", false, "Uninstall the CA and exit")
+	noElevate := flag.Bool("no-elevate", false, "Do not auto-elevate")
 	flag.Parse()
+
+	isBindingGen := false
+	for _, arg := range os.Args {
+		if strings.Contains(strings.ToLower(arg), "binding") {
+			isBindingGen = true
+			break
+		}
+	}
+
+	if !*noElevate && !isBindingGen && !elevate.IsElevated() {
+		if err := elevate.RelaunchElevated(); err == nil {
+			os.Exit(0)
+		} else {
+			log.Printf("elevation request failed or was cancelled: %v", err)
+		}
+	}
 
 	err := logger.SetupLogger()
 	if err != nil {

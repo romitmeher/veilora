@@ -225,3 +225,70 @@
 .vpn-connect-btn {
   border-radius: 0 !important;
 }
+
+/* In-app engine installer setup card (Game launcher style) */
+.vpn-engine-installer-card {
+  background: var(--bp-surface-background-color, #1f2532);
+  border: 1px solid var(--bp-border-color, #383e4a);
+  border-left: 4px solid #137cbd;
+  border-radius: var(--bp-surface-border-radius, 6px);
+  padding: 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.vpn-engine-installer-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.vpn-engine-installer-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(19, 124, 189, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vpn-engine-installer-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bp-text-color, #f5f8fa);
+}
+
+.vpn-engine-installer-title p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--bp-text-muted-color, #8a9ba8);
+  line-height: 1.4;
+}
+
+.vpn-engine-installer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.vpn-engine-installer-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.vpn-engine-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--bp-text-muted-color, #8a9ba8);
+  font-weight: 500;
+}
