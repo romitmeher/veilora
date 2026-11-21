@@ -1,74 +1,53 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useRef } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useRef } from "react";
 import {
   Animated,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CountryFlag } from "@/components/CountryFlag";
+import { VPNMap } from "@/components/VPNMap";
 import { useVPN } from "@/context/VPNContext";
 import { useColors } from "@/hooks/useColors";
-import { countryFlag } from "@/utils/countryFlag";
-
-const RING_SIZE = 220;
 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { status, selectedServer, publicIp, connect, disconnect } = useVPN();
+  const router = useRouter();
+  const { status, selectedServer, connect, disconnect } = useVPN();
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const ringAnim = useRef(new Animated.Value(0)).current;
+  const buttonPressAnim = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    if (status === "connecting") {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 700, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 0.95, duration: 700, useNativeDriver: true }),
-        ])
-      ).start();
-      Animated.loop(
-        Animated.timing(ringAnim, { toValue: 1, duration: 1800, useNativeDriver: true })
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      ringAnim.stopAnimation();
-      Animated.spring(pulseAnim, { toValue: 1, useNativeDriver: true }).start();
-      Animated.timing(glowAnim, {
-        toValue: status === "connected" ? 1 : 0,
-        duration: 600,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [status]);
+  const handlePressIn = () => {
+    Animated.spring(buttonPressAnim, {
+      toValue: 0.97,
+      mass: 0.6,
+      stiffness: 350,
+      damping: 24,
+      useNativeDriver: true,
+    }).start();
+  };
 
-  const statusColor =
-    status === "connected"
-      ? colors.connected
-      : status === "connecting"
-      ? colors.connecting
-      : colors.disconnected;
+  const handlePressOut = () => {
+    Animated.spring(buttonPressAnim, {
+      toValue: 1,
+      mass: 0.6,
+      stiffness: 350,
+      damping: 24,
+      useNativeDriver: true,
+    }).start();
+  };
 
-  const statusLabel =
-    status === "connected"
-      ? "DEMO CONNECTED"
-      : status === "connecting"
-      ? "SIMULATING..."
-      : "DEMO DISCONNECTED";
-
-  const glowColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["rgba(239,68,68,0.15)", "rgba(34,197,94,0.22)"],
-  });
-
-  const handlePress = () => {
+  const handleToggle = () => {
     if (status === "disconnected") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       connect();
@@ -78,213 +57,350 @@ export default function HomeScreen() {
     }
   };
 
-  const ringRotate = ringAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
+  const isConnected = status === "connected";
+  const isConnecting = status === "connecting";
 
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const statusColor = isConnected
+    ? "#22c55e"
+    : isConnecting
+    ? "#f59e0b"
+    : "#ef4444";
+
+  const topInset = Platform.OS === "web" ? 20 : insets.top;
+  const bottomInset = Platform.OS === "web" ? 28 : insets.bottom;
+
+  // Country and server details for the card
+  const countryTitle = selectedServer
+    ? selectedServer.countryLong
+    : "Fastest country";
+  const serverCode = selectedServer
+    ? selectedServer.hostName
+      ? selectedServer.hostName.split(".")[0].toUpperCase()
+      : selectedServer.ip
+    : "US-FREE#114";
+
+  // Label text above the card
+  const locationLabel = isConnected
+    ? "Browsing safely from"
+    : isConnecting
+    ? "Connecting to"
+    : "Browsing safely from";
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset + 16, paddingBottom: bottomInset + 90 }]}>
-      <Text style={[styles.appTitle, { color: colors.foreground }]}>Veilora</Text>
-
-      <View style={styles.centerArea}>
-        <Animated.View
-          style={[
-            styles.glowRing,
-            { width: RING_SIZE + 60, height: RING_SIZE + 60, borderRadius: (RING_SIZE + 60) / 2, backgroundColor: glowColor },
-          ]}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{
+        paddingTop: topInset + 10,
+        paddingBottom: bottomInset + 88,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Atmospheric top gradient glow */}
+      {isConnected && (
+        <LinearGradient
+          colors={["rgba(34, 197, 94, 0.14)", "transparent"]}
+          style={styles.topAura}
+          pointerEvents="none"
         />
+      )}
 
-        {status === "connecting" && (
-          <Animated.View
-            style={[
-              styles.spinRing,
-              { width: RING_SIZE + 20, height: RING_SIZE + 20, borderRadius: (RING_SIZE + 20) / 2, borderColor: colors.connecting, transform: [{ rotate: ringRotate }] },
-            ]}
+      {/* 1. Top Center Status Pill: ONLY Lock/Unlock + Protected / Not Protected */}
+      <View style={styles.topStatusContainer}>
+        <View style={styles.statusPill}>
+          <Feather
+            name={isConnected ? "lock" : isConnecting ? "lock" : "unlock"}
+            size={18}
+            color={statusColor}
+            style={styles.statusIcon}
           />
-        )}
+          <Text style={[styles.statusText, { color: statusColor }]}>
+            {isConnected
+              ? "Protected"
+              : isConnecting
+              ? "Connecting..."
+              : "Not Protected"}
+          </Text>
+        </View>
+      </View>
 
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      {/* 2. Official Proton Skeleton World Map */}
+      <VPNMap selectedServer={selectedServer} status={status} />
+
+      {/* 3. Sub-label: "Browsing safely from" outside the pill */}
+      <View style={styles.labelSection}>
+        <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>
+          {locationLabel}
+        </Text>
+      </View>
+
+      {/* 4. Bottom Elevated Card matching Proton VPN reference */}
+      <View style={styles.mainCard}>
+        {/* Country & Server Selector Row */}
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.push("/servers");
+          }}
+          style={({ pressed }) => [
+            styles.serverRow,
+            { opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <View style={styles.serverRowLeft}>
+            <CountryFlag
+              code={selectedServer?.countryShort ?? "US"}
+              width={32}
+              height={22}
+              borderRadius={4}
+            />
+            <View style={styles.serverTextColumn}>
+              <Text style={styles.serverCountryText} numberOfLines={1}>
+                {countryTitle}
+              </Text>
+              <Text style={styles.serverCodeText} numberOfLines={1}>
+                {serverCode}
+              </Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color="#8e92a4" />
+        </Pressable>
+
+        {/* Primary Action Button: strictly named "Connect" / "Disconnect", NO internal animations */}
+        <Animated.View style={{ transform: [{ scale: buttonPressAnim }] }}>
           <Pressable
-            onPress={handlePress}
-            disabled={status === "connecting"}
+            onPress={handleToggle}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            disabled={isConnecting}
             style={[
-              styles.mainButton,
-              {
-                width: RING_SIZE,
-                height: RING_SIZE,
-                borderRadius: RING_SIZE / 2,
-                backgroundColor: colors.card,
-                borderColor: statusColor,
-              },
+              styles.primaryButton,
+              isConnected
+                ? styles.disconnectButton
+                : isConnecting
+                ? styles.connectingButton
+                : styles.connectButton,
             ]}
           >
-            <Feather
-              name="shield"
-              size={72}
-              color={statusColor}
-            />
-            <Text style={[styles.powerLabel, { color: statusColor }]}>
-              {status === "connected" ? "TAP TO\nDISCONNECT" : status === "connecting" ? "CONNECTING" : "TAP TO\nCONNECT"}
+            <Text
+              style={[
+                styles.primaryButtonText,
+                isConnected
+                  ? styles.disconnectButtonText
+                  : isConnecting
+                  ? styles.connectingButtonText
+                  : styles.connectButtonText,
+              ]}
+            >
+              {isConnected ? "Disconnect" : isConnecting ? "Connecting..." : "Connect"}
             </Text>
           </Pressable>
         </Animated.View>
+
+        {/* Secondary Action Button: "Change server" */}
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.push("/servers");
+          }}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            { opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <Text style={styles.secondaryButtonText}>Change server</Text>
+        </Pressable>
       </View>
 
-      <View style={styles.statusArea}>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + "22", borderColor: statusColor + "44" }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoCards}>
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name="map-pin" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>SERVER</Text>
-          <Text style={[styles.infoValue, { color: colors.foreground }]} numberOfLines={1}>
-            {selectedServer
-              ? `${countryFlag(selectedServer.countryShort)} ${selectedServer.countryLong}`
-              : "Auto Select"}
-          </Text>
-        </View>
-
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name="globe" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>YOUR IP</Text>
-          <Text style={[styles.infoValue, { color: colors.foreground }]}>
-            {status === "connected" && publicIp ? publicIp : "—"}
-          </Text>
-        </View>
-      </View>
-
+      {/* 5. Live Telemetry metrics */}
       {selectedServer && (
-        <View style={styles.serverMeta}>
-          <View style={[styles.metaChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Feather name="activity" size={12} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{selectedServer.ping} ms</Text>
+        <View style={styles.telemetryCard}>
+          <View style={styles.telemetryItem}>
+            <Text style={[styles.telemetryLabel, { color: colors.mutedForeground }]}>
+              Ping
+            </Text>
+            <Text style={[styles.telemetryValue, { color: colors.foreground }]}>
+              {selectedServer.ping} ms
+            </Text>
           </View>
-          <View style={[styles.metaChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Feather name="zap" size={12} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{selectedServer.speedMbps} Mbps</Text>
+          <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.telemetryItem}>
+            <Text style={[styles.telemetryLabel, { color: colors.mutedForeground }]}>
+              Speed
+            </Text>
+            <Text style={[styles.telemetryValue, { color: colors.foreground }]}>
+              {selectedServer.speedMbps} Mbps
+            </Text>
           </View>
-          <View style={[styles.metaChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Feather name="users" size={12} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{selectedServer.sessions} users</Text>
+          <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.telemetryItem}>
+            <Text style={[styles.telemetryLabel, { color: colors.mutedForeground }]}>
+              Sessions
+            </Text>
+            <Text style={[styles.telemetryValue, { color: colors.foreground }]}>
+              {selectedServer.sessions}
+            </Text>
           </View>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
   },
-  appTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1.5,
-    opacity: 0.5,
-    marginBottom: 8,
-  },
-  centerArea: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glowRing: {
+  topAura: {
     position: "absolute",
-    zIndex: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
-  spinRing: {
-    position: "absolute",
-    zIndex: 1,
-    borderWidth: 2,
-    borderTopColor: "transparent",
-    borderRightColor: "transparent",
-    borderStyle: "solid",
-  },
-  mainButton: {
+  topStatusContainer: {
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2.5,
-    gap: 12,
-    zIndex: 2,
+    marginBottom: 6,
+    paddingHorizontal: 20,
   },
-  powerLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1.2,
-    textAlign: "center",
-  },
-  statusArea: {
-    marginBottom: 28,
-  },
-  statusBadge: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    justifyContent: "center",
     paddingVertical: 8,
-    borderRadius: 100,
-    borderWidth: 1,
-    gap: 8,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
   },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  statusIcon: {
+    marginRight: 8,
   },
   statusText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 1.5,
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
-  infoCards: {
-    flexDirection: "row",
-    gap: 12,
+  labelSection: {
     paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  infoCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 4,
-    alignItems: "flex-start",
-  },
-  infoLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1.2,
-    marginTop: 4,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  serverMeta: {
-    flexDirection: "row",
-    gap: 8,
+    marginTop: 6,
     marginBottom: 8,
   },
-  metaChip: {
+  subLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  mainCard: {
+    marginHorizontal: 16,
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: "#181926",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#27293d",
+    gap: 12,
+  },
+  serverRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 100,
-    borderWidth: 1,
+    justifyContent: "space-between",
+    paddingVertical: 6,
   },
-  metaText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
+  serverRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  serverTextColumn: {
+    gap: 2,
+  },
+  serverCountryText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#f0f0ff",
+  },
+  serverCodeText: {
+    fontSize: 13,
+    color: "#8e92a4",
+    fontWeight: "500",
+  },
+  primaryButton: {
+    height: 50,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  connectButton: {
+    backgroundColor: "#5eead4",
+  },
+  connectButtonText: {
+    color: "#0a0b12",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  disconnectButton: {
+    backgroundColor: "#282a3d",
+    borderWidth: 1,
+    borderColor: "#353852",
+  },
+  disconnectButtonText: {
+    color: "#f0f0ff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  connectingButton: {
+    backgroundColor: "#232536",
+  },
+  connectingButtonText: {
+    color: "#8e92a4",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1f2133",
+    borderWidth: 1,
+    borderColor: "#2c2e44",
+  },
+  secondaryButtonText: {
+    color: "#d8d9e6",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  telemetryCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: "#141523",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#212338",
+  },
+  telemetryItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  telemetryLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  telemetryValue: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  verticalDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 24,
   },
 });

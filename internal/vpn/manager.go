@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/irbis-sh/zen-desktop/internal/vpngate"
 )
@@ -78,13 +79,89 @@ func (m *Manager) GetCountries() ([]string, error) {
 	return m.vpngateClient.Countries()
 }
 
-// ConnectBest selects the best server for the given country and connects.
+// ConnectBest selects the best server for the given country and connects, with auto-failover
+// to the next best servers if the first fails to connect within 15 seconds.
 func (m *Manager) ConnectBest(country string, engine EngineType, killSwitch, dnsProtect bool) error {
-	server, err := m.vpngateClient.BestServer(country)
+	servers, err := m.vpngateClient.GetServers(country, true)
 	if err != nil {
 		return fmt.Errorf("select best server: %w", err)
 	}
-	return m.ConnectToServer(*server, engine, killSwitch, dnsProtect)
+	if len(servers) == 0 {
+		return fmt.Errorf("no VPN servers found for %s", country)
+	}
+
+	maxAttempts := len(servers)
+	if maxAttempts > 3 {
+		maxAttempts = 3
+	}
+
+	if err := m.ConnectToServer(servers[0], engine, killSwitch, dnsProtect); err != nil {
+		return err
+	}
+
+	if maxAttempts > 1 {
+		go m.autoFailoverMonitor(servers[1:maxAttempts], engine, killSwitch, dnsProtect)
+	}
+	return nil
+}
+
+func (m *Manager) autoFailoverMonitor(backups []vpngate.Server, engine EngineType, killSwitch, dnsProtect bool) {
+	if len(backups) == 0 {
+		return
+	}
+
+	timer := time.NewTimer(15 * time.Second)
+	defer timer.Stop()
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	start := time.Now()
+	for {
+		select {
+		case <-timer.C:
+			m.mu.Lock()
+			state := m.connInfo.Status.State
+			active := m.active
+			m.mu.Unlock()
+
+			if active == nil || state == StateConnected {
+				return
+			}
+
+			log.Printf("vpn: connection timed out after 15s, failing over to backup server %s", backups[0].HostName)
+			_ = m.Disconnect()
+			time.Sleep(500 * time.Millisecond)
+
+			if err := m.ConnectToServer(backups[0], engine, killSwitch, dnsProtect); err == nil && len(backups) > 1 {
+				go m.autoFailoverMonitor(backups[1:], engine, killSwitch, dnsProtect)
+			}
+			return
+
+		case <-ticker.C:
+			m.mu.Lock()
+			state := m.connInfo.Status.State
+			active := m.active
+			m.mu.Unlock()
+
+			if active == nil {
+				return
+			}
+			if state == StateConnected {
+				return
+			}
+			if state == StateError && time.Since(start) < 15*time.Second {
+				log.Printf("vpn: connection failed early (%s), failing over to %s", m.connInfo.Status.Message, backups[0].HostName)
+				_ = m.Disconnect()
+				time.Sleep(500 * time.Millisecond)
+
+				if err := m.ConnectToServer(backups[0], engine, killSwitch, dnsProtect); err == nil && len(backups) > 1 {
+					go m.autoFailoverMonitor(backups[1:], engine, killSwitch, dnsProtect)
+				}
+				return
+			}
+		}
+	}
 }
 
 // ConnectToServer connects to a specific VPNGate server.

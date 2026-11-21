@@ -13,20 +13,37 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CountryFlag } from "@/components/CountryFlag";
 import { VPNServer, useVPN } from "@/context/VPNContext";
 import { useColors } from "@/hooks/useColors";
-import { countryFlag } from "@/utils/countryFlag";
 
-function PingBadge({ ping, colors }: { ping: number; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
-  const color = ping < 50 ? colors.connected : ping < 150 ? colors.connecting : colors.destructive;
+function PingBadge({
+  ping,
+  colors,
+}: {
+  ping: number;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  const color =
+    ping < 50
+      ? colors.connected
+      : ping < 150
+      ? colors.connecting
+      : colors.destructive;
+
   return (
-    <View style={[styles.badge, { backgroundColor: color + "22" }]}>
-      <Text style={[styles.badgeText, { color }]}>{ping}ms</Text>
+    <View style={[styles.pingBadge, { backgroundColor: color + "18" }]}>
+      <Text style={[styles.pingText, { color }]}>{ping} ms</Text>
     </View>
   );
 }
 
-function ServerRow({ server, isSelected, onPress, colors }: {
+function ServerRow({
+  server,
+  isSelected,
+  onPress,
+  colors,
+}: {
   server: VPNServer;
   isSelected: boolean;
   onPress: () => void;
@@ -38,25 +55,46 @@ function ServerRow({ server, isSelected, onPress, colors }: {
       style={({ pressed }) => [
         styles.serverRow,
         {
-          backgroundColor: isSelected ? colors.primary + "15" : colors.card,
-          borderColor: isSelected ? colors.primary : colors.border,
-          opacity: pressed ? 0.75 : 1,
+          backgroundColor: isSelected ? colors.primary + "12" : colors.card,
+          opacity: pressed ? 0.65 : 1,
         },
       ]}
     >
-      <Text style={styles.flag}>{countryFlag(server.countryShort)}</Text>
+      <CountryFlag
+        code={server.countryShort}
+        width={32}
+        height={22}
+        borderRadius={4}
+      />
+
       <View style={styles.serverInfo}>
-        <Text style={[styles.serverCountry, { color: colors.foreground }]} numberOfLines={1}>
+        <Text
+          style={[styles.countryName, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
           {server.countryLong}
         </Text>
-        <Text style={[styles.serverOp, { color: colors.mutedForeground }]} numberOfLines={1}>
+        <Text
+          style={[styles.operatorDetail, { color: colors.mutedForeground }]}
+          numberOfLines={1}
+        >
           {server.operator} · {server.speedMbps} Mbps
         </Text>
       </View>
-      <PingBadge ping={server.ping} colors={colors} />
-      {isSelected && (
-        <Feather name="check-circle" size={18} color={colors.primary} style={{ marginLeft: 6 }} />
-      )}
+
+      <View style={styles.serverRight}>
+        <PingBadge ping={server.ping} colors={colors} />
+        {isSelected ? (
+          <Feather
+            name="check"
+            size={18}
+            color={colors.primary}
+            style={styles.checkIcon}
+          />
+        ) : (
+          <View style={styles.checkPlaceholder} />
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -64,7 +102,15 @@ function ServerRow({ server, isSelected, onPress, colors }: {
 export default function ServersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { servers, loadingServers, selectedServer, selectServer, connect, status, refreshServers } = useVPN();
+  const {
+    servers,
+    loadingServers,
+    selectedServer,
+    selectServer,
+    connect,
+    status,
+    refreshServers,
+  } = useVPN();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -74,6 +120,7 @@ export default function ServersScreen() {
       (s) =>
         s.countryLong.toLowerCase().includes(q) ||
         s.countryShort.toLowerCase().includes(q) ||
+        s.operator.toLowerCase().includes(q) ||
         s.ip.includes(q)
     );
   }, [servers, query]);
@@ -86,169 +133,228 @@ export default function ServersScreen() {
     }
   };
 
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const topInset = Platform.OS === "web" ? 32 : insets.top;
+  const bottomInset = Platform.OS === "web" ? 32 : insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topInset + 12, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Servers</Text>
-        <Pressable onPress={refreshServers} disabled={loadingServers} style={styles.refreshBtn}>
-          {loadingServers
-            ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Feather name="refresh-cw" size={20} color={colors.primary} />
-          }
-        </Pressable>
-      </View>
+      {/* Apple HIG Large Title & Header Bar */}
+      <View
+        style={[
+          styles.headerArea,
+          {
+            paddingTop: topInset + 16,
+          },
+        ]}
+      >
+        <View style={styles.titleRow}>
+          <Text style={[styles.largeTitle, { color: colors.foreground }]}>
+            Servers
+          </Text>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              refreshServers();
+            }}
+            disabled={loadingServers}
+            style={({ pressed }) => [
+              styles.refreshButton,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            {loadingServers ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="refresh-cw" size={19} color={colors.primary} />
+            )}
+          </Pressable>
+        </View>
 
-      <View style={[styles.searchContainer, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+        {/* Apple HIG Inset Search Bar */}
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.secondary },
+          ]}
+        >
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search country or IP…"
+            placeholder="Search by country, operator, or IP..."
             placeholderTextColor={colors.mutedForeground}
             style={[styles.searchInput, { color: colors.foreground }]}
-            returnKeyType="search"
+            clearButtonMode="while-editing"
+            autoCorrect={false}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery("")}>
-              <Feather name="x" size={15} color={colors.mutedForeground} />
+            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
             </Pressable>
           )}
         </View>
       </View>
 
-      {loadingServers && servers.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-            Fetching VPN servers…
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ServerRow
-              server={item}
-              isSelected={selectedServer?.id === item.id}
-              onPress={() => handleSelect(item)}
-              colors={colors}
-            />
-          )}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: bottomInset + 90 },
-          ]}
-          scrollEnabled={filtered.length > 0}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Feather name="globe" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No servers found
-              </Text>
+      {/* Inset Grouped Server Table */}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: bottomInset + 84,
+          paddingTop: 8,
+        }}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => (
+          <View
+            style={[
+              styles.rowSeparator,
+              { backgroundColor: colors.border },
+            ]}
+          />
+        )}
+        renderItem={({ item, index }) => {
+          const isSelected = selectedServer?.id === item.id;
+          const isFirst = index === 0;
+          const isLast = index === filtered.length - 1;
+
+          return (
+            <View
+              style={[
+                styles.itemWrapper,
+                isFirst && styles.firstItem,
+                isLast && styles.lastItem,
+                { backgroundColor: colors.card },
+              ]}
+            >
+              <ServerRow
+                server={item}
+                isSelected={isSelected}
+                onPress={() => handleSelect(item)}
+                colors={colors}
+              />
             </View>
-          }
-        />
-      )}
+          );
+        }}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              No servers match your search
+            </Text>
+          </View>
+        )}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
+  container: {
+    flex: 1,
+  },
+  headerArea: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 28,
+  largeTitle: {
+    fontSize: 34,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.41,
+    lineHeight: 41,
   },
-  refreshBtn: {
+  refreshButton: {
     padding: 6,
   },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
   searchBar: {
+    height: 38,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: 10,
     gap: 8,
+    marginBottom: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
-    padding: 0,
+    paddingVertical: 0,
   },
-  list: {
-    padding: 16,
-    gap: 8,
+  itemWrapper: {
+    overflow: "hidden",
+  },
+  firstItem: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  lastItem: {
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   serverRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 8,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  flag: {
-    fontSize: 28,
+  flagEmoji: {
+    fontSize: 24,
+    marginRight: 14,
   },
   serverInfo: {
     flex: 1,
-    gap: 3,
+    marginLeft: 12,
+    marginRight: 8,
   },
-  serverCountry: {
-    fontSize: 15,
+  countryName: {
+    fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+    letterSpacing: -0.32,
   },
-  serverOp: {
-    fontSize: 12,
+  operatorDetail: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
+    marginTop: 2,
+    letterSpacing: -0.08,
   },
-  badge: {
+  serverRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pingBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 100,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+  pingText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    fontVariant: ["tabular-nums"],
   },
-  loadingContainer: {
-    flex: 1,
+  checkIcon: {
+    marginLeft: 2,
+  },
+  checkPlaceholder: {
+    width: 20,
+  },
+  rowSeparator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 54, // Indented hairline so it does not cut the flag
+    backgroundColor: "transparent",
+  },
+  emptyContainer: {
+    paddingVertical: 36,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
 });

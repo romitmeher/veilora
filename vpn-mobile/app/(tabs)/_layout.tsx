@@ -1,125 +1,195 @@
 import { Feather } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
-import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import React, { useRef } from "react";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
-function NativeTabLayout() {
+const TAB_CONFIG: Record<
+  string,
+  { label: string; icon: keyof typeof Feather.glyphMap }
+> = {
+  index: { label: "VPN", icon: "shield" },
+  servers: { label: "Servers", icon: "globe" },
+  blocker: { label: "Blocker", icon: "slash" },
+  settings: { label: "Settings", icon: "settings" },
+};
+
+function AirbnbTabItem({
+  route,
+  isFocused,
+  onPress,
+  colors,
+}: {
+  route: { key: string; name: string };
+  isFocused: boolean;
+  onPress: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const config = TAB_CONFIG[route.name] || {
+    label: route.name,
+    icon: "circle",
+  };
+
+  // Airbnb signature spring scale value
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    // 1. Tactile haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // 2. Airbnb signature spring bounce sequence:
+    // Compress down slightly, then spring overshoot and settle
+    scaleAnim.setValue(0.82);
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      mass: 0.6,
+      stiffness: 320,
+      damping: 11, // Low damping = classic Airbnb lively bounce!
+      useNativeDriver: true,
+    }).start();
+
+    onPress();
+  };
+
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "shield", selected: "shield.fill" }} />
-        <Label>VPN</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="servers">
-        <Icon sf={{ default: "globe", selected: "globe.fill" }} />
-        <Label>Servers</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="blocker">
-        <Icon sf={{ default: "nosign", selected: "nosign" }} />
-        <Label>Blocker</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Settings</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      style={styles.tabItem}
+    >
+      <Animated.View
+        style={[
+          styles.iconContainer,
+          {
+            transform: [{ scale: scaleAnim }],
+            backgroundColor: isFocused ? colors.primary + "18" : "transparent",
+          },
+        ]}
+      >
+        <Feather
+          name={config.icon}
+          size={20}
+          color={isFocused ? colors.primary : colors.mutedForeground}
+        />
+      </Animated.View>
+      <Text
+        style={[
+          styles.tabLabel,
+          {
+            color: isFocused ? colors.foreground : colors.mutedForeground,
+            fontFamily: isFocused ? "Inter_600SemiBold" : "Inter_400Regular",
+          },
+        ]}
+      >
+        {config.label}
+      </Text>
+    </Pressable>
   );
 }
 
-function ClassicTabLayout() {
+function AirbnbTabBar({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps) {
   const colors = useColors();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const isIOS = Platform.OS === "ios";
+  const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const bottomInset = isWeb ? 10 : Math.max(insets.bottom, 10);
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        headerShown: false,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: StyleSheet.hairlineWidth,
+    <View
+      style={[
+        styles.tabBarContainer,
+        {
+          backgroundColor: colors.card,
           borderTopColor: colors.border,
-          elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          paddingBottom: bottomInset,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
-          ) : null,
-      }}
+      ]}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "VPN",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="shield.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="shield" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="servers"
-        options={{
-          title: "Servers",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="globe" tintColor={color} size={22} />
-            ) : (
-              <Feather name="globe" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="blocker"
-        options={{
-          title: "Blocker",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="nosign" tintColor={color} size={22} />
-            ) : (
-              <Feather name="slash" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="gearshape" tintColor={color} size={22} />
-            ) : (
-              <Feather name="settings" size={22} color={color} />
-            ),
-        }}
-      />
-    </Tabs>
+      {state.routes.map((route, index) => {
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <AirbnbTabItem
+            key={route.key}
+            route={route}
+            isFocused={isFocused}
+            onPress={onPress}
+            colors={colors}
+          />
+        );
+      })}
+    </View>
   );
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  return (
+    <Tabs
+      tabBar={(props) => <AirbnbTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: "VPN" }} />
+      <Tabs.Screen name="servers" options={{ title: "Servers" }} />
+      <Tabs.Screen name="blocker" options={{ title: "Blocker" }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+    </Tabs>
+  );
 }
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    flexDirection: "row",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    elevation: 0,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: 14,
+    marginBottom: 3,
+  },
+  tabLabel: {
+    fontSize: 11,
+    letterSpacing: -0.1,
+  },
+});
