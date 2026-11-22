@@ -2,6 +2,7 @@ package vpn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
+	"time"
 )
 
 // EngineInstallProgress reports download and configuration progress.
@@ -19,8 +22,16 @@ type EngineInstallProgress struct {
 	Message string `json:"message"` // Human-readable status
 }
 
+var engineInstallMu sync.Mutex
+
 // InstallEngine installs the OpenVPN tunneling engine for the host platform.
 func InstallEngine(ctx context.Context, progressCb func(EngineInstallProgress)) error {
+	if !engineInstallMu.TryLock() {
+		return errors.New("engine installation is already running")
+	}
+	defer engineInstallMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+	defer cancel()
 	if progressCb == nil {
 		progressCb = func(EngineInstallProgress) {}
 	}
@@ -31,16 +42,32 @@ func InstallEngine(ctx context.Context, progressCb func(EngineInstallProgress)) 
 		Message: "Initializing engine setup...",
 	})
 
+	var err error
+	// Platform installers report progress; readiness is checked centrally.
+	report := func(p EngineInstallProgress) {
+		if p.Stage != "ready" {
+			progressCb(p)
+		}
+	}
 	switch runtime.GOOS {
 	case "windows":
-		return installWindowsEngine(ctx, progressCb)
+		err = installWindowsEngine(ctx, report)
 	case "darwin":
-		return installDarwinEngine(ctx, progressCb)
+		err = installDarwinEngine(ctx, report)
 	case "linux":
-		return installLinuxEngine(ctx, progressCb)
+		err = installLinuxEngine(ctx, report)
 	default:
-		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+		err = fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
+	if err == nil && NewOpenVPNEngine().FindBinary() == "" {
+		err = errors.New("installer finished, but OpenVPN is unavailable; restart Veilora or repair the installation")
+	}
+	if err != nil {
+		progressCb(EngineInstallProgress{Stage: "error", Message: err.Error()})
+		return err
+	}
+	progressCb(EngineInstallProgress{Stage: "ready", Percent: 100, Message: "OpenVPN installed. Tunnel connectivity has not been tested."})
+	return nil
 }
 
 func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProgress)) error {
@@ -71,6 +98,9 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 		log.Printf("vpn installer: winget failed (%v): %s; falling back to direct download", err, string(out))
 	}
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	// Fallback: Direct download of OpenVPN community installer
 	progressCb(EngineInstallProgress{
 		Stage:   "downloading",
@@ -78,16 +108,23 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 		Message: "Downloading OpenVPN installer package...",
 	})
 
-	installerURL := "https://swupdate.openvpn.org/community/releases/OpenVPN-2.7.9-I002-amd64.msi"
-	tmpFile := filepath.Join(os.TempDir(), "openvpn-setup.msi")
-	defer os.Remove(tmpFile)
+	installerURL, err := windowsInstallerURL(runtime.GOARCH)
+	if err != nil {
+		return err
+	}
+	tmpDir, err := os.MkdirTemp("", "veilora-openvpn-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+	tmpFile := filepath.Join(tmpDir, "openvpn-setup.msi")
 
 	req, err := http.NewRequestWithContext(ctx, "GET", installerURL, nil)
 	if err != nil {
 		return fmt.Errorf("create download request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
 	if err != nil {
 		return fmt.Errorf("download openvpn installer: %w", err)
 	}
@@ -103,6 +140,11 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 	}
 
 	totalSize := resp.ContentLength
+	const maxInstallerSize = 100 * 1024 * 1024
+	if totalSize > maxInstallerSize {
+		out.Close()
+		return errors.New("installer exceeds size limit")
+	}
 	var downloaded int64
 	buf := make([]byte, 32*1024)
 
@@ -121,6 +163,10 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 				return fmt.Errorf("write installer file: %w", wErr)
 			}
 			downloaded += int64(n)
+			if downloaded > maxInstallerSize {
+				out.Close()
+				return errors.New("installer exceeds size limit")
+			}
 			if totalSize > 0 {
 				pct := 25 + int(float64(downloaded)/float64(totalSize)*50.0)
 				progressCb(EngineInstallProgress{
@@ -138,7 +184,15 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 			return fmt.Errorf("download stream error: %w", rErr)
 		}
 	}
-	out.Close()
+	if err := out.Close(); err != nil {
+		return err
+	}
+	if downloaded == 0 || (totalSize >= 0 && downloaded != totalSize) {
+		return errors.New("incomplete installer download")
+	}
+	if err := verifyWindowsInstaller(ctx, tmpFile); err != nil {
+		return err
+	}
 
 	progressCb(EngineInstallProgress{
 		Stage:   "installing",
@@ -148,7 +202,7 @@ func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProg
 
 	// Run MSI silent install
 	msiCmd := hiddenCommandContext(ctx, "msiexec.exe", "/i", tmpFile, "/qn", "/norestart")
-	if msiOut, err := msiCmd.CombinedOutput(); err != nil {
+	if msiOut, err := msiCmd.CombinedOutput(); err != nil && !installerRebootRequired(err) {
 		return fmt.Errorf("run openvpn msi installer (%v): %s", err, string(msiOut))
 	}
 
@@ -201,4 +255,16 @@ func installLinuxEngine(ctx context.Context, progressCb func(EngineInstallProgre
 		return nil
 	}
 	return fmt.Errorf("please run 'sudo apt install openvpn' or 'sudo dnf install openvpn'")
+}
+
+func windowsInstallerURL(arch string) (string, error) {
+	if arch != "amd64" && arch != "arm64" {
+		return "", fmt.Errorf("unsupported Windows architecture: %s", arch)
+	}
+	return "https://swupdate.openvpn.org/community/releases/OpenVPN-2.7.9-I002-" + arch + ".msi", nil
+}
+
+func installerRebootRequired(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr) && exitErr.ExitCode() == 3010
 }

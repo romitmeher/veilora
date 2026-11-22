@@ -42,7 +42,7 @@ func (e *OpenVPNEngine) FindBinary() string {
 		// 1. Check %LOCALAPPDATA%\Veilora\bin\openvpn.exe
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
 			candidate := filepath.Join(localAppData, "Veilora", "bin", "openvpn.exe")
-			if _, err := os.Stat(candidate); err == nil {
+			if isExecutableFile(candidate) {
 				return candidate
 			}
 		}
@@ -50,7 +50,7 @@ func (e *OpenVPNEngine) FindBinary() string {
 		for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
 			if pf != "" {
 				candidate := filepath.Join(pf, "OpenVPN", "bin", "openvpn.exe")
-				if _, err := os.Stat(candidate); err == nil {
+				if isExecutableFile(candidate) {
 					return candidate
 				}
 			}
@@ -58,12 +58,26 @@ func (e *OpenVPNEngine) FindBinary() string {
 		// 3. Check next to current executable
 		if exe, err := os.Executable(); err == nil {
 			candidate := filepath.Join(filepath.Dir(exe), "bin", "openvpn.exe")
-			if _, err := os.Stat(candidate); err == nil {
+			if isExecutableFile(candidate) {
 				return candidate
 			}
 		}
 	}
 
+	if runtime.GOOS == "darwin" {
+		for _, candidate := range []string{"/opt/homebrew/sbin/openvpn", "/usr/local/sbin/openvpn"} {
+			if isExecutableFile(candidate) {
+				return candidate
+			}
+		}
+	}
+	if runtime.GOOS == "linux" {
+		for _, candidate := range []string{"/usr/sbin/openvpn", "/usr/local/sbin/openvpn"} {
+			if isExecutableFile(candidate) {
+				return candidate
+			}
+		}
+	}
 	// 4. Check system PATH
 	if path, err := exec.LookPath(e.binaryName()); err == nil {
 		return path
@@ -309,4 +323,9 @@ func freePort() (int, error) {
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	return port, nil
+}
+
+func isExecutableFile(path string) bool {
+	info, err := os.Stat(path) // #nosec G703 -- read-only probe of OS/application install locations; no file is modified.
+	return err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode().Perm()&0111 != 0)
 }

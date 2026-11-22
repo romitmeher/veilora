@@ -20,7 +20,7 @@ The desktop interface uses restrained light/dark surfaces, keyboard-accessible n
 | --- | --- |
 | Desktop application | Windows executable builds and launches; overview, navigation, settings, and both themes inspected. |
 | Ad blocking | Local HTTP/HTTPS proxy, filter subscriptions, custom rules, app routing, and request history are implemented. Live filtering has not been verified in this fork. |
-| VPN | OpenVPN/SoftEther integration, server selection/search, DNS controls, and kill-switch code are present. An installed compatible client is required. Live connectivity and leak protection remain unverified. |
+| VPN | OpenVPN/SoftEther integration, server selection/search, and custom DNS controls are present. A compatible external engine and driver are required; Windows setup can install OpenVPN. The kill switch is unavailable. Live connectivity and leak protection remain unverified. |
 | Mobile | Expo UI prototype. Connections and blocking statistics are simulated; it does not protect device traffic. Type checking and web export pass. |
 | Updates | Automatic updates are disabled to prevent this fork from installing upstream Zen releases. |
 

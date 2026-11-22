@@ -151,7 +151,7 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json() as { ip: string };
       setPublicIp(data.ip);
     } catch {
-      setPublicIp("10.8.0." + Math.floor(Math.random() * 254 + 1));
+      setPublicIp(null);
     }
   }, []);
 
