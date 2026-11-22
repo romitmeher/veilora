@@ -1,6 +1,6 @@
 # Veilora validation â€” 2026-11-21
 
-See the newer [headless standalone audit](HEADLESS-AUDIT.md) for reproduced VPN bugs, fixes, and remaining packaging/protection blockers. The native UI checks below were performed earlier, before the headless-only constraint.
+See the latest [headless fixes and validation](FIXES-2026-11-22.md) and the earlier [headless standalone audit](HEADLESS-AUDIT.md). The native UI checks below were performed earlier, before the headless-only constraint.
 
 ## Passed
 

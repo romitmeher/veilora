@@ -3,6 +3,7 @@
 package vpn
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -25,15 +26,19 @@ type ConnectionInfo struct {
 
 // Manager coordinates VPN connections, engine selection, kill switch, and DNS protection.
 type Manager struct {
-	mu sync.Mutex
+	mu       sync.Mutex
+	notifyMu sync.Mutex
 
-	engines  map[EngineType]Engine
-	active   Engine
-	connInfo ConnectionInfo
-	statusCh chan Status
-	stopMon  chan struct{}
+	engines        map[EngineType]Engine
+	active         Engine
+	connInfo       ConnectionInfo
+	statusCh       chan Status
+	stopMon        chan struct{}
+	autoCancel     chan struct{}
+	requestID      uint64
+	retryInterval  time.Duration
+	connectTimeout time.Duration
 
-	killSwitch    *KillSwitch
 	dnsProtection *DNSProtection
 	vpngateClient *vpngate.Client
 
@@ -48,12 +53,14 @@ func NewManager(onStatusChange func(ConnectionInfo)) *Manager {
 			EngineOpenVPN:   NewOpenVPNEngine(),
 			EngineSoftEther: NewSoftEtherEngine(),
 		},
-		killSwitch:     NewKillSwitch(),
 		dnsProtection:  NewDNSProtection(),
 		vpngateClient:  vpngate.NewClient(),
 		onStatusChange: onStatusChange,
+		retryInterval:  100 * time.Millisecond,
+		connectTimeout: 15 * time.Second,
 	}
 	m.connInfo.Status = Status{State: StateDisconnected}
+	m.connInfo.DNSProtectionOn = false
 	return m
 }
 
@@ -82,103 +89,163 @@ func (m *Manager) GetCountries() ([]string, error) {
 // ConnectBest selects the best server for the given country and connects, with auto-failover
 // to the next best servers if the first fails to connect within 15 seconds.
 func (m *Manager) ConnectBest(country string, engine EngineType, killSwitch, dnsProtect bool) error {
+	m.mu.Lock()
+	if m.active != nil {
+		m.mu.Unlock()
+		return errors.New("already connected — disconnect first")
+	}
+	m.requestID++
+	requestID := m.requestID
+	m.mu.Unlock()
 	servers, err := m.vpngateClient.GetServers(country, true)
 	if err != nil {
 		return fmt.Errorf("select best server: %w", err)
 	}
-	if len(servers) == 0 {
-		return fmt.Errorf("no VPN servers found for %s", country)
-	}
-
-	maxAttempts := len(servers)
-	if maxAttempts > 3 {
-		maxAttempts = 3
-	}
-
-	if err := m.ConnectToServer(servers[0], engine, killSwitch, dnsProtect); err != nil {
-		return err
-	}
-
-	if maxAttempts > 1 {
-		go m.autoFailoverMonitor(servers[1:maxAttempts], engine, killSwitch, dnsProtect)
-	}
-	return nil
+	return m.connectCandidatesFor(servers, engine, killSwitch, dnsProtect, requestID)
 }
 
-func (m *Manager) autoFailoverMonitor(backups []vpngate.Server, engine EngineType, killSwitch, dnsProtect bool) {
-	if len(backups) == 0 {
-		return
+func (m *Manager) connectCandidates(servers []vpngate.Server, engine EngineType, killSwitch, dnsProtect bool) error {
+	return m.connectCandidatesFor(servers, engine, killSwitch, dnsProtect, 0)
+}
+
+func (m *Manager) connectCandidatesFor(servers []vpngate.Server, engine EngineType, killSwitch, dnsProtect bool, requestID uint64) error {
+	if killSwitch {
+		return errors.New("kill switch is unavailable: a verified tunnel-aware implementation is required")
 	}
+	if len(servers) == 0 {
+		return errors.New("no VPN servers found")
+	}
+	if len(servers) > 3 {
+		servers = servers[:3]
+	}
+	m.mu.Lock()
+	if requestID != 0 && requestID != m.requestID {
+		m.mu.Unlock()
+		return errors.New("connection request was cancelled")
+	}
+	if requestID == 0 {
+		m.requestID++
+	}
+	if m.active != nil {
+		m.mu.Unlock()
+		return errors.New("already connected — disconnect first")
+	}
+	m.cancelAutoLocked()
+	cancel := make(chan struct{})
+	m.autoCancel = cancel
+	var err error
+	var next int
+	for next = 0; next < len(servers); next++ {
+		err = m.connectLocked(servers[next], engine, dnsProtect)
+		if err == nil || m.active != nil {
+			next++
+			break
+		}
+	}
+	info := m.connInfo
+	m.mu.Unlock()
+	m.notify(info)
+	if err == nil {
+		go m.autoFailoverMonitor(servers[next:], engine, dnsProtect, cancel)
+	}
+	return err
+}
 
-	timer := time.NewTimer(15 * time.Second)
+func (m *Manager) cancelAutoLocked() {
+	if m.autoCancel != nil {
+		close(m.autoCancel)
+		m.autoCancel = nil
+	}
+}
+
+// Each supervisor belongs to one user connection request. Cancellation and retries
+// share the manager lock, so Disconnect cannot be followed by an old auto-retry.
+func (m *Manager) autoFailoverMonitor(backups []vpngate.Server, engine EngineType, dnsProtect bool, cancel <-chan struct{}) {
+	timer := time.NewTimer(m.connectTimeout)
 	defer timer.Stop()
-
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(m.retryInterval)
 	defer ticker.Stop()
-
-	start := time.Now()
 	for {
+		timedOut := false
 		select {
-		case <-timer.C:
-			m.mu.Lock()
-			state := m.connInfo.Status.State
-			active := m.active
-			m.mu.Unlock()
-
-			if active == nil || state == StateConnected {
-				return
-			}
-
-			log.Printf("vpn: connection timed out after 15s, failing over to backup server %s", backups[0].HostName)
-			_ = m.Disconnect()
-			time.Sleep(500 * time.Millisecond)
-
-			if err := m.ConnectToServer(backups[0], engine, killSwitch, dnsProtect); err == nil && len(backups) > 1 {
-				go m.autoFailoverMonitor(backups[1:], engine, killSwitch, dnsProtect)
-			}
+		case <-cancel:
 			return
-
+		case <-timer.C:
+			timedOut = true
 		case <-ticker.C:
-			m.mu.Lock()
-			state := m.connInfo.Status.State
-			active := m.active
+		}
+		m.mu.Lock()
+		if m.autoCancel != cancel {
 			m.mu.Unlock()
-
-			if active == nil {
-				return
-			}
-			if state == StateConnected {
-				return
-			}
-			if state == StateError && time.Since(start) < 15*time.Second {
-				log.Printf("vpn: connection failed early (%s), failing over to %s", m.connInfo.Status.Message, backups[0].HostName)
-				_ = m.Disconnect()
-				time.Sleep(500 * time.Millisecond)
-
-				if err := m.ConnectToServer(backups[0], engine, killSwitch, dnsProtect); err == nil && len(backups) > 1 {
-					go m.autoFailoverMonitor(backups[1:], engine, killSwitch, dnsProtect)
-				}
-				return
+			return
+		}
+		state := m.connInfo.Status.State
+		if state == StateConnected || state == StateDisconnected {
+			m.mu.Unlock()
+			return
+		}
+		if !timedOut && state != StateError {
+			m.mu.Unlock()
+			continue
+		}
+		if err := m.disconnectLocked(); err != nil {
+			m.connInfo.Status = Status{State: StateError, Message: err.Error()}
+			info := m.connInfo
+			m.mu.Unlock()
+			m.notify(info)
+			return
+		}
+		err := errors.New("all VPN connection attempts failed")
+		if timedOut {
+			err = errors.New("VPN connection timed out")
+		}
+		for len(backups) > 0 {
+			server := backups[0]
+			backups = backups[1:]
+			err = m.connectLocked(server, engine, dnsProtect)
+			if err == nil || m.active != nil {
+				break
 			}
 		}
+		if err != nil {
+			m.connInfo.Status = Status{State: StateError, Message: err.Error()}
+		}
+		info := m.connInfo
+		m.mu.Unlock()
+		m.notify(info)
+		if err != nil {
+			return
+		}
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		timer.Reset(m.connectTimeout)
 	}
 }
 
 // ConnectToServer connects to a specific VPNGate server.
 func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, killSwitch, dnsProtect bool) error {
-	m.mu.Lock()
-	var failedInfo *ConnectionInfo
-	defer func() {
-		m.mu.Unlock()
-		if failedInfo != nil && m.onStatusChange != nil {
-			m.onStatusChange(*failedInfo)
-		}
-	}()
-
-	if m.active != nil {
-		return fmt.Errorf("already connected — disconnect first")
+	if killSwitch {
+		return errors.New("kill switch is unavailable: a verified tunnel-aware implementation is required")
 	}
+	m.mu.Lock()
+	if m.active != nil {
+		m.mu.Unlock()
+		return errors.New("already connected — disconnect first")
+	}
+	m.requestID++
+	m.cancelAutoLocked()
+	err := m.connectLocked(server, engine, dnsProtect)
+	info := m.connInfo
+	m.mu.Unlock()
+	m.notify(info)
+	return err
+}
 
+func (m *Manager) connectLocked(server vpngate.Server, engine EngineType, dnsProtect bool) error {
 	eng, ok := m.engines[engine]
 	if !ok {
 		return fmt.Errorf("unknown engine: %s", engine)
@@ -186,57 +253,81 @@ func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, kill
 	if !eng.Available() {
 		return fmt.Errorf("engine %s is not available on this system", engine)
 	}
-
 	if server.OpenVPNConfigBase64 == "" {
 		return fmt.Errorf("server %s has no OpenVPN config", server.HostName)
 	}
-
+	if m.dnsProtection.IsEnabled() {
+		return errors.New("restore pending DNS settings before reconnecting")
+	}
+	m.stopMonitorLocked()
 	statusCh := make(chan Status, 16)
 	stopMon := make(chan struct{})
-	m.statusCh = statusCh
-	m.stopMon = stopMon
-	m.active = eng
+	m.statusCh, m.stopMon, m.active = statusCh, stopMon, eng
 	m.connInfo = ConnectionInfo{
-		ServerHostName:  server.HostName,
-		ServerIP:        server.IP,
-		CountryLong:     server.CountryLong,
-		CountryShort:    server.CountryShort,
-		Engine:          engine,
-		KillSwitchOn:    killSwitch,
-		DNSProtectionOn: dnsProtect,
-		Status:          Status{State: StateConnecting},
+		ServerHostName: server.HostName, ServerIP: server.IP, CountryLong: server.CountryLong,
+		CountryShort: server.CountryShort, Engine: engine, Status: Status{State: StateConnecting},
 	}
-
-	// VPNGate already encodes the profile. Each engine decodes it once.
-	config := []byte(server.OpenVPNConfigBase64)
-
-	if err := eng.Connect(config, statusCh); err != nil {
-		m.active = nil
-		close(stopMon)
+	if err := eng.Connect([]byte(server.OpenVPNConfigBase64), statusCh); err != nil {
+		cleanupErr := eng.Disconnect()
+		if cleanupErr == nil {
+			m.active = nil
+		}
+		m.stopMonitorLocked()
+		err = errors.Join(err, cleanupErr)
 		m.connInfo.Status = Status{State: StateError, Message: fmt.Sprintf("connect: %v", err)}
-		info := m.connInfo
-		failedInfo = &info
 		return fmt.Errorf("connect: %w", err)
 	}
-
-	go m.monitorStatus(statusCh, stopMon, killSwitch, dnsProtect)
+	go m.monitorStatus(statusCh, stopMon, dnsProtect)
 	return nil
 }
 
-// Disconnect tears down the active VPN connection.
+func (m *Manager) stopMonitorLocked() {
+	if m.stopMon != nil {
+		close(m.stopMon)
+		m.stopMon = nil
+	}
+}
+
+func (m *Manager) disconnectLocked() error {
+	m.stopMonitorLocked()
+	var err error
+	if m.active != nil {
+		err = m.active.Disconnect()
+	}
+	if err == nil {
+		m.active = nil
+	}
+	err = errors.Join(err, m.dnsProtection.Disable())
+	m.connInfo.DNSProtectionOn = m.connInfo.Status.State == StateConnected && m.dnsProtection.IsEnabled()
+	m.connInfo.KillSwitchOn = false
+	return err
+}
+
 func (m *Manager) Disconnect() error {
 	m.mu.Lock()
-	eng := m.active
+	m.requestID++
+	m.cancelAutoLocked()
+	err := m.disconnectLocked()
+	m.connInfo.Status = Status{State: StateDisconnected}
+	m.connInfo.DNSProtectionOn = false
+	if err != nil {
+		m.connInfo.Status = Status{State: StateError, Message: err.Error()}
+	}
+	info := m.connInfo
 	m.mu.Unlock()
+	m.notify(info)
+	return err
+}
 
-	if eng == nil {
-		return nil
+func (m *Manager) notify(_ ConnectionInfo) {
+	m.notifyMu.Lock()
+	defer m.notifyMu.Unlock()
+	m.mu.Lock()
+	info := m.connInfo
+	m.mu.Unlock()
+	if m.onStatusChange != nil {
+		m.onStatusChange(info)
 	}
-
-	if err := eng.Disconnect(); err != nil {
-		return fmt.Errorf("disconnect: %w", err)
-	}
-	return nil
 }
 
 // GetConnectionInfo returns the current connection state.
@@ -248,12 +339,10 @@ func (m *Manager) GetConnectionInfo() ConnectionInfo {
 
 // SetKillSwitch enables or disables the kill switch.
 func (m *Manager) SetKillSwitch(enabled bool) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	if enabled {
-		return m.killSwitch.Enable()
+		return errors.New("kill switch is unavailable: a verified tunnel-aware implementation is required")
 	}
-	return m.killSwitch.Disable()
+	return nil
 }
 
 // SetDNSResolver sets a custom DNS resolver address.
@@ -271,57 +360,44 @@ func (m *Manager) RefreshServers() {
 	m.vpngateClient.InvalidateCache()
 }
 
-func (m *Manager) monitorStatus(statusCh <-chan Status, stopMon <-chan struct{}, killSwitch, dnsProtect bool) {
+func (m *Manager) monitorStatus(statusCh <-chan Status, stopMon <-chan struct{}, dnsProtect bool) {
 	for {
 		select {
 		case <-stopMon:
 			return
-		case s, ok := <-statusCh:
+		case status, ok := <-statusCh:
 			if !ok {
+				status = Status{State: StateError, Message: "VPN engine stopped reporting status"}
+			}
+			m.handleStatusUpdate(status, stopMon, dnsProtect)
+			if !ok || status.State == StateError || status.State == StateDisconnected {
 				return
 			}
-			m.handleStatusUpdate(s, killSwitch, dnsProtect)
 		}
 	}
 }
 
-func (m *Manager) handleStatusUpdate(s Status, killSwitch, dnsProtect bool) {
+func (m *Manager) handleStatusUpdate(status Status, source <-chan struct{}, dnsProtect bool) {
 	m.mu.Lock()
-	m.connInfo.Status = s
+	if source != m.stopMon || source == nil {
+		m.mu.Unlock()
+		return
+	}
+	log.Printf("vpn: state=%s msg=%s", status.State, status.Message)
+	if status.State == StateConnected && dnsProtect {
+		if err := m.dnsProtection.Enable(); err != nil {
+			status = Status{State: StateError, Message: fmt.Sprintf("DNS setup failed: %v", err)}
+		}
+	}
+	if status.State == StateDisconnected || status.State == StateError {
+		if err := m.disconnectLocked(); err != nil {
+			status = Status{State: StateError, Message: status.Message + "; cleanup failed: " + err.Error()}
+		}
+	}
+	m.connInfo.Status = status
+	m.connInfo.DNSProtectionOn = m.connInfo.Status.State == StateConnected && m.dnsProtection.IsEnabled()
+	m.connInfo.KillSwitchOn = false
 	info := m.connInfo
 	m.mu.Unlock()
-
-	log.Printf("vpn: state=%s msg=%s", s.State, s.Message)
-
-	switch s.State {
-	case StateConnected:
-		if dnsProtect {
-			if err := m.dnsProtection.Enable(); err != nil {
-				log.Printf("vpn: enable DNS protection: %v", err)
-			}
-		}
-		if killSwitch {
-			if err := m.killSwitch.Enable(); err != nil {
-				log.Printf("vpn: enable kill switch: %v", err)
-			}
-		}
-	case StateDisconnected, StateError:
-		if m.dnsProtection.IsEnabled() {
-			if err := m.dnsProtection.Disable(); err != nil {
-				log.Printf("vpn: disable DNS protection: %v", err)
-			}
-		}
-		if m.killSwitch.IsEnabled() {
-			if err := m.killSwitch.Disable(); err != nil {
-				log.Printf("vpn: disable kill switch: %v", err)
-			}
-		}
-		m.mu.Lock()
-		m.active = nil
-		m.mu.Unlock()
-	}
-
-	if m.onStatusChange != nil {
-		m.onStatusChange(info)
-	}
+	m.notify(info)
 }

@@ -45,11 +45,11 @@ func main() {
 	}
 
 	if !*noElevate && !isBindingGen && !elevate.IsElevated() {
-		if err := elevate.RelaunchElevated(); err == nil {
+		err := elevate.RelaunchElevated()
+		if err == nil {
 			os.Exit(0)
-		} else {
-			log.Printf("elevation request failed or was cancelled: %v", err)
 		}
+		log.Printf("elevation request failed or was cancelled: %v", err)
 	}
 
 	err := logger.SetupLogger()

@@ -1,4 +1,4 @@
-import { Button, Callout, HTMLSelect, Switch, Tag, InputGroup, ProgressBar, Icon } from '@blueprintjs/core';
+import { Button, HTMLSelect, Switch, Tag, InputGroup, ProgressBar, Icon } from '@blueprintjs/core';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -49,7 +49,7 @@ export function VPN() {
   const [country, setCountry] = useState('');
   const [autoSelect, setAutoSelect] = useState(true);
   const [selectedServer, setSelectedServer] = useState<VPNServer | null>(null);
-  const [killSwitch, setKillSwitch] = useState(false);
+  const killSwitch = false;
   const [dnsProtect, setDnsProtect] = useState(true);
   const [dnsResolver, setDnsResolver] = useState('1.1.1.1');
   const [editingDns, setEditingDns] = useState(false);
@@ -284,12 +284,12 @@ export function VPN() {
 
           {/* Kill switch */}
           <div className="vpn-controls__switch-row">
-            <label>{t('vpn.controls.killSwitch')}</label>
+            <label>{t('vpn.controls.killSwitch')} — unavailable</label>
             <Switch
               aria-label={t('vpn.controls.killSwitch')}
               checked={killSwitch}
-              onChange={(e) => setKillSwitch(e.currentTarget.checked)}
-              disabled={!canAct || isConnected}
+              disabled
+              title="Unavailable: tunnel-aware protection is not implemented"
               inline
             />
           </div>

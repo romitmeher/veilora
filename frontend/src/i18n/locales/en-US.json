@@ -212,7 +212,7 @@
       "countryHint": "(ISO code, e.g. JP)",
       "autoSelect": "Auto-select server",
       "killSwitch": "Kill switch",
-      "dnsProtection": "DNS leak protection",
+      "dnsProtection": "Custom DNS",
       "resolver": "DNS resolver",
       "save": "Save"
     },

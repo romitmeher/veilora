@@ -83,7 +83,7 @@ export default function HomeScreen() {
   const locationLabel = isConnected
     ? "Browsing safely from"
     : isConnecting
-    ? "Connecting to"
+    ? "Demo location"
     : "Browsing safely from";
 
   return (
@@ -115,10 +115,10 @@ export default function HomeScreen() {
           />
           <Text style={[styles.statusText, { color: statusColor }]}>
             {isConnected
-              ? "Protected"
+              ? "Demo connected"
               : isConnecting
-              ? "Connecting..."
-              : "Not Protected"}
+              ? "Simulating..."
+              : "Demo disconnected"}
           </Text>
         </View>
       </View>
@@ -191,7 +191,7 @@ export default function HomeScreen() {
                   : styles.connectButtonText,
               ]}
             >
-              {isConnected ? "Disconnect" : isConnecting ? "Connecting..." : "Connect"}
+              {isConnected ? "End demo" : isConnecting ? "Simulating..." : "Try demo"}
             </Text>
           </Pressable>
         </Animated.View>
