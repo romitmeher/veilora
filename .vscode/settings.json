@@ -1,5 +1,17 @@
 {
   "editor.formatOnSave": true,
+  "dotnet.server.useOmnisharp": false,
+  "dotnet.autoInsertUsingLocations": false,
+  "dotnet.projects.enableAutomaticRestore": false,
+  "dotnet.projects.enableAutomaticSolutionGeneration": false,
+  "dotnet.enableDefaultWorkspaceSolutionLoading": false,
+  "dotnet.defaultSolution": "disable",
+  "files.exclude": {
+    "third_party": true
+  },
+  "search.exclude": {
+    "third_party": true
+  },
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
