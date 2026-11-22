@@ -14,9 +14,10 @@ type testAttempt struct {
 	config string
 }
 type scenarioEngine struct {
-	attempts  chan testAttempt
-	count     atomic.Int32
-	failFirst bool
+	attempts     chan testAttempt
+	count        atomic.Int32
+	failFirst    bool
+	onDisconnect func()
 }
 
 func (*scenarioEngine) Name() string    { return "fixture" }
@@ -29,7 +30,34 @@ func (e *scenarioEngine) Connect(config []byte, status chan<- Status) error {
 	}
 	return nil
 }
-func (*scenarioEngine) Disconnect() error { return nil }
+func (e *scenarioEngine) Disconnect() error {
+	if e.onDisconnect != nil {
+		e.onDisconnect()
+	}
+	return nil
+}
+
+func TestDNSRestoredBeforeAdapterRemoval(t *testing.T) {
+	m, e := newSupervisorFixture(t)
+	restored := false
+	dns := NewDNSProtection()
+	dns.snapshot = func() (string, error) { return "fixture", nil }
+	dns.apply = func(string, string) error { return nil }
+	dns.restore = func(string) error { restored = true; return nil }
+	if err := dns.Enable(); err != nil {
+		t.Fatal(err)
+	}
+	m.dnsProtection = dns
+	m.active = e
+	e.onDisconnect = func() {
+		if !restored {
+			t.Error("adapter removed before DNS restoration")
+		}
+	}
+	if err := m.Disconnect(); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func newSupervisorFixture(t *testing.T) (*Manager, *scenarioEngine) {
 	t.Helper()
