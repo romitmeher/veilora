@@ -1,4 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { File, Paths } from "expo-file-system";
+import * as IntentLauncher from "expo-intent-launcher";
+import * as Sharing from "expo-sharing";
 import React, {
   createContext,
   useCallback,
@@ -7,6 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Linking, Platform } from "react-native";
 
 export type VPNStatus = "disconnected" | "connecting" | "connected";
 export type VPNProtocol = "openvpn-udp" | "openvpn-tcp" | "softether";
@@ -22,6 +26,7 @@ export interface VPNServer {
   sessions: number;
   operator: string;
   score: number;
+  ovpnConfigBase64?: string;
 }
 
 export interface VPNSettings {
@@ -39,25 +44,13 @@ interface VPNContextValue {
   loadingServers: boolean;
   publicIp: string | null;
   settings: VPNSettings;
-  connect: (server?: VPNServer) => void;
+  connect: (server?: VPNServer) => Promise<void>;
   disconnect: () => void;
   selectServer: (server: VPNServer) => void;
-  refreshServers: () => void;
+  refreshServers: () => Promise<void>;
   updateSettings: (patch: Partial<VPNSettings>) => void;
+  openVPNSettings: () => Promise<void>;
 }
-
-const MOCK_SERVERS: VPNServer[] = [
-  { id: "jp1", hostName: "vpn-jp1.vpngate.net", ip: "103.231.88.1", countryLong: "Japan", countryShort: "JP", ping: 12, speedMbps: 180, sessions: 42, operator: "VPNGATE", score: 980 },
-  { id: "us1", hostName: "vpn-us1.vpngate.net", ip: "198.50.214.1", countryLong: "United States", countryShort: "US", ping: 85, speedMbps: 95, sessions: 88, operator: "VPNGATE", score: 820 },
-  { id: "kr1", hostName: "vpn-kr1.vpngate.net", ip: "211.234.132.1", countryLong: "Korea", countryShort: "KR", ping: 28, speedMbps: 210, sessions: 61, operator: "VPNGATE", score: 960 },
-  { id: "de1", hostName: "vpn-de1.vpngate.net", ip: "185.220.101.1", countryLong: "Germany", countryShort: "DE", ping: 65, speedMbps: 120, sessions: 33, operator: "VPNGATE", score: 870 },
-  { id: "sg1", hostName: "vpn-sg1.vpngate.net", ip: "128.199.60.1", countryLong: "Singapore", countryShort: "SG", ping: 35, speedMbps: 160, sessions: 55, operator: "VPNGATE", score: 910 },
-  { id: "fr1", hostName: "vpn-fr1.vpngate.net", ip: "51.159.65.1", countryLong: "France", countryShort: "FR", ping: 70, speedMbps: 90, sessions: 28, operator: "VPNGATE", score: 800 },
-  { id: "ca1", hostName: "vpn-ca1.vpngate.net", ip: "149.56.232.1", countryLong: "Canada", countryShort: "CA", ping: 90, speedMbps: 110, sessions: 45, operator: "VPNGATE", score: 790 },
-  { id: "nl1", hostName: "vpn-nl1.vpngate.net", ip: "194.165.16.1", countryLong: "Netherlands", countryShort: "NL", ping: 55, speedMbps: 140, sessions: 37, operator: "VPNGATE", score: 850 },
-  { id: "au1", hostName: "vpn-au1.vpngate.net", ip: "103.216.224.1", countryLong: "Australia", countryShort: "AU", ping: 140, speedMbps: 75, sessions: 22, operator: "VPNGATE", score: 730 },
-  { id: "se1", hostName: "vpn-se1.vpngate.net", ip: "193.32.160.1", countryLong: "Sweden", countryShort: "SE", ping: 60, speedMbps: 130, sessions: 18, operator: "VPNGATE", score: 840 },
-];
 
 const DEFAULT_SETTINGS: VPNSettings = {
   protocol: "openvpn-udp",
@@ -70,6 +63,7 @@ const DEFAULT_SETTINGS: VPNSettings = {
 const STORAGE_KEYS = {
   settings: "@vpn/settings",
   selectedServer: "@vpn/selected_server",
+  cachedServers: "@vpn/cached_servers",
 };
 
 const VPNContext = createContext<VPNContextValue | null>(null);
@@ -81,23 +75,24 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
   const [loadingServers, setLoadingServers] = useState(false);
   const [publicIp, setPublicIp] = useState<string | null>(null);
   const [settings, setSettings] = useState<VPNSettings>(DEFAULT_SETTINGS);
-  const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [savedSettings, savedServer] = await Promise.all([
+        const [savedSettings, savedServer, cachedServers] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.settings),
           AsyncStorage.getItem(STORAGE_KEYS.selectedServer),
+          AsyncStorage.getItem(STORAGE_KEYS.cachedServers),
         ]);
         if (savedSettings) setSettings(JSON.parse(savedSettings));
         if (savedServer) setSelectedServer(JSON.parse(savedServer));
+        if (cachedServers) {
+          const list = JSON.parse(cachedServers);
+          if (Array.isArray(list) && list.length > 0) setServers(list);
+        }
       } catch {}
     })();
     refreshServers();
-    return () => {
-      if (connectTimer.current) clearTimeout(connectTimer.current);
-    };
   }, []);
 
   const refreshServers = useCallback(async () => {
@@ -115,6 +110,7 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
           const ping = parseInt(cols[3] ?? "999", 10);
           const speed = Math.round(parseInt(cols[4] ?? "0", 10) / 1_000_000);
           const score = parseInt(cols[2] ?? "0", 10);
+          const b64 = cols[14] ? cols[14].trim() : undefined;
           return {
             id: cols[1] ?? "",
             hostName: cols[0] ?? "",
@@ -126,49 +122,77 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
             sessions: parseInt(cols[7] ?? "0", 10),
             operator: cols[12] ?? "VPNGATE",
             score: isNaN(score) ? 0 : score,
+            ovpnConfigBase64: b64,
           } as VPNServer;
         })
         .filter(Boolean)
-        .filter((s) => s!.ip && s!.ping < 500)
+        .filter((s) => s!.ip && s!.ping < 600)
         .sort((a, b) => (b?.score ?? 0) - (a?.score ?? 0))
         .slice(0, 50) as VPNServer[];
 
       if (parsed.length > 0) {
         setServers(parsed);
-      } else {
-        setServers(MOCK_SERVERS);
+        if (!selectedServer) {
+          setSelectedServer(parsed[0]);
+        }
+        AsyncStorage.setItem(STORAGE_KEYS.cachedServers, JSON.stringify(parsed)).catch(() => {});
       }
-    } catch {
-      setServers(MOCK_SERVERS);
+    } catch (err) {
+      console.warn("Failed to fetch VPNGate servers:", err);
     } finally {
       setLoadingServers(false);
     }
-  }, []);
+  }, [selectedServer]);
 
   const fetchPublicIp = useCallback(async () => {
     try {
       const res = await fetch("https://api.ipify.org?format=json");
-      const data = await res.json() as { ip: string };
+      const data = (await res.json()) as { ip: string };
       setPublicIp(data.ip);
+      return data.ip;
     } catch {
       setPublicIp(null);
+      return null;
     }
   }, []);
 
-  const connect = useCallback((server?: VPNServer) => {
-    const target = server ?? selectedServer ?? servers[0] ?? MOCK_SERVERS[0];
-    if (target) setSelectedServer(target);
-    setStatus("connecting");
-    setPublicIp(null);
-    if (connectTimer.current) clearTimeout(connectTimer.current);
-    connectTimer.current = setTimeout(() => {
-      setStatus("connected");
-      fetchPublicIp();
-    }, 2000 + Math.random() * 1000);
-  }, [selectedServer, servers, fetchPublicIp]);
+  const connect = useCallback(
+    async (server?: VPNServer) => {
+      const target = server ?? selectedServer ?? servers[0];
+      if (!target) return;
+      setSelectedServer(target);
+      setStatus("connecting");
+
+      // Write real OpenVPN profile to disk and open system profile sharing/import
+      try {
+        if (target.ovpnConfigBase64) {
+          const hostPart = (target.hostName || target.ip).split(".")[0];
+          const file = new File(Paths.cache, `${target.countryShort}_${hostPart}.ovpn`);
+          file.create({ overwrite: true });
+          file.write(target.ovpnConfigBase64, { encoding: "base64" });
+
+          if (Platform.OS !== "web" && (await Sharing.isAvailableAsync())) {
+            await Sharing.shareAsync(file.uri, {
+              mimeType: "application/x-openvpn-profile",
+              dialogTitle: `Import ${target.countryLong} VPN Profile`,
+              UTI: "public.text",
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("VPN profile export error:", e);
+      }
+
+      // Check public IP
+      setTimeout(async () => {
+        await fetchPublicIp();
+        setStatus("connected");
+      }, 1500);
+    },
+    [selectedServer, servers, fetchPublicIp]
+  );
 
   const disconnect = useCallback(() => {
-    if (connectTimer.current) clearTimeout(connectTimer.current);
     setStatus("disconnected");
     setPublicIp(null);
   }, []);
@@ -188,9 +212,34 @@ export function VPNProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const openVPNSettings = useCallback(async () => {
+    if (Platform.OS === "android") {
+      try {
+        await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.VPN_SETTINGS);
+      } catch {
+        Linking.openSettings();
+      }
+    } else {
+      Linking.openSettings();
+    }
+  }, []);
+
   return (
     <VPNContext.Provider
-      value={{ status, selectedServer, servers, loadingServers, publicIp, settings, connect, disconnect, selectServer, refreshServers, updateSettings }}
+      value={{
+        status,
+        selectedServer,
+        servers,
+        loadingServers,
+        publicIp,
+        settings,
+        connect,
+        disconnect,
+        selectServer,
+        refreshServers,
+        updateSettings,
+        openVPNSettings,
+      }}
     >
       {children}
     </VPNContext.Provider>
