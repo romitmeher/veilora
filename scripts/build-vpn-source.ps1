@@ -26,7 +26,7 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
 
 Push-Location $root
 try {
-    Invoke-Checked git @('submodule','update','--init','--recursive','third_party/openvpn','third_party/softether','third_party/vcpkg')
+    Invoke-Checked git @('submodule','update','--init','--recursive','--depth','1','third_party/openvpn','third_party/softether','third_party/vcpkg')
     $env:VCPKG_ROOT = Join-Path $root 'third_party/vcpkg'
     Invoke-Checked (Join-Path $env:VCPKG_ROOT 'bootstrap-vcpkg.bat') @('-disableMetrics')
     $source = Join-Path $root "third_party/$Engine"

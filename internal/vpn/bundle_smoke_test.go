@@ -33,8 +33,8 @@ func TestNativeRuntimeSmoke(t *testing.T) {
 	}
 	t.Setenv("PATH", systemDir)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 	out, err := hiddenCommandContext(ctx, filepath.Join(dir, "openvpn.exe"), "--version").CombinedOutput()
+	cancel()
 	if err != nil || !strings.Contains(string(out), "OpenVPN 2.7.9") {
 		t.Fatalf("source-built daemon failed: %v: %s", err, out)
 	}
@@ -47,6 +47,8 @@ func TestNativeRuntimeSmoke(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 	out, err = hiddenCommandContext(ctx, filepath.Join(dir, "tapctl.exe"), "list").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), id) {
 		t.Fatalf("bundled adapter unavailable: %v: %s", err, out)
