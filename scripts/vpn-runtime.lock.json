@@ -1,0 +1,52 @@
+{
+  "sources": [
+    {
+      "name": "vcpkg-8469b01206bff843500592f18dcab88b13331da6.tar.gz",
+      "url": "https://codeload.github.com/microsoft/vcpkg/tar.gz/8469b01206bff843500592f18dcab88b13331da6",
+      "hash": "0ff1e830d4afefb31eda84ab0bc150a0021e0d33e80d161ca3848414d8ef38a3"
+    },
+    {
+      "name": "openvpn-2.7.9.tar.gz",
+      "url": "https://swupdate.openvpn.org/community/releases/openvpn-2.7.9.tar.gz",
+      "hash": "c42a6ed892ddfe2d6e3317a5040f19bec5827564affb2fe3f2b3904a94daacb1"
+    },
+    {
+      "name": "tap-windows6-9.27.0.tar.gz",
+      "url": "https://codeload.github.com/OpenVPN/tap-windows6/tar.gz/refs/tags/9.27.0",
+      "hash": "5e807ab86740b654a2a63866b8749f582f16258d8e4dbcb6813be488ec59dde3"
+    },
+    {
+      "name": "openvpn-build-2.7.9-I002.tar.gz",
+      "url": "https://codeload.github.com/OpenVPN/openvpn-build/tar.gz/refs/tags/OpenVPN-2.7.9-I002",
+      "hash": "5b44ad9f3da5e995df23890d26473b6b365690e4c9418d1d46dfb7f5a11fd149"
+    },
+    {
+      "name": "lzo-2.10.tar.gz",
+      "url": "https://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz",
+      "algorithm": "sha512",
+      "hash": "a3dae5e4a6b93b1f5bf7435e8ab114a9be57252e9efc5dd444947d7a2d031b0819f34bcaeb35f60b5629a01b1238d738735a64db8f672be9690d3c80094511a4"
+    },
+    {
+      "name": "lz4-1.11.0.tar.gz",
+      "url": "https://github.com/lz4/lz4/archive/v1.11.0.tar.gz",
+      "algorithm": "sha512",
+      "hash": "5638a9ca76f333bea718b457588eadafd8dddbc4c8afcd8e21992805afff7af283283642558e52d1f1d4655dbe26f2aa85fa89dc365041ca621baf79c552f364"
+    },
+    {
+      "name": "openssl-3.6.5.tar.gz",
+      "url": "https://github.com/openssl/openssl/archive/openssl-3.6.5.tar.gz",
+      "algorithm": "sha512",
+      "hash": "40f0b346a9a5cf4cb37f1ecebdc74750c39a95783710061bfac58964883b0831543ecee0aee9f747ea093781b13c58a543b0b935d222519e3cb19648d77a0276"
+    },
+    {
+      "name": "pkcs11-helper-1.31.0.tar.bz2",
+      "url": "https://github.com/OpenSC/pkcs11-helper/releases/download/pkcs11-helper-1.31.0/pkcs11-helper-1.31.0.tar.bz2",
+      "algorithm": "sha512",
+      "hash": "0833efc59e9093dd398a54640d858b01a830ef7adfb40321c1e0ed0afa004500fc1259cc66bc49c5263935adeda0a3bfe658de538eefd66888685a71f731c484"
+    }
+  ],
+  "tap": {
+    "url": "https://github.com/OpenVPN/tap-windows6/releases/download/9.27.0/dist.win10.zip",
+    "sha256": "36e2609b7ceefedcb978ce5c48caf9e0e5af83423717c4e2e3c1d7ebca8f62a5"
+  }
+}

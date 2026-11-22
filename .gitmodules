@@ -1,0 +1,9 @@
+[submodule "third_party/openvpn"]
+	path = third_party/openvpn
+	url = https://github.com/OpenVPN/openvpn.git
+[submodule "third_party/softether"]
+	path = third_party/softether
+	url = https://github.com/SoftEtherVPN/SoftEtherVPN.git
+[submodule "third_party/vcpkg"]
+	path = third_party/vcpkg
+	url = https://github.com/microsoft/vcpkg.git

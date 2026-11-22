@@ -8,12 +8,19 @@ vars:
     sh: node -e 'const {randomUUID}=require("node:crypto");console.log(randomUUID());'
 
 tasks:
+  prepare-vpn:
+    desc: Prepare the bundled Windows VPN runtime without installing it.
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-vpn-source.ps1 -Arch {{default .ARCH64 .ARCH}}
+
   prod:
     desc: Create a production build of the application.
     cmds:
-      - wails build -o Veilora.exe -platform "windows/{{default .ARCH64 .ARCH}}" -nsis -ldflags "-X 'github.com/irbis-sh/zen-desktop/internal/config.Version={{.GIT_TAG}}' -X 'github.com/irbis-sh/zen-desktop/internal/constants.InstanceID={{.INSTANCE_ID}}'" -m -skipbindings -tags prod
+      - task: prepare-vpn
+      - wails build -o Veilora.exe -platform "windows/{{default .ARCH64 .ARCH}}" -nsis -ldflags "-X 'github.com/irbis-sh/zen-desktop/internal/config.Version={{.GIT_TAG}}' -X 'github.com/irbis-sh/zen-desktop/internal/constants.InstanceID={{.INSTANCE_ID}}'" -m -skipbindings -tags prod,bundledvpn
 
   prod-noupdate:
     desc: Create a production build of the application with self-updates disabled. Doesn't build an installer.
     cmds:
-      - wails build -o Veilora.exe -platform "windows/{{default .ARCH64 .ARCH}}" -ldflags "-X 'github.com/irbis-sh/zen-desktop/internal/config.Version={{.GIT_TAG}}' -X 'github.com/irbis-sh/zen-desktop/internal/constants.InstanceID={{.INSTANCE_ID}}' -X 'github.com/irbis-sh/zen-desktop/internal/selfupdate.NoSelfUpdate=true'" -m -skipbindings -tags prod
+      - task: prepare-vpn
+      - wails build -o Veilora.exe -platform "windows/{{default .ARCH64 .ARCH}}" -ldflags "-X 'github.com/irbis-sh/zen-desktop/internal/config.Version={{.GIT_TAG}}' -X 'github.com/irbis-sh/zen-desktop/internal/constants.InstanceID={{.INSTANCE_ID}}' -X 'github.com/irbis-sh/zen-desktop/internal/selfupdate.NoSelfUpdate=true'" -m -skipbindings -tags prod,bundledvpn

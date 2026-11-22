@@ -64,6 +64,10 @@ func InstallEngineType(ctx context.Context, engine EngineType, progressCb func(E
 
 	switch engine {
 	case EngineOpenVPN:
+		if len(embeddedVPN()) > 0 {
+			_, err = bundledBinary()
+			break
+		}
 		switch runtime.GOOS {
 		case "windows":
 			err = installWindowsEngine(ctx, report)

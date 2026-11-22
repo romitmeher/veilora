@@ -298,6 +298,9 @@ func (m *Manager) stopMonitorLocked() {
 
 func (m *Manager) disconnectLocked() error {
 	m.stopMonitorLocked()
+	// The bundled engine deletes its adapter on disconnect. Restore DNS while
+	// that adapter still exists, including on asynchronous engine failures.
+	dnsErr := m.dnsProtection.Disable()
 	var err error
 	if m.active != nil {
 		err = m.active.Disconnect()
@@ -305,7 +308,7 @@ func (m *Manager) disconnectLocked() error {
 	if err == nil {
 		m.active = nil
 	}
-	err = errors.Join(err, m.dnsProtection.Disable())
+	err = errors.Join(err, dnsErr)
 	m.connInfo.DNSProtectionOn = m.connInfo.Status.State == StateConnected && m.dnsProtection.IsEnabled()
 	m.connInfo.KillSwitchOn = false
 	return err
