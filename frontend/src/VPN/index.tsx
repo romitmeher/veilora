@@ -59,9 +59,9 @@ export function VPN() {
   const [dnsDraft, setDnsDraft] = useState('');
   const [dnsSaving, setDnsSaving] = useState(false);
 
-  // Auto-connect on launch configuration for SoftEther and OpenVPN
-  const [autoConnectEngine, setAutoConnectEngine] = useState<'softether' | 'openvpn' | 'off'>(() => {
-    return (localStorage.getItem('veilora_vpn_autoconnect') as 'softether' | 'openvpn' | 'off') || 'off';
+  // Auto-connect on launch configuration for the bundled OpenVPN engine.
+  const [autoConnectEngine, setAutoConnectEngine] = useState<'openvpn' | 'off'>(() => {
+    return (localStorage.getItem('veilora_vpn_autoconnect') as 'openvpn' | 'off') || 'off';
   });
 
   const [installing, setInstalling] = useState(false);
@@ -112,7 +112,7 @@ export function VPN() {
       }
     });
     return cancel;
-  }, [loadEngines]);
+  }, [loadEngines, vpnState]);
 
   const handleInstallEngine = async (targetEngine: EngineType = 'softether') => {
     setInstalling(true);
@@ -145,14 +145,14 @@ export function VPN() {
 
     // Check autostart preference on app launch
     const saved = localStorage.getItem('veilora_vpn_autoconnect');
-    if ((saved === 'softether' || saved === 'openvpn') && vpnState === 'disconnected') {
+    if (saved === 'openvpn' && vpnState === 'disconnected') {
       VPNAvailableEngines().then((avail) => {
-        if (avail && avail.includes(saved as EngineType)) {
-          VPNConnectBest('', saved as EngineType, false, true).catch(() => {});
+        if (avail && avail.includes('openvpn')) {
+          VPNConnectBest('', 'openvpn', false, true).catch(() => {});
         }
       });
     }
-  }, [loadEngines]);
+  }, [loadEngines, vpnState]);
 
   const handleConnect = useCallback(async () => {
     try {
@@ -196,15 +196,13 @@ export function VPN() {
     }
   }, [t]);
 
-  const handleToggleAutoConnect = (target: 'softether' | 'openvpn') => {
+  const handleToggleAutoConnect = () => {
+    const target = 'openvpn';
     const next = autoConnectEngine === target ? 'off' : target;
     setAutoConnectEngine(next);
     localStorage.setItem('veilora_vpn_autoconnect', next);
     AppToaster.show({
-      message:
-        next === 'off'
-          ? 'Auto-connect on launch disabled'
-          : `Auto-connect on launch set to ${next === 'softether' ? 'SoftEther' : 'OpenVPN'}`,
+      message: next === 'off' ? 'Auto-connect on launch disabled' : 'Auto-connect on launch set to OpenVPN',
       intent: 'primary',
     });
   };
@@ -401,12 +399,8 @@ export function VPN() {
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              <option value="softether">
-                SoftEther {availableEngines.includes('softether') ? '(installed)' : '(not installed)'}
-              </option>
-              <option value="openvpn">
-                OpenVPN {availableEngines.includes('openvpn') ? '(ready)' : '(unavailable)'}
-              </option>
+              {availableEngines.includes('openvpn') && <option value="openvpn">OpenVPN (ready)</option>}
+              {availableEngines.includes('softether') && <option value="softether">SoftEther (installed)</option>}
             </HTMLSelect>
           </div>
 
@@ -441,25 +435,13 @@ export function VPN() {
             />
           </div>
 
-          {/* Auto-connect on startup option for SoftEther */}
-          <div className="vpn-controls__switch-row">
-            <label>Auto-connect via SoftEther on launch</label>
-            <Switch
-              aria-label="Auto-connect via SoftEther on launch"
-              checked={autoConnectEngine === 'softether'}
-              onChange={() => handleToggleAutoConnect('softether')}
-              disabled={!canAct || isConnected}
-              inline
-            />
-          </div>
-
           {/* Auto-connect on startup option for OpenVPN */}
           <div className="vpn-controls__switch-row">
             <label>Auto-connect via OpenVPN on launch</label>
             <Switch
               aria-label="Auto-connect via OpenVPN on launch"
               checked={autoConnectEngine === 'openvpn'}
-              onChange={() => handleToggleAutoConnect('openvpn')}
+              onChange={handleToggleAutoConnect}
               disabled={!canAct || isConnected}
               inline
             />

@@ -31,6 +31,9 @@ func (e *SoftEtherEngine) Name() string { return string(EngineSoftEther) }
 
 // Available checks whether vpnclient and vpncmd are present on this system.
 func (e *SoftEtherEngine) Available() bool {
+	if len(embeddedVPN()) > 0 {
+		return false
+	}
 	return e.FindClientBinary() != "" && e.FindCmdBinary() != ""
 }
 
