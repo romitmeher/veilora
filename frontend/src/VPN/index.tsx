@@ -13,6 +13,7 @@ import {
   VPNInstallEngine,
   VPNGetDNSResolver,
   VPNSetDNSResolver,
+  VPNGetCountries,
 } from 'wails/go/app/App';
 import { EventsOn } from 'wails/runtime/runtime';
 
@@ -47,6 +48,7 @@ export function VPN() {
   const [enginesLoading, setEnginesLoading] = useState(true);
   const [enginesError, setEnginesError] = useState(false);
   const [country, setCountry] = useState('');
+  const [countries, setCountries] = useState<string[]>([]);
   const [autoSelect, setAutoSelect] = useState(true);
   const [selectedServer, setSelectedServer] = useState<VPNServer | null>(null);
   const killSwitch = false;
@@ -118,6 +120,10 @@ export function VPN() {
 
   useEffect(() => {
     loadEngines();
+
+    VPNGetCountries()
+      .then((values: string[]) => setCountries((values ?? []).sort()))
+      .catch(() => setCountries([]));
 
     VPNGetDNSResolver()
       .then((r: string) => {
@@ -270,17 +276,20 @@ export function VPN() {
           {/* Country */}
           <div className="vpn-controls__row">
             <label htmlFor="vpn-country">{t('vpn.controls.country')}</label>
-            <InputGroup
+            <HTMLSelect
               id="vpn-country"
               value={country}
-              onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
-              placeholder={t('vpn.controls.countryPlaceholder')}
+              onChange={(e) => setCountry(e.target.value)}
               disabled={!canAct || isConnected}
-              style={{ maxWidth: 80 }}
-            />
-            <span style={{ fontSize: '0.8rem', color: 'var(--bp-text-muted-color)' }}>
-              {t('vpn.controls.countryHint')}
-            </span>
+              className="vpn-controls__select"
+            >
+              <option value="">Any country</option>
+              {countries.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </HTMLSelect>
           </div>
 
           {/* Auto-select toggle */}
@@ -369,6 +378,12 @@ export function VPN() {
       {!autoSelect && !isConnected && (
         <ServerList
           selectedHost={selectedServer?.hostName ?? ''}
+          selectedCountry={country}
+          countries={countries}
+          onCountryChange={(code) => {
+            setCountry(code);
+            setSelectedServer(null);
+          }}
           onSelect={setSelectedServer}
           disabled={!canAct || isConnected}
         />

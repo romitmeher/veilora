@@ -57,7 +57,7 @@ func NewManager(onStatusChange func(ConnectionInfo)) *Manager {
 		vpngateClient:  vpngate.NewClient(),
 		onStatusChange: onStatusChange,
 		retryInterval:  100 * time.Millisecond,
-		connectTimeout: 15 * time.Second,
+		connectTimeout: 30 * time.Second,
 	}
 	m.connInfo.Status = Status{State: StateDisconnected}
 	m.connInfo.DNSProtectionOn = false

@@ -95,6 +95,14 @@ func NewApp(name string, appConfig *config.Config, startOnDomReady bool) (*App, 
 		if app.frontendEvents != nil {
 			app.frontendEvents.OnVPNStatusChanged(info)
 		}
+		if app.systrayMgr != nil {
+			switch info.Status.State {
+			case vpn.StateConnected:
+				app.systrayMgr.OnVPNStarted()
+			case vpn.StateDisconnected, vpn.StateError:
+				app.systrayMgr.OnVPNStopped()
+			}
+		}
 	})
 
 	return app, nil
@@ -108,6 +116,14 @@ func (a *App) commonStartup(ctx context.Context) {
 		a.StartProxy()
 	}, func() {
 		a.StopProxy()
+	}, func() {
+		if err := a.StartVPNFromTray(); err != nil {
+			log.Printf("tray: start VPN: %v", err)
+		}
+	}, func() {
+		if err := a.VPNDisconnect(); err != nil {
+			log.Printf("tray: stop VPN: %v", err)
+		}
 	})
 	if err != nil {
 		log.Fatalf("failed to initialize systray manager: %v", err)

@@ -176,7 +176,7 @@
 
 .vpn-server-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: minmax(150px, 1fr) auto auto auto minmax(150px, auto);
   align-items: center;
   gap: 6px 10px;
   padding: 6px 8px;
@@ -201,6 +201,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.vpn-server-row__name small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--bp-text-muted-color, #738091);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vpn-server-row__stats {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 2px 8px;
+  font-size: 0.68rem;
+  color: var(--bp-text-muted-color, #738091);
+  white-space: nowrap;
+  text-align: right;
 }
 
 .vpn-server-row__country {

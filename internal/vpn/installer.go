@@ -354,7 +354,7 @@ func installSoftEtherWindows(ctx context.Context, progressCb func(EngineInstallP
 	})
 
 	// Run the installer executable
-	cmd := exec.CommandContext(ctx, setupExe) // #nosec G204 -- executable is verified inside private temp extraction directory.
+	cmd := hiddenCommandContext(ctx, setupExe) // #nosec G204 -- executable is verified inside private temp extraction directory.
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("run SoftEther installer: %w", err)
 	}
@@ -546,19 +546,29 @@ func unzipSafely(srcZip, destDir string) error {
 }
 
 func findSetupExecutable(dir string) (string, error) {
-	var exeCandidate string
+	var (
+		setupCandidate  string
+		pluginCandidate string
+	)
 	err := filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
 		if !info.IsDir() && strings.EqualFold(filepath.Ext(p), ".exe") {
 			name := strings.ToLower(info.Name())
-			if strings.Contains(name, "vpngate") || strings.Contains(name, "vpnclient") || strings.Contains(name, "setup") {
-				exeCandidate = p
-				return filepath.SkipAll
+			if strings.Contains(name, "scvpnclient") ||
+				strings.Contains(name, "vpnclient") ||
+				strings.Contains(name, "vpncmd") ||
+				strings.Contains(name, "scvpnbridge") {
+				return nil
 			}
-			if exeCandidate == "" {
-				exeCandidate = p
+			if setupCandidate == "" && (strings.Contains(name, "setup") ||
+				strings.Contains(name, "install") ||
+				strings.Contains(name, "installer")) {
+				setupCandidate = p
+			}
+			if pluginCandidate == "" && strings.Contains(name, "vpngate") {
+				pluginCandidate = p
 			}
 		}
 		return nil
@@ -566,8 +576,11 @@ func findSetupExecutable(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if exeCandidate == "" {
-		return "", errors.New("no setup executable (.exe) found inside SoftEther package")
+	if setupCandidate != "" {
+		return setupCandidate, nil
 	}
-	return exeCandidate, nil
+	if pluginCandidate != "" {
+		return pluginCandidate, nil
+	}
+	return "", errors.New("no setup executable (.exe) found inside SoftEther package")
 }

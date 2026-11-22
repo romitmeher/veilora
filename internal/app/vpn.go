@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -37,6 +38,20 @@ func (a *App) VPNGetCountries() ([]string, error) {
 func (a *App) VPNAvailableEngines() []vpn.EngineType {
 	<-a.startupDone
 	return a.vpnManager.AvailableEngines()
+}
+
+// StartVPNFromTray connects through the first available engine for tray-initiated actions.
+func (a *App) StartVPNFromTray() error {
+	<-a.startupDone
+	engines := a.vpnManager.AvailableEngines()
+	for _, engine := range []vpn.EngineType{vpn.EngineOpenVPN, vpn.EngineSoftEther} {
+		for _, available := range engines {
+			if available == engine {
+				return a.vpnManager.ConnectBest("", engine, false, true)
+			}
+		}
+	}
+	return errors.New("no VPN engine is installed")
 }
 
 // VPNConnectBest auto-selects the best server and connects.
