@@ -10,7 +10,7 @@ import (
 
 type Manager struct{}
 
-func NewManager(string, func(), func()) (*Manager, error) {
+func NewManager(string, func(), func(), func(), func()) (*Manager, error) {
 	return &Manager{}, nil
 }
 
@@ -25,3 +25,7 @@ func (m *Manager) OnProxyStarted() {}
 
 // OnProxyStopped should be called when the proxy gets stopped.
 func (m *Manager) OnProxyStopped() {}
+
+func (m *Manager) OnVPNStarted() {}
+
+func (m *Manager) OnVPNStopped() {}

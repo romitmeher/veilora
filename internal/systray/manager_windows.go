@@ -22,9 +22,14 @@ type Manager struct {
 	proxyStart        func()
 	proxyStop         func()
 	startStopMenuItem *menuItem
+	vpnStateMu        sync.Mutex
+	vpnActive         bool
+	vpnStart          func()
+	vpnStop           func()
+	vpnStartStopItem  *menuItem
 }
 
-func NewManager(appName string, proxyStart func(), proxyStop func()) (*Manager, error) {
+func NewManager(appName string, proxyStart func(), proxyStop func(), vpnStart func(), vpnStop func()) (*Manager, error) {
 	if appName == "" {
 		return nil, errors.New("appName is empty")
 	}
@@ -33,6 +38,12 @@ func NewManager(appName string, proxyStart func(), proxyStop func()) (*Manager, 
 	}
 	if proxyStop == nil {
 		return nil, errors.New("proxyStop is nil")
+	}
+	if vpnStart == nil {
+		return nil, errors.New("vpnStart is nil")
+	}
+	if vpnStop == nil {
+		return nil, errors.New("vpnStop is nil")
 	}
 
 	logoBytes, err := logoFS.ReadFile("logo.ico")
@@ -44,6 +55,8 @@ func NewManager(appName string, proxyStart func(), proxyStop func()) (*Manager, 
 		logoBytes:  logoBytes,
 		proxyStart: proxyStart,
 		proxyStop:  proxyStop,
+		vpnStart:   vpnStart,
+		vpnStop:    vpnStop,
 		appName:    appName,
 	}, nil
 }
@@ -93,6 +106,26 @@ func (m *Manager) OnProxyStopped() {
 	m.startStopMenuItem.SetTooltip("Start")
 }
 
+func (m *Manager) OnVPNStarted() {
+	m.vpnStateMu.Lock()
+	defer m.vpnStateMu.Unlock()
+	m.vpnActive = true
+	if m.vpnStartStopItem != nil {
+		m.vpnStartStopItem.SetTitle("Disconnect VPN")
+		m.vpnStartStopItem.SetTooltip("Disconnect VPN")
+	}
+}
+
+func (m *Manager) OnVPNStopped() {
+	m.vpnStateMu.Lock()
+	defer m.vpnStateMu.Unlock()
+	m.vpnActive = false
+	if m.vpnStartStopItem != nil {
+		m.vpnStartStopItem.SetTitle("Connect VPN")
+		m.vpnStartStopItem.SetTooltip("Connect to the best VPN server")
+	}
+}
+
 func (m *Manager) onReady(ctx context.Context) func() {
 	return func() {
 		setIcon(m.logoBytes)
@@ -115,6 +148,20 @@ func (m *Manager) onReady(ctx context.Context) func() {
 					m.proxyStop()
 				} else {
 					m.proxyStart()
+				}
+			}
+		}()
+
+		m.vpnStartStopItem = addMenuItem("Connect VPN", "Connect to the best VPN server")
+		go func() {
+			for range m.vpnStartStopItem.ClickedCh {
+				m.vpnStateMu.Lock()
+				active := m.vpnActive
+				m.vpnStateMu.Unlock()
+				if active {
+					m.vpnStop()
+				} else {
+					m.vpnStart()
 				}
 			}
 		}()

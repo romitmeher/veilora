@@ -83,3 +83,74 @@ func TestFindSetupExecutable(t *testing.T) {
 		t.Errorf("got %q, want %q", got, exePath)
 	}
 }
+
+func TestFindSetupExecutablePrefersInstallerOverRuntime(t *testing.T) {
+	tmp := t.TempDir()
+	runtimePath := filepath.Join(tmp, "scvpnclient.exe")
+	setupPath := filepath.Join(tmp, "vpngate-client-setup.exe")
+	for _, path := range []string{runtimePath, setupPath} {
+		if err := os.WriteFile(path, []byte("fake exe binary"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := findSetupExecutable(tmp)
+	if err != nil {
+		t.Fatalf("unexpected error finding executable: %v", err)
+	}
+	if got != setupPath {
+		t.Errorf("got %q, want installer %q", got, setupPath)
+	}
+}
+
+func TestVPNCmdOutputHasError(t *testing.T) {
+	tests := []struct {
+		output string
+		want   bool
+	}{
+		{"The command completed successfully.", false},
+		{"Error occurred. (Error code: 36)\nThe specified VPN Connection Setting does not exist.", true},
+		{"Connection failed.", true},
+	}
+	for _, tt := range tests {
+		if got := vpnCmdOutputHasError([]byte(tt.output)); got != tt.want {
+			t.Errorf("vpnCmdOutputHasError(%q) = %v, want %v", tt.output, got, tt.want)
+		}
+	}
+}
+
+func TestSoftEtherAccountCreateCommand(t *testing.T) {
+	command := softEtherAccountCreateCommand("219.100.37.208", "443")
+	want := []string{
+		"AccountCreate",
+		"VeiloraVPN",
+		"/SERVER:219.100.37.208:443",
+		"/HUB:VPNGATE",
+		"/USERNAME:vpn",
+		"/NICNAME:VPN",
+	}
+	if len(command) != len(want) {
+		t.Fatalf("command length = %d, want %d", len(command), len(want))
+	}
+	for i := range want {
+		if command[i] != want[i] {
+			t.Errorf("command[%d] = %q, want %q", i, command[i], want[i])
+		}
+	}
+}
+
+func TestSoftEtherSessionEstablished(t *testing.T) {
+	tests := []struct {
+		output string
+		want   bool
+	}{
+		{`Connected to VPN Client "localhost".`, false},
+		{"Session Status |Connection to VPN Server Started", false},
+		{"Session Status |Connection Completed (Session Established)", true},
+	}
+	for _, tt := range tests {
+		if got := softEtherSessionEstablished([]byte(tt.output)); got != tt.want {
+			t.Errorf("softEtherSessionEstablished(%q) = %v, want %v", tt.output, got, tt.want)
+		}
+	}
+}

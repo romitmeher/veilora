@@ -34,6 +34,10 @@ export function StartProxy() {
   return window['go']['app']['App']['StartProxy']();
 }
 
+export function StartVPNFromTray() {
+  return window['go']['app']['App']['StartVPNFromTray']();
+}
+
 export function StopProxy() {
   return window['go']['app']['App']['StopProxy']();
 }

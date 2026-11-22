@@ -2,7 +2,7 @@ import { Button, Spinner, HTMLSelect } from '@blueprintjs/core';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { VPNGetServers, VPNGetCountries, VPNRefreshServers } from 'wails/go/app/App';
+import { VPNGetServers, VPNRefreshServers } from 'wails/go/app/App';
 
 export interface VPNServer {
   hostName: string;
@@ -13,12 +13,21 @@ export interface VPNServer {
   countryLong: string;
   countryShort: string;
   numVpnSessions: number;
+  uptime: number;
+  totalUsers: number;
+  totalTraffic: number;
+  logType: string;
+  operator: string;
+  message: string;
   computedScore: number;
   openVpnConfigBase64: string;
 }
 
 interface ServerListProps {
   selectedHost: string;
+  selectedCountry: string;
+  countries: string[];
+  onCountryChange: (country: string) => void;
   onSelect: (server: VPNServer) => void;
   disabled: boolean;
 }
@@ -29,11 +38,30 @@ function formatSpeed(bps: number): string {
   return `${bps} bps`;
 }
 
-export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps) {
+function formatUptime(milliseconds: number): string {
+  if (!milliseconds) return '—';
+  const days = Math.floor(milliseconds / 86_400_000);
+  if (days > 0) return `${days}d`;
+  const hours = Math.floor(milliseconds / 3_600_000);
+  return hours > 0 ? `${hours}h` : '<1h';
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(0)} MB`;
+  return `${bytes} B`;
+}
+
+export function ServerList({
+  selectedHost,
+  selectedCountry,
+  countries,
+  onCountryChange,
+  onSelect,
+  disabled,
+}: ServerListProps) {
   const { t } = useTranslation();
   const [servers, setServers] = useState<VPNServer[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
-  const [country, setCountry] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
@@ -61,15 +89,12 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
   }, []);
 
   useEffect(() => {
-    VPNGetCountries()
-      .then((c: string[]) => setCountries((c ?? []).sort()))
-      .catch(() => {});
-    loadServers('');
+    loadServers(selectedCountry);
     return invalidateRequests;
-  }, [loadServers, invalidateRequests]);
+  }, [loadServers, invalidateRequests, selectedCountry]);
 
   const handleRefresh = () => {
-    loadServers(country, true);
+    loadServers(selectedCountry, true);
   };
   const visibleServers = servers.filter((s) =>
     `${s.hostName} ${s.countryLong} ${s.countryShort}`.toLowerCase().includes(query.trim().toLowerCase()),
@@ -83,10 +108,9 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
       <div className="vpn-servers__toolbar">
         <HTMLSelect
           aria-label={t('vpn.controls.country')}
-          value={country}
+          value={selectedCountry}
           onChange={(e) => {
-            setCountry(e.target.value);
-            loadServers(e.target.value);
+            onCountryChange(e.target.value);
           }}
           disabled={disabled || loading}
         >
@@ -143,12 +167,24 @@ export function ServerList({ selectedHost, onSelect, disabled }: ServerListProps
               className={`vpn-server-row${selectedHost === s.hostName ? ' vpn-server-row--selected' : ''}`}
               onClick={() => !disabled && onSelect(s)}
             >
-              <span className="vpn-server-row__name" title={s.hostName}>
+              <span
+                className="vpn-server-row__name"
+                title={`${s.hostName}\nIP: ${s.ip}\nOperator: ${s.operator || '—'}\nPolicy: ${s.logType || '—'}\n${s.message || ''}`}
+              >
                 {s.hostName}
+                <small>
+                  {s.countryLong || s.countryShort} · {s.ip}
+                </small>
               </span>
               <span className="vpn-server-row__country">{s.countryShort}</span>
               <span className="vpn-server-row__ping">{s.ping > 0 ? `${s.ping}ms` : '—'}</span>
               <span className="vpn-server-row__speed">{formatSpeed(s.speed)}</span>
+              <span className="vpn-server-row__stats">
+                <span>{s.numVpnSessions} sessions</span>
+                <span>{s.totalUsers} users</span>
+                <span>{formatUptime(s.uptime)} uptime</span>
+                <span>{formatBytes(s.totalTraffic)} traffic</span>
+              </span>
             </button>
           ))
         )}
