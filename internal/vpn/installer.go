@@ -317,7 +317,7 @@ func installSoftEtherWindows(ctx context.Context, progressCb func(EngineInstallP
 	progressCb(EngineInstallProgress{
 		Stage:   "downloading",
 		Percent: 20,
-		Message: "Downloading SoftEther VPN Gate plugin archive...",
+		Message: "Downloading SoftEther VPN Gate plugin archive (~65 MB from volunteer mirror; may be slow)...",
 	})
 
 	tmpDir, err := os.MkdirTemp("", "veilora-softether-*")

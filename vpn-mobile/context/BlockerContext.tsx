@@ -1,12 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as IntentLauncher from "expo-intent-launcher";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
+import { Linking, Platform } from "react-native";
 
 export interface BlockCategory {
   id: string;
@@ -39,6 +40,9 @@ interface BlockerContextValue {
   stats: BlockerStats;
   recentBlocked: BlockedEntry[];
   resetStats: () => void;
+  openDnsSettings: () => Promise<void>;
+  testProtection: () => Promise<boolean>;
+  dnsHost: string;
 }
 
 const INITIAL_CATEGORIES: BlockCategory[] = [
@@ -49,38 +53,13 @@ const INITIAL_CATEGORIES: BlockCategory[] = [
   { id: "adult", label: "Adult Content", description: "Explicit & NSFW domains", icon: "shield-off", enabled: false, count: 0 },
 ];
 
-const AD_DOMAINS = [
-  "doubleclick.net", "googleadservices.com", "googlesyndication.com",
-  "ads.facebook.com", "advertising.com", "adnxs.com", "criteo.com",
-  "outbrain.com", "taboola.com", "rubiconproject.com", "pubmatic.com",
-  "openx.net", "casalemedia.com", "sovrn.com", "sharethrough.com",
-];
-const TRACKER_DOMAINS = [
-  "google-analytics.com", "segment.io", "mixpanel.com", "hotjar.com",
-  "mouseflow.com", "amplitude.com", "heap.io", "fullstory.com",
-  "clarity.ms", "quantserve.com", "comscore.com", "scorecardresearch.com",
-];
-const MALWARE_DOMAINS = [
-  "malware-traffic-analysis.net", "phishtank.com", "urlvoid.com",
-  "suspicious-domain.xyz", "click-fraud-site.ru", "fake-update.win",
-];
-const SOCIAL_DOMAINS = [
-  "connect.facebook.net", "platform.twitter.com", "platform.linkedin.com",
-  "apis.google.com", "assets.pinterest.com",
-];
-
-const CATEGORY_DOMAINS: Record<string, string[]> = {
-  ads: AD_DOMAINS,
-  trackers: TRACKER_DOMAINS,
-  malware: MALWARE_DOMAINS,
-  social: SOCIAL_DOMAINS,
-};
-
 const STORAGE_KEYS = {
   enabled: "@blocker/enabled",
   categories: "@blocker/categories",
   stats: "@blocker/stats",
 };
+
+const DNS_HOST = "dns.adguard-dns.com";
 
 const BlockerContext = createContext<BlockerContextValue | null>(null);
 
@@ -94,7 +73,6 @@ export function BlockerProvider({ children }: { children: React.ReactNode }) {
     totalRequests: 0,
   });
   const [recentBlocked, setRecentBlocked] = useState<BlockedEntry[]>([]);
-  const simulationTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -111,49 +89,6 @@ export function BlockerProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Simulate live blocking activity when enabled
-  useEffect(() => {
-    if (!enabled) {
-      if (simulationTimer.current) clearInterval(simulationTimer.current);
-      return;
-    }
-    simulationTimer.current = setInterval(() => {
-      setCategories((prev) => {
-        const enabledCats = prev.filter((c) => c.enabled);
-        if (enabledCats.length === 0) return prev;
-        const cat = enabledCats[Math.floor(Math.random() * enabledCats.length)];
-        const domains = CATEGORY_DOMAINS[cat.id] ?? AD_DOMAINS;
-        const domain = domains[Math.floor(Math.random() * domains.length)];
-
-        const entry: BlockedEntry = {
-          id: Date.now().toString() + Math.random().toString(36).slice(2),
-          domain,
-          category: cat.id,
-          timestamp: Date.now(),
-        };
-        setRecentBlocked((prev) => [entry, ...prev].slice(0, 30));
-
-        setStats((s) => {
-          const next = {
-            ...s,
-            totalRequests: s.totalRequests + Math.floor(Math.random() * 3 + 1),
-            bandwidthSavedKb: s.bandwidthSavedKb + Math.floor(Math.random() * 80 + 10),
-            adsBlocked: cat.id === "ads" ? s.adsBlocked + 1 : s.adsBlocked,
-            trackersBlocked: cat.id === "trackers" ? s.trackersBlocked + 1 : s.trackersBlocked,
-          };
-          AsyncStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(next)).catch(() => {});
-          return next;
-        });
-
-        return prev.map((c) => c.id === cat.id ? { ...c, count: c.count + 1 } : c);
-      });
-    }, 1800 + Math.random() * 2000);
-
-    return () => {
-      if (simulationTimer.current) clearInterval(simulationTimer.current);
-    };
-  }, [enabled]);
-
   const toggle = useCallback(async () => {
     setEnabled((prev) => {
       const next = !prev;
@@ -164,22 +99,85 @@ export function BlockerProvider({ children }: { children: React.ReactNode }) {
 
   const toggleCategory = useCallback(async (id: string) => {
     setCategories((prev) => {
-      const next = prev.map((c) => c.id === id ? { ...c, enabled: !c.enabled } : c);
+      const next = prev.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c));
       AsyncStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(next)).catch(() => {});
       return next;
     });
   }, []);
 
   const resetStats = useCallback(async () => {
-    const fresh: BlockerStats = { adsBlocked: 0, trackersBlocked: 0, bandwidthSavedKb: 0, totalRequests: 0 };
+    const fresh = { adsBlocked: 0, trackersBlocked: 0, bandwidthSavedKb: 0, totalRequests: 0 };
     setStats(fresh);
     setRecentBlocked([]);
-    setCategories((prev) => prev.map((c) => ({ ...c, count: 0 })));
-    await AsyncStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(fresh)).catch(() => {});
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(fresh));
+    } catch {}
+  }, []);
+
+  const openDnsSettings = useCallback(async () => {
+    if (Platform.OS === "android") {
+      try {
+        await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.WIRELESS_SETTINGS);
+      } catch {
+        Linking.openSettings();
+      }
+    } else {
+      Linking.openSettings();
+    }
+  }, []);
+
+  // Real network probe to verify whether ad/tracker DNS sinking is active
+  const testProtection = useCallback(async (): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      await fetch("https://pagead2.googlesyndication.com/favicon.ico", {
+        signal: controller.signal,
+        mode: "no-cors",
+      });
+      clearTimeout(timeoutId);
+      // If it connected successfully, ad blocking is not sinking the ad domain
+      return false;
+    } catch {
+      // Fetch aborted or failed to resolve -> ad/tracker domain was successfully blocked
+      setStats((prev) => {
+        const next = {
+          ...prev,
+          adsBlocked: prev.adsBlocked + 1,
+          totalRequests: prev.totalRequests + 1,
+          bandwidthSavedKb: prev.bandwidthSavedKb + 35,
+        };
+        AsyncStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+      setRecentBlocked((prev) => [
+        {
+          id: Date.now().toString(),
+          domain: "pagead2.googlesyndication.com",
+          category: "ads",
+          timestamp: Date.now(),
+        },
+        ...prev.slice(0, 19),
+      ]);
+      return true;
+    }
   }, []);
 
   return (
-    <BlockerContext.Provider value={{ enabled, toggle, categories, toggleCategory, stats, recentBlocked, resetStats }}>
+    <BlockerContext.Provider
+      value={{
+        enabled,
+        toggle,
+        categories,
+        toggleCategory,
+        stats,
+        recentBlocked,
+        resetStats,
+        openDnsSettings,
+        testProtection,
+        dnsHost: DNS_HOST,
+      }}
+    >
       {children}
     </BlockerContext.Provider>
   );
@@ -187,6 +185,6 @@ export function BlockerProvider({ children }: { children: React.ReactNode }) {
 
 export function useBlocker() {
   const ctx = useContext(BlockerContext);
-  if (!ctx) throw new Error("useBlocker must be within BlockerProvider");
+  if (!ctx) throw new Error("useBlocker must be used within BlockerProvider");
   return ctx;
 }
