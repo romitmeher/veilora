@@ -64,6 +64,10 @@ function Install-ViaWinget([string]$id, [string]$friendlyName) {
 if (-not $SkipDepsCheck) {
     Write-Step "Checking prerequisites"
 
+    if (-not (Test-Command python)) {
+        Abort "Python 3 is required to prepare the bundled VPN runtime. Install it and re-run this script."
+    }
+
     # Go
     if (Test-Command go) {
         $goVer = (go version) -replace 'go version go','' -replace ' .*',''

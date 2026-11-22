@@ -20,7 +20,7 @@ The desktop interface uses restrained light/dark surfaces, keyboard-accessible n
 | --- | --- |
 | Desktop application | Windows executable builds and launches; overview, navigation, settings, and both themes inspected. |
 | Ad blocking | Local HTTP/HTTPS proxy, filter subscriptions, custom rules, app routing, and request history are implemented. Live filtering has not been verified in this fork. |
-| VPN | OpenVPN/SoftEther integration, server selection/search, and custom DNS controls are present. A compatible external engine and driver are required; Windows setup can install OpenVPN. The kill switch is unavailable. Live connectivity and leak protection remain unverified. |
+| VPN | Standalone Windows builds include OpenVPN, its DLLs, and a signed TAP driver; no existing OpenVPN or SoftEther installation is needed. Administrator rights are required for adapter setup. SoftEther remains optional. The kill switch is unavailable; live connectivity and leak protection remain unverified. |
 | Mobile | Expo UI prototype. Connections and blocking statistics are simulated; it does not protect device traffic. Type checking and web export pass. |
 | Updates | Automatic updates are disabled to prevent this fork from installing upstream Zen releases. |
 
@@ -34,6 +34,7 @@ Requirements:
 - Node.js **24.14.1+** and npm.
 - Wails **v2.11.0**, matching the Go dependency.
 - Windows: WebView2. See [platform prerequisites](docs/internal/requirements.md) for other systems.
+- Windows standalone builds: Visual Studio 2022 C++ tools, CMake, and Python 3 (build-time only).
 - Optional: Go Task and golangci-lint v2 for the repository commands.
 
 ```powershell
@@ -47,11 +48,15 @@ wails dev
 Build a Windows executable:
 
 ```powershell
-wails build
+git submodule update --init --recursive
+powershell -NoProfile -File scripts/build-vpn-source.ps1 -Arch amd64
+wails build -skipbindings -tags bundledvpn
 # Output: build/bin/Veilora.exe
 ```
 
 For the NSIS installer, use [build-installer.ps1](build-installer.ps1). Built executables are ignored by Git; this source update does not publish a binary release.
+
+See [bundled VPN details](docs/BUNDLED-VPN.md) for architecture selection, adapter behavior, upstream notices, and headless test limitations. Plain `wails dev` builds continue to use separately installed engines.
 
 ### Checks
 

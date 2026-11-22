@@ -163,6 +163,10 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -196,6 +200,10 @@ jobs:
           # build without self-update
           task build:prod-noupdate ARCH=${{ matrix.arch }}
           Copy-Item .\build\bin\Veilora.exe .\ci-upload\unsigned\Veilora-noselfupdate.exe
+          Copy-Item .\build\bin\Veilora-vpn-sources.zip .\ci-upload\final\Veilora-vpn-sources-${{ matrix.arch }}.zip
+      - name: Test bundled runtime without external engines
+        if: matrix.arch == 'amd64'
+        run: go test -tags bundledvpn . ./internal/...
       - name: Upload intermediate unsigned artifacts
         id: unsigned
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
