@@ -68,6 +68,10 @@ jobs:
           wails version
 
       # ── Install NSIS ─────────────────────────────────────────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -111,6 +115,12 @@ jobs:
         shell: bash
         run: task build:prod-noupdate ARCH=${{ github.event.inputs.arch || 'amd64' }}
 
+      - name: Verify source-built runtime on isolated Windows runner
+        if: (github.event.inputs.arch || 'amd64') == 'amd64'
+        env:
+          VEILORA_NATIVE_SMOKE: '1'
+        run: go test -tags bundledvpn . ./internal/...
+
       # ── Package artifacts ─────────────────────────────────────────────────────
       - name: Package artifacts
         shell: pwsh
@@ -119,6 +129,7 @@ jobs:
 
           # Installer exe (produced by -nsis flag in prod task)
           Copy-Item "build\bin\Veilora-${arch}-installer.exe" "output\Veilora-${arch}-installer.exe"
+          Copy-Item "build\bin\Veilora-vpn-sources.zip" "output\Veilora-vpn-sources.zip"
 
           # Portable zip — self-update build (staged before prod-noupdate ran)
           Compress-Archive -Path "output\Veilora-selfupdate.exe" -DestinationPath "output\Veilora_windows_${arch}.zip"
@@ -159,6 +170,7 @@ jobs:
 
             ### What's included
             - Ad-blocking proxy (Veilora core)
-            - VPN support via OpenVPN and SoftEther
+            - Bundled OpenVPN runtime and signed TAP driver; no separately installed VPN client required
+            - Optional integration with an existing SoftEther client
             - Free VPN servers from VPNGate (updated automatically)
-            - Kill switch and DNS leak protection
+            - Custom DNS controls (kill switch unavailable; live leak protection unverified)

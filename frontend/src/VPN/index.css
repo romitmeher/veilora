@@ -38,7 +38,9 @@
   border-radius: 50%;
   background: var(--vpn-status-color, #8f99a8);
   flex-shrink: 0;
-  transition: background 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.16s ease;
+  transition:
+    background 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.16s ease;
 }
 
 .vpn-status--connected .vpn-status__indicator {

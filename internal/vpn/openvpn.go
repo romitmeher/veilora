@@ -3,6 +3,7 @@ package vpn
 import (
 	"bufio"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -18,11 +19,13 @@ import (
 
 // OpenVPNEngine manages an OpenVPN subprocess.
 type OpenVPNEngine struct {
-	mu         sync.Mutex
-	cmd        *exec.Cmd
-	mgmtConn   net.Conn
-	tmpDir     string
-	cancelDone chan struct{}
+	mu             sync.Mutex
+	cmd            *exec.Cmd
+	mgmtConn       net.Conn
+	tmpDir         string
+	cancelDone     chan struct{}
+	processDone    chan struct{}
+	cleanupAdapter func() error
 }
 
 func NewOpenVPNEngine() *OpenVPNEngine {
@@ -33,11 +36,22 @@ func (e *OpenVPNEngine) Name() string { return string(EngineOpenVPN) }
 
 // Available checks if openvpn binary is reachable.
 func (e *OpenVPNEngine) Available() bool {
+	if len(embeddedVPN()) > 0 {
+		return true
+	}
 	return e.FindBinary() != ""
 }
 
 // FindBinary searches for the openvpn executable in known directories and PATH.
 func (e *OpenVPNEngine) FindBinary() string {
+	if len(embeddedVPN()) > 0 {
+		binary, err := bundledBinary()
+		if err != nil {
+			log.Printf("bundled VPN: %v", err)
+			return ""
+		}
+		return binary
+	}
 	if runtime.GOOS == "windows" {
 		// 1. Check %LOCALAPPDATA%\Veilora\bin\openvpn.exe
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
@@ -102,6 +116,9 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	if e.cmd != nil {
 		return fmt.Errorf("openvpn: already connected")
 	}
+	if e.cleanupAdapter != nil {
+		return errors.New("previous VPN adapter cleanup is pending; disconnect before reconnecting")
+	}
 
 	configData, err := base64.StdEncoding.DecodeString(string(ovpnConfigB64))
 	if err != nil {
@@ -148,6 +165,23 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		os.RemoveAll(tmpDir)
 		return fmt.Errorf("openvpn binary not found")
 	}
+	if len(embeddedVPN()) > 0 {
+		id, cleanup, err := prepareBundledAdapter(filepath.Dir(binPath))
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			return err
+		}
+		e.cleanupAdapter = cleanup
+		args = append(args, "--windows-driver", "tap-windows6", "--dev-node", id)
+	}
+	connected := false
+	defer func() {
+		if !connected {
+			if err := e.killProcess(); err != nil {
+				log.Printf("VPN startup cleanup: %v", err)
+			}
+		}
+	}()
 
 	cmd := hiddenCommand(binPath, args...) // #nosec G204 -- fixed executable; arguments contain an app-created temp path and numeric loopback port, with no shell.
 	cmd.Dir = tmpDir
@@ -172,6 +206,8 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	e.cmd = cmd
 	e.cancelDone = make(chan struct{})
 	done := e.cancelDone
+	e.processDone = make(chan struct{})
+	go e.waitProcess(cmd, statusCh, done, e.processDone)
 
 	go e.drainLog(stdoutPipe)
 	go e.drainLog(stderrPipe)
@@ -200,7 +236,7 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 
 	statusCh <- Status{State: StateConnecting, Message: "OpenVPN process started"}
 	go e.monitorManagement(mgmtConn, statusCh, done)
-	go e.waitProcess(cmd, statusCh, done)
+	connected = true
 
 	return nil
 }
@@ -223,8 +259,17 @@ func (e *OpenVPNEngine) killProcess() error {
 		e.mgmtConn = nil
 	}
 	if e.cmd != nil && e.cmd.Process != nil {
-		if err := e.cmd.Process.Kill(); err != nil {
-			log.Printf("openvpn: kill process: %v", err)
+		select {
+		case <-e.processDone:
+		case <-time.After(3 * time.Second):
+			if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				return err
+			}
+			select {
+			case <-e.processDone:
+			case <-time.After(3 * time.Second):
+				return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
+			}
 		}
 	}
 	if e.cancelDone != nil {
@@ -240,6 +285,12 @@ func (e *OpenVPNEngine) killProcess() error {
 		e.tmpDir = ""
 	}
 	e.cmd = nil
+	if e.cleanupAdapter != nil {
+		if err := e.cleanupAdapter(); err != nil {
+			return err
+		}
+		e.cleanupAdapter = nil
+	}
 	return nil
 }
 
@@ -259,8 +310,9 @@ func (e *OpenVPNEngine) monitorManagement(conn net.Conn, statusCh chan<- Status,
 	}
 }
 
-func (e *OpenVPNEngine) waitProcess(cmd *exec.Cmd, statusCh chan<- Status, done <-chan struct{}) {
+func (e *OpenVPNEngine) waitProcess(cmd *exec.Cmd, statusCh chan<- Status, done <-chan struct{}, processDone chan<- struct{}) {
 	err := cmd.Wait()
+	close(processDone) // Before locking: Disconnect waits for exit while holding mu.
 
 	e.mu.Lock()
 	if e.cmd == cmd {

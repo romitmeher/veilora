@@ -15,6 +15,7 @@ import (
 	"github.com/irbis-sh/zen-desktop/internal/constants"
 	"github.com/irbis-sh/zen-desktop/internal/elevate"
 	"github.com/irbis-sh/zen-desktop/internal/logger"
+	"github.com/irbis-sh/zen-desktop/internal/vpn"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -114,6 +115,7 @@ func main() {
 		HideWindowOnClose: runtime.GOOS == "darwin" || runtime.GOOS == "windows",
 		StartHidden:       *startHidden,
 	})
+	vpn.CleanupBundledRuntime()
 
 	if err != nil {
 		log.Fatal(err)
