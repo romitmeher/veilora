@@ -74,8 +74,8 @@ export function VPNGetStatus() {
   return window['go']['app']['App']['VPNGetStatus']();
 }
 
-export function VPNInstallEngine() {
-  return window['go']['app']['App']['VPNInstallEngine']();
+export function VPNInstallEngine(arg1) {
+  return window['go']['app']['App']['VPNInstallEngine'](arg1);
 }
 
 export function VPNRefreshServers() {

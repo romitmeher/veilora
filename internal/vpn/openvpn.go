@@ -109,7 +109,7 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		configData = ovpnConfigB64
 	}
 
-	tmpDir, err := os.MkdirTemp("", "zen-vpn-*")
+	tmpDir, err := os.MkdirTemp("", "veilora-vpn-*")
 	if err != nil {
 		return fmt.Errorf("openvpn: create temp dir: %w", err)
 	}

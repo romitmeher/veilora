@@ -100,11 +100,12 @@ export function VPN() {
     return cancel;
   }, [loadEngines]);
 
-  const handleInstallEngine = async () => {
+  const handleInstallEngine = async (targetEngine: EngineType = 'openvpn') => {
     setInstalling(true);
-    setInstallProgress({ stage: 'starting', percent: 10, message: 'Starting engine setup...' });
+    const engineLabel = targetEngine === 'softether' ? 'SoftEther VPN Gate Plug-in' : 'OpenVPN';
+    setInstallProgress({ stage: 'starting', percent: 10, message: `Starting ${engineLabel} setup...` });
     try {
-      await VPNInstallEngine();
+      await VPNInstallEngine(targetEngine);
       await loadEngines();
     } catch (err) {
       setInstalling(false);
@@ -176,14 +177,17 @@ export function VPN() {
             </div>
             <div className="vpn-engine-installer-title">
               <h3>Secure Tunnel Engine Required</h3>
-              <p>Veilora requires the OpenVPN tunneling engine to encrypt and route your internet traffic.</p>
+              <p>
+                Veilora requires a tunneling engine (OpenVPN or SoftEther VPN Gate client plug-in) to encrypt and route
+                your traffic.
+              </p>
             </div>
           </div>
 
           {installing ? (
             <div className="vpn-engine-installer-progress">
               <div className="vpn-engine-progress-header">
-                <span>{installProgress.message || 'Installing OpenVPN engine...'}</span>
+                <span>{installProgress.message || 'Installing engine...'}</span>
                 <span>{installProgress.percent}%</span>
               </div>
               <ProgressBar
@@ -197,12 +201,21 @@ export function VPN() {
             <div className="vpn-engine-installer-actions">
               <Button
                 intent="primary"
-                icon="download"
+                icon="shield"
                 size="large"
-                onClick={handleInstallEngine}
+                onClick={() => handleInstallEngine('openvpn')}
                 loading={enginesLoading}
               >
-                Install Tunnel Engine
+                Install OpenVPN
+              </Button>
+              <Button
+                intent="none"
+                icon="download"
+                size="large"
+                onClick={() => handleInstallEngine('softether')}
+                loading={enginesLoading}
+              >
+                Fetch SoftEther Plugin
               </Button>
               <Button icon="refresh" variant="minimal" onClick={loadEngines}>
                 Check Again

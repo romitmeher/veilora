@@ -40,7 +40,7 @@ export function VPNGetServers(arg1:string,arg2:boolean):Promise<Array<vpngate.Se
 
 export function VPNGetStatus():Promise<vpn.ConnectionInfo>;
 
-export function VPNInstallEngine():Promise<void>;
+export function VPNInstallEngine(arg1?:string):Promise<void>;
 
 export function VPNRefreshServers():Promise<void>;
 

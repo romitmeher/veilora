@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	apiURL         = "https://www.vpngate.net/api/iphone/"
-	cacheExpiry    = 10 * time.Minute
-	requestTimeout = 30 * time.Second
+	defaultPrimaryAPIURL = "https://www.vpngate.net/api/iphone/"
+	defaultMirrorAPIURL  = "http://v-dot-pn-ams2.opengw.net:34637/api/iphone/"
+	cacheExpiry          = 10 * time.Minute
+	requestTimeout       = 20 * time.Second
 )
 
 // Client fetches and caches the VPNGate server list.
@@ -24,13 +25,29 @@ type Client struct {
 	cached     []Server
 	cachedAt   time.Time
 	httpClient *http.Client
+	endpoints  []string
 }
 
-// NewClient creates a new VPNGate API client.
+// NewClient creates a new VPNGate API client with default primary and mirror endpoints.
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: requestTimeout},
+		endpoints:  []string{defaultPrimaryAPIURL, defaultMirrorAPIURL},
 	}
+}
+
+// SetEndpoints overrides the API/mirror endpoints in order of priority.
+func (c *Client) SetEndpoints(endpoints []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.endpoints = append([]string(nil), endpoints...)
+}
+
+// Endpoints returns a copy of the currently configured endpoints.
+func (c *Client) Endpoints() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return append([]string(nil), c.endpoints...)
 }
 
 // GetServers returns the server list, using a cache when fresh.
@@ -107,7 +124,7 @@ func (c *Client) fetchOrCached() ([]Server, error) {
 		return c.cached, nil
 	}
 
-	servers, err := c.fetch()
+	servers, err := c.fetchLocked()
 	if err != nil {
 		if len(c.cached) > 0 {
 			log.Printf("vpngate: fetch failed, using stale cache: %v", err)
@@ -122,15 +139,44 @@ func (c *Client) fetchOrCached() ([]Server, error) {
 	return servers, nil
 }
 
-func (c *Client) fetch() ([]Server, error) {
-	resp, err := c.httpClient.Get(apiURL)
+func (c *Client) fetchLocked() ([]Server, error) {
+	endpoints := make([]string, len(c.endpoints))
+	copy(endpoints, c.endpoints)
+
+	if len(endpoints) == 0 {
+		endpoints = []string{defaultPrimaryAPIURL, defaultMirrorAPIURL}
+	}
+
+	var lastErr error
+	for _, ep := range endpoints {
+		servers, err := c.fetchFromURL(ep)
+		if err == nil && len(servers) > 0 {
+			log.Printf("vpngate: fetched %d servers from %s", len(servers), ep)
+			return servers, nil
+		}
+		if err != nil {
+			log.Printf("vpngate: endpoint %s failed: %v", ep, err)
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("endpoint %s returned 0 servers", ep)
+		}
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("vpngate fetch failed (all %d endpoints failed): %w", len(endpoints), lastErr)
+	}
+	return nil, fmt.Errorf("vpngate: no endpoints configured")
+}
+
+func (c *Client) fetchFromURL(url string) ([]Server, error) {
+	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("vpngate request: %w", err)
+		return nil, fmt.Errorf("request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("vpngate API returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP status %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
