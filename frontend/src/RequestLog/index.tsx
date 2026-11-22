@@ -1,5 +1,5 @@
-import { CardList, Card, Tag, Collapse, Intent, CompoundTag, HTMLTable } from '@blueprintjs/core';
-import { useEffect, useState } from 'react';
+import { CardList, Card, Tag, Collapse, Intent, CompoundTag, HTMLTable, Button, HTMLSelect } from '@blueprintjs/core';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentLocale } from '@/i18n';
@@ -35,39 +35,133 @@ interface FilterAction {
   createdAt: Date;
 }
 
+const MAX_LOGS = 500;
+
 export function RequestLog() {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<FilterAction[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
   useEffect(() => {
     const cancel = EventsOn('filter:action', (action: Omit<FilterAction, 'id' | 'createdAt'>) => {
-      setLogs((logs) =>
+      if (isPaused) return;
+      setLogs((prev) =>
         [
           {
             ...action,
             id: id(),
             createdAt: new Date(),
           },
-          ...logs,
-        ].slice(0, 200),
+          ...prev,
+        ].slice(0, MAX_LOGS),
       );
     });
 
     return () => {
       cancel();
     };
-  }, []);
+  }, [isPaused]);
+
+  const totalPages = Math.max(1, Math.ceil(logs.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  const displayedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return logs.slice(start, start + pageSize);
+  }, [logs, currentPage, pageSize]);
+
+  const startIdx = logs.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endIdx = Math.min(currentPage * pageSize, logs.length);
 
   return (
     <div className="request-log">
+      {/* Memory management toolbar: buffer gauge, pause stream, clear log, page size */}
+      <div className="request-log__toolbar">
+        <div className="request-log__toolbar-left">
+          <span>
+            {logs.length} logged {logs.length >= MAX_LOGS ? '(buffer full)' : ''}
+          </span>
+          <Button
+            size="small"
+            variant="minimal"
+            icon={isPaused ? 'play' : 'pause'}
+            intent={isPaused ? 'warning' : 'none'}
+            onClick={() => setIsPaused(!isPaused)}
+            title={isPaused ? 'Resume live stream' : 'Pause live stream'}
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </Button>
+          <Button
+            size="small"
+            variant="minimal"
+            icon="trash"
+            disabled={logs.length === 0}
+            onClick={() => {
+              setLogs([]);
+              setPage(1);
+            }}
+            title="Clear all logged events from memory"
+          >
+            Clear
+          </Button>
+        </div>
+        <div className="request-log__toolbar-right">
+          <HTMLSelect
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={15}>15 / page</option>
+            <option value={30}>30 / page</option>
+            <option value={50}>50 / page</option>
+          </HTMLSelect>
+        </div>
+      </div>
+
       {logs.length === 0 ? (
         <p className="request-log__empty">{t('requestLog.emptyState')}</p>
       ) : (
-        <CardList compact>
-          {logs.map((log) => (
-            <RequestLogCard log={log} key={log.id} />
-          ))}
-        </CardList>
+        <>
+          <CardList compact>
+            {displayedLogs.map((log) => (
+              <RequestLogCard log={log} key={log.id} />
+            ))}
+          </CardList>
+
+          {/* Pagination Navigation */}
+          {totalPages > 1 && (
+            <div className="request-log__pagination">
+              <div className="request-log__pagination-info">
+                Showing {startIdx}–{endIdx} of {logs.length}
+              </div>
+              <div className="request-log__pagination-controls">
+                <Button
+                  size="small"
+                  variant="minimal"
+                  icon="chevron-left"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  title="Previous page"
+                />
+                <span className="request-log__pagination-page">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  size="small"
+                  variant="minimal"
+                  icon="chevron-right"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next page"
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -77,7 +171,7 @@ function RequestLogCard({ log }: { log: FilterAction }) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const { hostname } = new URL(log.url, 'http://foo'); // Setting the base url somehow helps with parsing //hostname:port URLs
+  const { hostname } = new URL(log.url, 'http://foo');
 
   let tagIntent: Intent;
   switch (log.kind) {

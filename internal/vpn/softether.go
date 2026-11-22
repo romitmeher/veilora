@@ -41,12 +41,20 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 			"vpnclient_x64.exe",
 			"vpnclient.exe",
 		}
+		dirs := []string{
+			"SoftEther VPN Client",
+			"SoftEther VPN Client_x64",
+			"SoftEther VPN",
+			"SoftEther",
+		}
 		for _, name := range candidates {
-			for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
-				if pf != "" {
-					p := filepath.Join(pf, "SoftEther VPN Client", name)
-					if isExecutableFile(p) {
-						return p
+			for _, dir := range dirs {
+				for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), `C:\Program Files`, `C:\Program Files (x86)`} {
+					if pf != "" {
+						p := filepath.Join(pf, dir, name)
+						if isExecutableFile(p) {
+							return p
+						}
 					}
 				}
 			}
@@ -84,12 +92,20 @@ func (e *SoftEtherEngine) FindCmdBinary() string {
 			"vpncmd_x64.exe",
 			"vpncmd.exe",
 		}
+		dirs := []string{
+			"SoftEther VPN Client",
+			"SoftEther VPN Client_x64",
+			"SoftEther VPN",
+			"SoftEther",
+		}
 		for _, name := range candidates {
-			for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
-				if pf != "" {
-					p := filepath.Join(pf, "SoftEther VPN Client", name)
-					if isExecutableFile(p) {
-						return p
+			for _, dir := range dirs {
+				for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), `C:\Program Files`, `C:\Program Files (x86)`} {
+					if pf != "" {
+						p := filepath.Join(pf, dir, name)
+						if isExecutableFile(p) {
+							return p
+						}
 					}
 				}
 			}

@@ -48,7 +48,10 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "expo-file-system": "~19.0.24",
     "expo-glass-effect": "^0.1.10",
+    "expo-intent-launcher": "~13.0.8",
+    "expo-sharing": "~14.0.8",
     "react-native-keyboard-controller": "^1.18.5"
   }
 }
