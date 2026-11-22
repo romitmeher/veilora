@@ -30,4 +30,3 @@ Use `task` commands when available.
 ## Issue and PR guidelines
 
 - Never create an issue
-- Never create a PR
