@@ -112,10 +112,14 @@ func (a *App) VPNRefreshServers() {
 	a.vpnManager.RefreshServers()
 }
 
-// VPNInstallEngine runs the in-app engine installer to download and configure OpenVPN.
-func (a *App) VPNInstallEngine() error {
+// VPNInstallEngine runs the in-app engine installer to download and configure OpenVPN or SoftEther.
+func (a *App) VPNInstallEngine(engine string) error {
 	<-a.startupDone
-	return vpn.InstallEngine(a.ctx, func(progress vpn.EngineInstallProgress) {
+	target := vpn.EngineOpenVPN
+	if engine == string(vpn.EngineSoftEther) {
+		target = vpn.EngineSoftEther
+	}
+	return vpn.InstallEngineType(a.ctx, target, func(progress vpn.EngineInstallProgress) {
 		runtime.EventsEmit(a.ctx, "vpn:engine:progress", progress)
 	})
 }

@@ -29,12 +29,99 @@ func (e *SoftEtherEngine) Name() string { return string(EngineSoftEther) }
 
 // Available checks whether vpnclient and vpncmd are present on this system.
 func (e *SoftEtherEngine) Available() bool {
-	_, errClient := exec.LookPath(e.clientBinary())
-	_, errCmd := exec.LookPath(e.cmdBinary())
-	return errClient == nil && errCmd == nil
+	return e.FindClientBinary() != "" && e.FindCmdBinary() != ""
+}
+
+// FindClientBinary searches for the vpnclient executable in known directories and PATH.
+func (e *SoftEtherEngine) FindClientBinary() string {
+	if runtime.GOOS == "windows" {
+		candidates := []string{
+			"vpnclient_x64.exe",
+			"vpnclient.exe",
+		}
+		for _, name := range candidates {
+			for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
+				if pf != "" {
+					p := filepath.Join(pf, "SoftEther VPN Client", name)
+					if isExecutableFile(p) {
+						return p
+					}
+				}
+			}
+			if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+				p := filepath.Join(localAppData, "Veilora", "bin", name)
+				if isExecutableFile(p) {
+					return p
+				}
+			}
+			if exe, err := os.Executable(); err == nil {
+				p := filepath.Join(filepath.Dir(exe), "bin", name)
+				if isExecutableFile(p) {
+					return p
+				}
+			}
+			if path, err := exec.LookPath(name); err == nil && isExecutableFile(path) {
+				return path
+			}
+		}
+		return ""
+	}
+
+	for _, name := range []string{"vpnclient", "/usr/local/bin/vpnclient", "/usr/bin/vpnclient"} {
+		if path, err := exec.LookPath(name); err == nil && isExecutableFile(path) {
+			return path
+		}
+	}
+	return ""
+}
+
+// FindCmdBinary searches for the vpncmd executable in known directories and PATH.
+func (e *SoftEtherEngine) FindCmdBinary() string {
+	if runtime.GOOS == "windows" {
+		candidates := []string{
+			"vpncmd_x64.exe",
+			"vpncmd.exe",
+		}
+		for _, name := range candidates {
+			for _, pf := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
+				if pf != "" {
+					p := filepath.Join(pf, "SoftEther VPN Client", name)
+					if isExecutableFile(p) {
+						return p
+					}
+				}
+			}
+			if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+				p := filepath.Join(localAppData, "Veilora", "bin", name)
+				if isExecutableFile(p) {
+					return p
+				}
+			}
+			if exe, err := os.Executable(); err == nil {
+				p := filepath.Join(filepath.Dir(exe), "bin", name)
+				if isExecutableFile(p) {
+					return p
+				}
+			}
+			if path, err := exec.LookPath(name); err == nil && isExecutableFile(path) {
+				return path
+			}
+		}
+		return ""
+	}
+
+	for _, name := range []string{"vpncmd", "/usr/local/bin/vpncmd", "/usr/bin/vpncmd"} {
+		if path, err := exec.LookPath(name); err == nil && isExecutableFile(path) {
+			return path
+		}
+	}
+	return ""
 }
 
 func (e *SoftEtherEngine) clientBinary() string {
+	if p := e.FindClientBinary(); p != "" {
+		return p
+	}
 	if runtime.GOOS == "windows" {
 		return "vpnclient.exe"
 	}
@@ -42,6 +129,9 @@ func (e *SoftEtherEngine) clientBinary() string {
 }
 
 func (e *SoftEtherEngine) cmdBinary() string {
+	if p := e.FindCmdBinary(); p != "" {
+		return p
+	}
 	if runtime.GOOS == "windows" {
 		return "vpncmd.exe"
 	}
@@ -69,15 +159,15 @@ func (e *SoftEtherEngine) Connect(ovpnConfig []byte, statusCh chan<- Status) err
 		return fmt.Errorf("softether: parse remote from config: %w", err)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "zen-se-*")
+	tmpDir, err := os.MkdirTemp("", "veilora-se-*")
 	if err != nil {
 		return fmt.Errorf("softether: create temp dir: %w", err)
 	}
 
 	scriptPath := filepath.Join(tmpDir, "connect.txt")
 	script := fmt.Sprintf(
-		"VpnClient\nAccountCreate ZenVPN /SERVER:%s:%s /HUB:VPNGATE /USERNAME:vpn /NICNAME:VPN\n"+
-			"AccountPasswordSet ZenVPN /PASSWORD:vpn /TYPE:standard\nAccountConnect ZenVPN\nexit\n",
+		"VpnClient\nAccountCreate VeiloraVPN /SERVER:%s:%s /HUB:VPNGATE /USERNAME:vpn /NICNAME:VPN\n"+
+			"AccountPasswordSet VeiloraVPN /PASSWORD:vpn /TYPE:standard\nAccountConnect VeiloraVPN\nexit\n",
 		host, port,
 	)
 	if err := os.WriteFile(scriptPath, []byte(script), 0600); err != nil {
@@ -130,7 +220,7 @@ func (e *SoftEtherEngine) Disconnect() error {
 func (e *SoftEtherEngine) disconnect(statusCh chan<- Status) {
 	statusCh <- Status{State: StateDisconnecting, Message: "SoftEther disconnecting"}
 
-	args := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", "ZenVPN", "AccountDelete", "ZenVPN"}
+	args := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", "VeiloraVPN", "AccountDelete", "VeiloraVPN"}
 	cmd := exec.Command(e.cmdBinary(), args...) // #nosec G204 -- executable and disconnect arguments are fixed by this package.
 	out, err := cmd.CombinedOutput()
 	if err != nil {
