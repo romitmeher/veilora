@@ -11,13 +11,17 @@ import (
 func prepareCmd(_ *exec.Cmd) {}
 
 func hiddenCommand(name string, args ...string) *exec.Cmd {
-	return exec.Command(name, args...)
+	cmd := exec.Command(name, args...)
+	prepareCmd(cmd)
+	return cmd
 }
 
 func hiddenCommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...)
+	prepareCmd(cmd)
+	return cmd
 }
 
 func verifyWindowsInstaller(_ context.Context, _ string) error {
-	return errors.New("Windows installer verification requires Windows")
+	return errors.New("windows installer verification requires Windows")
 }
