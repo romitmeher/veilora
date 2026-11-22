@@ -247,11 +247,19 @@ func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, kill
 
 func (m *Manager) connectLocked(server vpngate.Server, engine EngineType, dnsProtect bool) error {
 	eng, ok := m.engines[engine]
-	if !ok {
-		return fmt.Errorf("unknown engine: %s", engine)
+	if !ok || !eng.Available() {
+		for _, t := range []EngineType{EngineSoftEther, EngineOpenVPN} {
+			if e, exists := m.engines[t]; exists && e.Available() {
+				log.Printf("vpn: requested engine %q unavailable, falling back to %q", engine, t)
+				eng = e
+				engine = t
+				ok = true
+				break
+			}
+		}
 	}
-	if !eng.Available() {
-		return fmt.Errorf("engine %s is not available on this system", engine)
+	if !ok || !eng.Available() {
+		return fmt.Errorf("no VPN engine is available on this system (install OpenVPN or SoftEther)")
 	}
 	if server.OpenVPNConfigBase64 == "" {
 		return fmt.Errorf("server %s has no OpenVPN config", server.HostName)

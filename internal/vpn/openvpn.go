@@ -137,7 +137,9 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		"--verb", "3",
 	}
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS == "windows" {
+		args = append(args, "--data-ciphers-fallback", "AES-128-CBC", "--disable-dco")
+	} else {
 		args = append(args, "--script-security", "1")
 	}
 

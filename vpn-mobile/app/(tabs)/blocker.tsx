@@ -38,7 +38,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function BlockerScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { enabled, toggle, categories, toggleCategory, stats, recentBlocked, resetStats } = useBlocker();
+  const { enabled, toggle, categories, toggleCategory, stats, recentBlocked, resetStats, openDnsSettings, testProtection, dnsHost } = useBlocker();
 
   const topInset = Platform.OS === "web" ? 32 : insets.top;
   const bottomInset = Platform.OS === "web" ? 32 : insets.bottom;
@@ -138,6 +138,61 @@ export default function BlockerScreen() {
               {formatBandwidth(stats.bandwidthSavedKb)}
             </Text>
           </View>
+        </View>
+      </View>
+
+      {/* Private DNS Setup Card */}
+      <View style={[styles.masterCard, { backgroundColor: colors.card, marginBottom: 20 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Feather name="globe" size={18} color={colors.primary} />
+            <Text style={[styles.rowTitle, { color: colors.foreground }]}>Private DNS Provider</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>{dnsHost}</Text>
+        </View>
+        <Text style={[styles.rowSubtitle, { color: colors.mutedForeground, marginBottom: 12 }]}>
+          System-wide ad & tracker blocking for all apps via Android encrypted DNS.
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              openDnsSettings();
+            }}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                backgroundColor: colors.primary,
+                paddingVertical: 10,
+                borderRadius: 10,
+                alignItems: "center",
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Text style={{ color: "#ffffff", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Configure DNS</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              Haptics.selectionAsync();
+              const blocked = await testProtection();
+              Haptics.notificationAsync(
+                blocked ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+              );
+            }}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                backgroundColor: colors.secondary,
+                paddingVertical: 10,
+                borderRadius: 10,
+                alignItems: "center",
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Test Shield</Text>
+          </Pressable>
         </View>
       </View>
 

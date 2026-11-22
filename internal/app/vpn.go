@@ -44,7 +44,7 @@ func (a *App) VPNAvailableEngines() []vpn.EngineType {
 func (a *App) StartVPNFromTray() error {
 	<-a.startupDone
 	engines := a.vpnManager.AvailableEngines()
-	for _, engine := range []vpn.EngineType{vpn.EngineOpenVPN, vpn.EngineSoftEther} {
+	for _, engine := range []vpn.EngineType{vpn.EngineSoftEther, vpn.EngineOpenVPN} {
 		for _, available := range engines {
 			if available == engine {
 				return a.vpnManager.ConnectBest("", engine, false, true)

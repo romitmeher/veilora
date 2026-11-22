@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useRef } from "react";
 import {
@@ -61,10 +60,10 @@ export default function HomeScreen() {
   const isConnecting = status === "connecting";
 
   const statusColor = isConnected
-    ? "#22c55e"
+    ? colors.connected
     : isConnecting
-    ? "#f59e0b"
-    : "#ef4444";
+    ? colors.connecting
+    : colors.disconnected;
 
   const topInset = Platform.OS === "web" ? 20 : insets.top;
   const bottomInset = Platform.OS === "web" ? 28 : insets.bottom;
@@ -83,7 +82,7 @@ export default function HomeScreen() {
   const locationLabel = isConnected
     ? "Browsing safely from"
     : isConnecting
-    ? "Demo location"
+    ? "Connecting to"
     : "Browsing safely from";
 
   return (
@@ -95,18 +94,9 @@ export default function HomeScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Atmospheric top gradient glow */}
-      {isConnected && (
-        <LinearGradient
-          colors={["rgba(34, 197, 94, 0.14)", "transparent"]}
-          style={styles.topAura}
-          pointerEvents="none"
-        />
-      )}
-
-      {/* 1. Top Center Status Pill: ONLY Lock/Unlock + Protected / Not Protected */}
+      {/* 1. Top Center Status Pill: Lock/Unlock + Status */}
       <View style={styles.topStatusContainer}>
-        <View style={styles.statusPill}>
+        <View style={[styles.statusPill, { backgroundColor: colors.card }]}>
           <Feather
             name={isConnected ? "lock" : isConnecting ? "lock" : "unlock"}
             size={18}
@@ -115,10 +105,10 @@ export default function HomeScreen() {
           />
           <Text style={[styles.statusText, { color: statusColor }]}>
             {isConnected
-              ? "Demo connected"
+              ? "Protected"
               : isConnecting
-              ? "Simulating..."
-              : "Demo disconnected"}
+              ? "Connecting..."
+              : "Not Protected"}
           </Text>
         </View>
       </View>
@@ -126,15 +116,15 @@ export default function HomeScreen() {
       {/* 2. Official Proton Skeleton World Map */}
       <VPNMap selectedServer={selectedServer} status={status} />
 
-      {/* 3. Sub-label: "Browsing safely from" outside the pill */}
+      {/* 3. Sub-label: "Browsing safely from" */}
       <View style={styles.labelSection}>
         <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>
           {locationLabel}
         </Text>
       </View>
 
-      {/* 4. Bottom Elevated Card matching Proton VPN reference */}
-      <View style={styles.mainCard}>
+      {/* 4. Bottom Elevated Card matching Apple HIG / Proton layout (No borders) */}
+      <View style={[styles.mainCard, { backgroundColor: colors.card }]}>
         {/* Country & Server Selector Row */}
         <Pressable
           onPress={() => {
@@ -154,18 +144,24 @@ export default function HomeScreen() {
               borderRadius={4}
             />
             <View style={styles.serverTextColumn}>
-              <Text style={styles.serverCountryText} numberOfLines={1}>
+              <Text
+                style={[styles.serverCountryText, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
                 {countryTitle}
               </Text>
-              <Text style={styles.serverCodeText} numberOfLines={1}>
+              <Text
+                style={[styles.serverCodeText, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+              >
                 {serverCode}
               </Text>
             </View>
           </View>
-          <Feather name="chevron-right" size={20} color="#8e92a4" />
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
         </Pressable>
 
-        {/* Primary Action Button: strictly named "Connect" / "Disconnect", NO internal animations */}
+        {/* Primary Action Button: "Connect" / "Disconnect" (No borders) */}
         <Animated.View style={{ transform: [{ scale: buttonPressAnim }] }}>
           <Pressable
             onPress={handleToggle}
@@ -174,29 +170,33 @@ export default function HomeScreen() {
             disabled={isConnecting}
             style={[
               styles.primaryButton,
-              isConnected
-                ? styles.disconnectButton
-                : isConnecting
-                ? styles.connectingButton
-                : styles.connectButton,
+              {
+                backgroundColor: isConnected
+                  ? colors.secondary
+                  : isConnecting
+                  ? colors.secondary
+                  : colors.primary,
+              },
             ]}
           >
             <Text
               style={[
                 styles.primaryButtonText,
-                isConnected
-                  ? styles.disconnectButtonText
-                  : isConnecting
-                  ? styles.connectingButtonText
-                  : styles.connectButtonText,
+                {
+                  color: isConnected
+                    ? colors.foreground
+                    : isConnecting
+                    ? colors.mutedForeground
+                    : colors.primaryForeground,
+                },
               ]}
             >
-              {isConnected ? "End demo" : isConnecting ? "Simulating..." : "Try demo"}
+              {isConnected ? "Disconnect" : isConnecting ? "Connecting..." : "Connect"}
             </Text>
           </Pressable>
         </Animated.View>
 
-        {/* Secondary Action Button: "Change server" */}
+        {/* Secondary Action Button: "Change server" (No borders) */}
         <Pressable
           onPress={() => {
             Haptics.selectionAsync();
@@ -204,16 +204,20 @@ export default function HomeScreen() {
           }}
           style={({ pressed }) => [
             styles.secondaryButton,
-            { opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <Text style={styles.secondaryButtonText}>Change server</Text>
+          <Text
+            style={[styles.secondaryButtonText, { color: colors.foreground }]}
+          >
+            Change server
+          </Text>
         </Pressable>
       </View>
 
-      {/* 5. Live Telemetry metrics */}
+      {/* 5. Live Telemetry metrics (No borders) */}
       {selectedServer && (
-        <View style={styles.telemetryCard}>
+        <View style={[styles.telemetryCard, { backgroundColor: colors.card }]}>
           <View style={styles.telemetryItem}>
             <Text style={[styles.telemetryLabel, { color: colors.mutedForeground }]}>
               Ping
@@ -250,13 +254,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  topAura: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
   topStatusContainer: {
     alignItems: "center",
     marginBottom: 6,
@@ -269,15 +266,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
   },
   statusIcon: {
     marginRight: 8,
   },
   statusText: {
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
   labelSection: {
     paddingHorizontal: 20,
@@ -286,15 +282,13 @@ const styles = StyleSheet.create({
   },
   subLabel: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: "Inter_500Medium",
+    letterSpacing: -0.08,
   },
   mainCard: {
     marginHorizontal: 16,
     borderRadius: 18,
     padding: 16,
-    backgroundColor: "#181926",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#27293d",
     gap: 12,
   },
   serverRow: {
@@ -313,13 +307,13 @@ const styles = StyleSheet.create({
   },
   serverCountryText: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#f0f0ff",
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: -0.32,
   },
   serverCodeText: {
     fontSize: 13,
-    color: "#8e92a4",
-    fontWeight: "500",
+    fontFamily: "Inter_400Regular",
+    letterSpacing: -0.08,
   },
   primaryButton: {
     height: 50,
@@ -327,49 +321,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  connectButton: {
-    backgroundColor: "#5eead4",
-  },
-  connectButtonText: {
-    color: "#0a0b12",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  disconnectButton: {
-    backgroundColor: "#282a3d",
-    borderWidth: 1,
-    borderColor: "#353852",
-  },
-  disconnectButtonText: {
-    color: "#f0f0ff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  connectingButton: {
-    backgroundColor: "#232536",
-  },
-  connectingButtonText: {
-    color: "#8e92a4",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   primaryButtonText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
   },
   secondaryButton: {
     height: 48,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1f2133",
-    borderWidth: 1,
-    borderColor: "#2c2e44",
   },
   secondaryButtonText: {
-    color: "#d8d9e6",
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
   telemetryCard: {
     marginHorizontal: 16,
@@ -377,12 +341,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: "#141523",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#212338",
   },
   telemetryItem: {
     alignItems: "center",
@@ -390,14 +351,15 @@ const styles = StyleSheet.create({
   },
   telemetryLabel: {
     fontSize: 11,
-    fontWeight: "500",
+    fontFamily: "Inter_400Regular",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   telemetryValue: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    fontVariant: ["tabular-nums"],
   },
   verticalDivider: {
     width: StyleSheet.hairlineWidth,

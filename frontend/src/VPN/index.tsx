@@ -43,7 +43,8 @@ export function VPN() {
   const { t } = useTranslation();
   const { vpnInfo, vpnState, isConnected, isTransitioning } = useVPNState();
 
-  const [engine, setEngine] = useState<EngineType>('openvpn');
+  // Prefer SoftEther first as requested
+  const [engine, setEngine] = useState<EngineType>('softether');
   const [availableEngines, setAvailableEngines] = useState<EngineType[]>([]);
   const [enginesLoading, setEnginesLoading] = useState(true);
   const [enginesError, setEnginesError] = useState(false);
@@ -57,6 +58,11 @@ export function VPN() {
   const [editingDns, setEditingDns] = useState(false);
   const [dnsDraft, setDnsDraft] = useState('');
   const [dnsSaving, setDnsSaving] = useState(false);
+
+  // Auto-connect on launch configuration for SoftEther and OpenVPN
+  const [autoConnectEngine, setAutoConnectEngine] = useState<'softether' | 'openvpn' | 'off'>(() => {
+    return (localStorage.getItem('veilora_vpn_autoconnect') as 'softether' | 'openvpn' | 'off') || 'off';
+  });
 
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState<{
@@ -74,11 +80,17 @@ export function VPN() {
     setEnginesError(false);
     try {
       const engines = await VPNAvailableEngines();
-      const supported = (engines ?? [])
-        .filter((value): value is EngineType => value === 'openvpn' || value === 'softether')
-        .sort();
+      const supported = (engines ?? []).filter(
+        (value): value is EngineType => value === 'openvpn' || value === 'softether',
+      );
       setAvailableEngines(supported);
-      if (supported.length) setEngine(supported[0]);
+      // Prefer SoftEther if available, otherwise fallback to OpenVPN or whatever is installed
+      if (supported.length > 0) {
+        setEngine((prev) => {
+          if (supported.includes(prev)) return prev;
+          return supported.includes('softether') ? 'softether' : supported[0];
+        });
+      }
     } catch {
       setAvailableEngines([]);
       setEnginesError(true);
@@ -102,7 +114,7 @@ export function VPN() {
     return cancel;
   }, [loadEngines]);
 
-  const handleInstallEngine = async (targetEngine: EngineType = 'openvpn') => {
+  const handleInstallEngine = async (targetEngine: EngineType = 'softether') => {
     setInstalling(true);
     const engineLabel = targetEngine === 'softether' ? 'SoftEther VPN Gate Plug-in' : 'OpenVPN';
     setInstallProgress({ stage: 'starting', percent: 10, message: `Starting ${engineLabel} setup...` });
@@ -130,23 +142,51 @@ export function VPN() {
         if (r) setDnsResolver(r);
       })
       .catch(() => {});
+
+    // Check autostart preference on app launch
+    const saved = localStorage.getItem('veilora_vpn_autoconnect');
+    if ((saved === 'softether' || saved === 'openvpn') && vpnState === 'disconnected') {
+      VPNAvailableEngines().then((avail) => {
+        if (avail && avail.includes(saved as EngineType)) {
+          VPNConnectBest('', saved as EngineType, false, true).catch(() => {});
+        }
+      });
+    }
   }, [loadEngines]);
 
   const handleConnect = useCallback(async () => {
     try {
+      let activeEngine = engine;
+      if (!availableEngines.includes(engine)) {
+        if (availableEngines.length > 0) {
+          // Prefer SoftEther fallback if available, else OpenVPN
+          activeEngine = availableEngines.includes('softether') ? 'softether' : availableEngines[0];
+          AppToaster.show({
+            message: `${engine === 'softether' ? 'SoftEther' : 'OpenVPN'} is not installed. Connecting via ${activeEngine === 'softether' ? 'SoftEther' : 'OpenVPN'}...`,
+            intent: 'primary',
+          });
+          setEngine(activeEngine);
+        } else {
+          AppToaster.show({
+            message: 'No VPN engine installed. Please install SoftEther or OpenVPN first.',
+            intent: 'warning',
+          });
+          return;
+        }
+      }
       if (autoSelect) {
-        await VPNConnectBest(country, engine, killSwitch, dnsProtect);
+        await VPNConnectBest(country, activeEngine, killSwitch, dnsProtect);
       } else {
         if (!selectedServer) {
           AppToaster.show({ message: t('vpn.noServerSelected'), intent: 'warning' });
           return;
         }
-        await VPNConnectToServer(selectedServer.hostName, engine, killSwitch, dnsProtect);
+        await VPNConnectToServer(selectedServer.hostName, activeEngine, killSwitch, dnsProtect);
       }
     } catch (err) {
       AppToaster.show({ message: t('vpn.connectError', { error: err }), intent: 'danger' });
     }
-  }, [autoSelect, country, engine, killSwitch, dnsProtect, selectedServer, t]);
+  }, [availableEngines, engine, autoSelect, country, killSwitch, dnsProtect, selectedServer, t]);
 
   const handleDisconnect = useCallback(async () => {
     try {
@@ -155,6 +195,19 @@ export function VPN() {
       AppToaster.show({ message: t('vpn.disconnectError', { error: err }), intent: 'danger' });
     }
   }, [t]);
+
+  const handleToggleAutoConnect = (target: 'softether' | 'openvpn') => {
+    const next = autoConnectEngine === target ? 'off' : target;
+    setAutoConnectEngine(next);
+    localStorage.setItem('veilora_vpn_autoconnect', next);
+    AppToaster.show({
+      message:
+        next === 'off'
+          ? 'Auto-connect on launch disabled'
+          : `Auto-connect on launch set to ${next === 'softether' ? 'SoftEther' : 'OpenVPN'}`,
+      intent: 'primary',
+    });
+  };
 
   const handleDnsResolverSave = async () => {
     setDnsSaving(true);
@@ -170,25 +223,59 @@ export function VPN() {
     }
   };
 
+  const isConnecting = vpnState === 'connecting';
   const canAct = !isTransitioning;
   const statusClass = `vpn-status vpn-status--${vpnState}`;
 
   return (
     <div className="vpn">
-      {!isConnected && (enginesLoading || enginesError || availableEngines.length === 0) && (
+      {/* Engine setup & installer card */}
+      {!isConnected && (enginesLoading || enginesError || !availableEngines.includes(engine)) && (
         <div className="vpn-engine-installer-card">
           <div className="vpn-engine-installer-header">
             <div className="vpn-engine-installer-icon">
               <Icon icon="shield" size={24} intent="primary" />
             </div>
             <div className="vpn-engine-installer-title">
-              <h3>Secure Tunnel Engine Required</h3>
+              <h3>
+                {engine === 'softether' && !availableEngines.includes('softether')
+                  ? 'SoftEther VPN Engine Not Installed'
+                  : engine === 'openvpn' && !availableEngines.includes('openvpn')
+                  ? 'OpenVPN Engine Not Installed'
+                  : 'Secure Tunnel Engine Required'}
+              </h3>
               <p>
-                Veilora requires a tunneling engine (OpenVPN or SoftEther VPN Gate client plug-in) to encrypt and route
-                your traffic.
+                {engine === 'softether' && !availableEngines.includes('softether')
+                  ? 'Veilora recommends the SoftEther VPN Gate client plug-in for faster and native SSL-VPN routing.'
+                  : engine === 'openvpn' && !availableEngines.includes('openvpn')
+                  ? 'Veilora requires the OpenVPN engine to connect with this engine profile.'
+                  : 'Veilora requires a tunneling engine (SoftEther VPN Gate client plug-in or OpenVPN) to encrypt and route your traffic.'}
               </p>
             </div>
           </div>
+
+          {/* Academic volunteer mirror download speed notice */}
+          <div className="vpn-engine-note">
+            <Icon icon="info-sign" size={14} />
+            <span>
+              VPN Gate is an academic volunteer network (University of Tsukuba). Mirror downloads (~65 MB) can be slow due to bandwidth throttling on overseas volunteer nodes.
+            </span>
+          </div>
+
+          {/* Step-by-step setup guide for SoftEther */}
+          {engine === 'softether' && !installing && (
+            <div className="vpn-softether-guide">
+              <div className="vpn-softether-guide__title">
+                <Icon icon="help" size={14} /> SoftEther Setup Guide
+              </div>
+              <ol className="vpn-softether-guide__steps">
+                <li>Click <strong>"Fetch SoftEther Plugin"</strong> to download and launch the installer.</li>
+                <li>In the installer wizard, select <strong>"SoftEther VPN Client"</strong> (do not choose Server/Bridge).</li>
+                <li>Accept the default folder (<code>C:\Program Files\SoftEther VPN Client</code>) and allow virtual network driver installation.</li>
+                <li>When finished, click <strong>"Check Again"</strong> to verify detection.</li>
+              </ol>
+            </div>
+          )}
 
           {installing ? (
             <div className="vpn-engine-installer-progress">
@@ -205,24 +292,72 @@ export function VPN() {
             </div>
           ) : (
             <div className="vpn-engine-installer-actions">
-              <Button
-                intent="primary"
-                icon="shield"
-                size="large"
-                onClick={() => handleInstallEngine('openvpn')}
-                loading={enginesLoading}
-              >
-                Install OpenVPN
-              </Button>
-              <Button
-                intent="none"
-                icon="download"
-                size="large"
-                onClick={() => handleInstallEngine('softether')}
-                loading={enginesLoading}
-              >
-                Fetch SoftEther Plugin
-              </Button>
+              {engine === 'softether' && !availableEngines.includes('softether') ? (
+                <>
+                  <Button
+                    intent="primary"
+                    icon="download"
+                    size="large"
+                    onClick={() => handleInstallEngine('softether')}
+                    loading={enginesLoading}
+                  >
+                    Fetch SoftEther Plugin
+                  </Button>
+                  {availableEngines.includes('openvpn') && (
+                    <Button
+                      intent="none"
+                      icon="shield"
+                      size="large"
+                      onClick={() => setEngine('openvpn')}
+                    >
+                      Use OpenVPN (Installed)
+                    </Button>
+                  )}
+                </>
+              ) : engine === 'openvpn' && !availableEngines.includes('openvpn') ? (
+                <>
+                  <Button
+                    intent="primary"
+                    icon="shield"
+                    size="large"
+                    onClick={() => handleInstallEngine('openvpn')}
+                    loading={enginesLoading}
+                  >
+                    Install OpenVPN
+                  </Button>
+                  {availableEngines.includes('softether') && (
+                    <Button
+                      intent="none"
+                      icon="download"
+                      size="large"
+                      onClick={() => setEngine('softether')}
+                    >
+                      Use SoftEther (Installed)
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button
+                    intent="primary"
+                    icon="download"
+                    size="large"
+                    onClick={() => handleInstallEngine('softether')}
+                    loading={enginesLoading}
+                  >
+                    Fetch SoftEther Plugin
+                  </Button>
+                  <Button
+                    intent="none"
+                    icon="shield"
+                    size="large"
+                    onClick={() => handleInstallEngine('openvpn')}
+                    loading={enginesLoading}
+                  >
+                    Install OpenVPN
+                  </Button>
+                </>
+              )}
               <Button icon="refresh" variant="minimal" onClick={loadEngines}>
                 Check Again
               </Button>
@@ -230,7 +365,8 @@ export function VPN() {
           )}
         </div>
       )}
-      {/* Status card */}
+
+      {/* Status card with Fluid Functionalism pulse animation */}
       <div className={statusClass}>
         <div className="vpn-status__header">
           <div className="vpn-status__indicator" />
@@ -255,7 +391,7 @@ export function VPN() {
           {t('vpn.controls.title')}
         </Tag>
         <div className="vpn-controls__body">
-          {/* Engine */}
+          {/* Engine: SoftEther preferred first */}
           <div className="vpn-controls__row">
             <label htmlFor="vpn-engine">{t('vpn.controls.engine')}</label>
             <HTMLSelect
@@ -265,11 +401,12 @@ export function VPN() {
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              {availableEngines.includes('openvpn') && <option value="openvpn">OpenVPN</option>}
-              {availableEngines.includes('softether') && <option value="softether">SoftEther</option>}
-              {!availableEngines.includes('openvpn') && !availableEngines.includes('softether') && (
-                <option value="openvpn">OpenVPN (not found)</option>
-              )}
+              <option value="softether">
+                SoftEther {availableEngines.includes('softether') ? '(installed)' : '(not installed)'}
+              </option>
+              <option value="openvpn">
+                OpenVPN {availableEngines.includes('openvpn') ? '(installed)' : '(not installed)'}
+              </option>
             </HTMLSelect>
           </div>
 
@@ -299,6 +436,30 @@ export function VPN() {
               aria-label={t('vpn.controls.autoSelect')}
               checked={autoSelect}
               onChange={(e) => setAutoSelect(e.currentTarget.checked)}
+              disabled={!canAct || isConnected}
+              inline
+            />
+          </div>
+
+          {/* Auto-connect on startup option for SoftEther */}
+          <div className="vpn-controls__switch-row">
+            <label>Auto-connect via SoftEther on launch</label>
+            <Switch
+              aria-label="Auto-connect via SoftEther on launch"
+              checked={autoConnectEngine === 'softether'}
+              onChange={() => handleToggleAutoConnect('softether')}
+              disabled={!canAct || isConnected}
+              inline
+            />
+          </div>
+
+          {/* Auto-connect on startup option for OpenVPN */}
+          <div className="vpn-controls__switch-row">
+            <label>Auto-connect via OpenVPN on launch</label>
+            <Switch
+              aria-label="Auto-connect via OpenVPN on launch"
+              checked={autoConnectEngine === 'openvpn'}
+              onChange={() => handleToggleAutoConnect('openvpn')}
               disabled={!canAct || isConnected}
               inline
             />
@@ -389,28 +550,43 @@ export function VPN() {
         />
       )}
 
-      {/* Connect / Disconnect button */}
-      <Button
-        fill
-        size="large"
-        intent={isConnected ? 'danger' : 'success'}
-        className="vpn-connect-btn"
-        loading={isTransitioning}
-        disabled={
-          isTransitioning ||
-          (!isConnected &&
-            (enginesLoading || !availableEngines.includes(engine) || (!autoSelect && !selectedServer) || editingDns))
-        }
-        onClick={isConnected ? handleDisconnect : handleConnect}
-      >
-        {isConnected
-          ? t('vpn.disconnect')
-          : autoSelect
-            ? t('vpn.connectBest')
-            : selectedServer
-              ? t('vpn.connectTo', { host: selectedServer.hostName })
-              : t('vpn.connectBest')}
-      </Button>
+      {/* Connect / Disconnect / Cancel button group */}
+      <div className="vpn-connect-group">
+        <Button
+          fill
+          size="large"
+          intent={isConnected ? 'danger' : 'success'}
+          className="vpn-connect-btn"
+          loading={isTransitioning && !isConnecting}
+          disabled={
+            (isTransitioning && !isConnecting) ||
+            (!isConnected && (enginesLoading || (!autoSelect && !selectedServer) || editingDns))
+          }
+          onClick={isConnected ? handleDisconnect : handleConnect}
+        >
+          {isConnected
+            ? t('vpn.disconnect')
+            : isConnecting
+              ? 'Connecting…'
+              : autoSelect
+                ? t('vpn.connectBest')
+                : selectedServer
+                  ? t('vpn.connectTo', { host: selectedServer.hostName })
+                  : t('vpn.connectBest')}
+        </Button>
+        {isConnecting && (
+          <Button
+            size="large"
+            intent="danger"
+            icon="cross"
+            className="vpn-cancel-btn"
+            onClick={handleDisconnect}
+            title="Cancel connection attempt"
+          >
+            Cancel
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
