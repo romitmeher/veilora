@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextMorph } from 'torph/react';
 import { CountryFlag } from './CountryFlags';
-import { ShieldAlert, ShieldCheck, Zap, RefreshCw, Power } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Zap, RefreshCw, Power, Info, ChevronUp } from 'lucide-react';
 
 export interface VpnCountry {
   id: string;
@@ -12,6 +12,19 @@ export interface VpnCountry {
   y: number;
   isp: string;
 }
+
+const getServerTag = (code: string): string => {
+  switch (code) {
+    case 'NL': return 'Netherlands #38';
+    case 'CH': return 'Switzerland #14';
+    case 'IS': return 'Iceland #08';
+    case 'JP': return 'Japan #22';
+    case 'SE': return 'Sweden #05';
+    case 'DE': return 'Germany #19';
+    case 'SG': return 'Singapore #09';
+    default: return 'India #01';
+  }
+};
 
 export const INDIA_COUNTRY: VpnCountry = {
   id: 'in',
@@ -450,12 +463,12 @@ export const VpnMapSection: React.FC = () => {
             </span>
           </div>
 
-          {/* Clean Location Row (No Pill Wrapper) */}
+          {/* Server Row (Proton-style layout in Apple aesthetic) */}
           <div
             style={{
               backgroundColor: '#fbfbfd',
               borderRadius: '14px',
-              padding: '16px',
+              padding: '14px 16px',
               border: '1px solid #f0f0f4',
               display: 'flex',
               alignItems: 'center',
@@ -463,41 +476,117 @@ export const VpnMapSection: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CountryFlag
-                countryCode={activeCountry.code}
-                style={{ width: '28px', height: '20px', borderRadius: '4px', boxShadow: 'none', border: 'none' }}
-              />
+              {!isConnected ? (
+                /* Disconnected: Mint Green Zap Badge */
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    backgroundColor: '#00E599',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 2px 8px rgba(0, 229, 153, 0.28)',
+                  }}
+                >
+                  <Zap style={{ width: '18px', height: '18px', color: '#09090b', fill: '#09090b' }} />
+                </div>
+              ) : (
+                /* Connected: Mint Green Zap Badge with Connected Country Flag overlapping */
+                <div style={{ position: 'relative', width: '38px', height: '38px', flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      backgroundColor: '#00E599',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0, 229, 153, 0.28)',
+                    }}
+                  >
+                    <Zap style={{ width: '18px', height: '18px', color: '#09090b', fill: '#09090b' }} />
+                  </div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: '-4px',
+                      bottom: '-3px',
+                      borderRadius: '3px',
+                      border: '2px solid #ffffff',
+                      overflow: 'hidden',
+                      lineHeight: 0,
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)',
+                    }}
+                  >
+                    <CountryFlag
+                      countryCode={activeCountry.code}
+                      style={{ width: '18px', height: '13px', borderRadius: '1px', boxShadow: 'none', border: 'none' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <span
                   style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    color: '#86868b',
-                    letterSpacing: '0.04em',
-                    display: 'block',
-                    marginBottom: '2px',
-                  }}
-                >
-                  {isConnected ? 'VPN Exit Location' : 'Current Location'}
-                </span>
-                <span
-                  style={{
-                    fontSize: '15px',
+                    fontSize: '14.5px',
                     fontWeight: 600,
                     color: '#1c1c1e',
                     letterSpacing: '-0.01em',
+                    display: 'block',
+                    lineHeight: 1.25,
                   }}
                 >
-                  {activeCountry.country}
+                  Fastest free server
                 </span>
+
+                {!isConnected ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
+                    <span style={{ fontSize: '12px', color: '#86868b' }}>
+                      Auto-selected from
+                    </span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <CountryFlag
+                        countryCode="NL"
+                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                      />
+                      <CountryFlag
+                        countryCode="JP"
+                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                      />
+                      <CountryFlag
+                        countryCode="CH"
+                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                      />
+                      <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#86868b', marginLeft: '1px' }}>
+                        +5
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '12.5px',
+                      color: '#86868b',
+                      fontWeight: 500,
+                      marginTop: '2px',
+                      display: 'block',
+                    }}
+                  >
+                    {getServerTag(activeCountry.code)}
+                  </span>
+                )}
               </div>
             </div>
 
-            {isConnected ? (
-              <ShieldCheck style={{ width: '20px', height: '20px', color: '#10b981' }} />
+            {!isConnected ? (
+              <Info style={{ width: '18px', height: '18px', color: '#86868b', flexShrink: 0 }} />
             ) : (
-              <ShieldAlert style={{ width: '20px', height: '20px', color: '#ef4444' }} />
+              <ChevronUp style={{ width: '18px', height: '18px', color: '#86868b', flexShrink: 0 }} />
             )}
           </div>
 
@@ -568,7 +657,7 @@ export const VpnMapSection: React.FC = () => {
             </span>
           </div>
 
-          {/* Action Button: Connect / Disconnect */}
+          {/* Action Button: Connect / Disconnect / Change Server */}
           {!isConnected ? (
             <button
               onClick={handleQuickConnect}
@@ -590,7 +679,7 @@ export const VpnMapSection: React.FC = () => {
                 boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
               }}
             >
-              <Zap style={{ width: '16px', height: '16px', color: '#fde047' }} />
+              <Zap style={{ width: '16px', height: '16px', color: '#fde047', fill: '#fde047' }} />
               Quick Connect
             </button>
           ) : isConnecting ? (
@@ -622,50 +711,57 @@ export const VpnMapSection: React.FC = () => {
               Securing Handshake...
             </button>
           ) : (
-            <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+            /* Connected state: Stacked buttons as in reference (Disconnect & Change server, NO RED BORDER) */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+              <button
+                onClick={handleDisconnect}
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  backgroundColor: '#f2f2f7',
+                  color: '#1c1c1e',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e5e5ea')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f2f2f7')}
+              >
+                <Power style={{ width: '15px', height: '15px', color: '#dc2626' }} />
+                Disconnect
+              </button>
+
               <button
                 onClick={handleQuickConnect}
-                className="btn-primary"
                 style={{
-                  flex: 1,
+                  width: '100%',
                   height: '44px',
                   borderRadius: '12px',
                   fontSize: '14px',
                   fontWeight: 600,
                   backgroundColor: '#000000',
                   color: '#ffffff',
-                  border: 'none',
+                  border: 'none', // Explicitly no red border!
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
+                  transition: 'opacity 0.2s ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
                 <RefreshCw style={{ width: '14px', height: '14px' }} />
-                Switch Country
-              </button>
-              <button
-                onClick={handleDisconnect}
-                style={{
-                  height: '44px',
-                  padding: '0 16px',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  backgroundColor: '#fef2f2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'background 0.2s ease',
-                }}
-              >
-                <Power style={{ width: '14px', height: '14px' }} />
-                Disconnect
+                Change server
               </button>
             </div>
           )}
