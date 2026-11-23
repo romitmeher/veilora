@@ -125,9 +125,8 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
 
     const updateDimensions = () => {
       if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const w = width || rect.width;
-      const h = height || rect.height;
+      const w = width || container.clientWidth;
+      const h = height || container.clientHeight;
       if (w <= 0 || h <= 0) return;
       setCanvasSize({ width: w, height: h });
       gridParams = setupCanvas(canvas, w, h);
@@ -164,8 +163,10 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     );
     observer.observe(container);
 
+    let resizeRaf: number;
     const resizeObserver = new ResizeObserver(() => {
-      updateDimensions();
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(updateDimensions);
     });
     resizeObserver.observe(container);
 
@@ -176,6 +177,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(resizeRaf);
       observer.disconnect();
       resizeObserver.disconnect();
     };
@@ -191,12 +193,12 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   return (
     <div
       ref={containerRef}
-      className={cn("h-full w-full", className)}
+      className={cn("relative h-full w-full overflow-hidden", className)}
       {...props}
     >
       <canvas
         ref={canvasRef}
-        className="pointer-events-none"
+        className="pointer-events-none absolute inset-0"
         style={{
           width: canvasSize.width,
           height: canvasSize.height,
