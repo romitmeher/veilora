@@ -15,3 +15,8 @@ frontend/dist
 **/*.out
 
 **/__pycache__/
+
+# Local agent and skill installations
+.agents/
+.claude/
+skills-lock.json
