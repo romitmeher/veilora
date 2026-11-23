@@ -5,6 +5,7 @@ import { MorphHero } from './components/MorphHero';
 import { SafariDemo } from './components/SafariDemo';
 import { AboutSection } from './components/AboutSection';
 import { VpnMapSection } from './components/VpnMapSection';
+import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 import { ProgressiveBlur } from '@/registry/magicui/progressive-blur';
 
 export const App: React.FC = () => {
@@ -125,9 +126,81 @@ export const App: React.FC = () => {
       </header>
 
       {/* Hero Section with Animated Torph Typography & Safari Mockup */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <MorphHero />
-        <SafariDemo />
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+        {/* Unified Hero Stage: Hero Typography + Safari Mockup resting on FlickeringGrid */}
+        <section
+          style={{
+            position: 'relative',
+            width: '100%',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          {/* FlickeringGrid Background spanning the entire Stage */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              pointerEvents: 'none',
+              overflow: 'hidden',
+            }}
+          >
+            <FlickeringGrid
+              squareSize={2.5}
+              gridGap={14}
+              color="#60A5FA"
+              maxOpacity={0.22}
+              flickerChance={0.06}
+            />
+          </div>
+
+          {/* Top Gradient Fade: Smooth 80px transition into navbar */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '80px',
+              background: 'linear-gradient(to bottom, #ffffff 20%, rgba(255, 255, 255, 0) 100%)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+
+          {/* Bottom Gradient Fade: Progressive 140px fade under Safari mockup */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '140px',
+              background: 'linear-gradient(to top, #ffffff 25%, rgba(255, 255, 255, 0) 100%)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+
+          {/* Stage Foreground Content */}
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <MorphHero />
+            <SafariDemo />
+          </div>
+        </section>
+
         <AboutSection />
         <VpnMapSection />
       </main>

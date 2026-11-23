@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { TextMorph } from 'torph/react';
 import { Button } from './Button';
-import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 import {
   WindowsLogo,
   LinuxLogo,
@@ -160,84 +159,22 @@ export const MorphHero: React.FC = () => {
   }, []);
 
   return (
-    <section
+    <div
       style={{
         position: 'relative',
+        zIndex: 1,
         width: '100%',
-        overflow: 'hidden',
-        padding: '48px 20px 48px',
+        maxWidth: '1040px',
+        margin: '0 auto',
+        padding: '52px 20px 36px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        textAlign: 'center',
       }}
     >
-      {/* Ambient Flickering Grid Background: Hero only, masked to keep the text area crisp and clear */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: 'none',
-          overflow: 'hidden',
-          maskImage:
-            'radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.85) 68%, transparent 98%)',
-          WebkitMaskImage:
-            'radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.85) 68%, transparent 98%)',
-        }}
-      >
-        <FlickeringGrid
-          squareSize={4}
-          gridGap={6}
-          color="#60A5FA"
-          maxOpacity={0.5}
-          flickerChance={0.15}
-        />
-      </div>
-
-      {/* Top Gradient Fade: Smooth transition into navbar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '70px',
-          background: 'linear-gradient(to bottom, #ffffff 15%, rgba(255, 255, 255, 0) 100%)',
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      />
-
-      {/* Bottom Gradient Fade: Smooth transition into Safari demo */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '80px',
-          background: 'linear-gradient(to top, #ffffff 15%, rgba(255, 255, 255, 0) 100%)',
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      />
-
-      {/* Hero Foreground Content: Elevated z-index and isolated from background */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          maxWidth: '1040px',
-          margin: '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          textAlign: 'center',
-        }}
-      >
-        {/* Hero Typography Sentence with Inline Torph Chips */}
-        <h1
+      {/* Hero Typography Sentence with Inline Torph Chips */}
+      <h1
           style={{
             fontSize: 'clamp(24px, 3.8vw, 40px)',
             fontWeight: 500,
@@ -303,7 +240,6 @@ export const MorphHero: React.FC = () => {
             Windows 10 / 11 · 64-bit · Free & Open Source
           </span>
         </div>
-      </div>
-    </section>
+    </div>
   );
 };

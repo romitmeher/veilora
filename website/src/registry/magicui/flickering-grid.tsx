@@ -21,14 +21,14 @@ export interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement
 }
 
 export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
-  squareSize = 4,
-  gridGap = 6,
-  flickerChance = 0.1,
+  squareSize = 2.5,
+  gridGap = 14,
+  flickerChance = 0.06,
   color = "#60A5FA",
   width,
   height,
   className,
-  maxOpacity = 0.5,
+  maxOpacity = 0.22,
   ...props
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,7 +126,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
       ctx.clearRect(0, 0, w * dpr, h * dpr);
 
       const mouse = mouseRef.current;
-      const hoverRadius = 140 * dpr;
+      const hoverRadius = 200 * dpr;
       const hoverRadiusSq = hoverRadius * hoverRadius;
       const mouseXDpr = mouse ? mouse.x * dpr : -9999;
       const mouseYDpr = mouse ? mouse.y * dpr : -9999;
@@ -150,8 +150,8 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
             const dy = centerY - mouseYDpr;
             const distSq = dxSq + dy * dy;
             if (distSq < hoverRadiusSq) {
-              const boost = (1 - Math.sqrt(distSq) / hoverRadius) * 0.6;
-              opacity = Math.min(1, opacity + boost);
+              const boost = (1 - Math.sqrt(distSq) / hoverRadius) * 0.75;
+              opacity = Math.min(0.9, opacity + boost);
             }
           }
 
