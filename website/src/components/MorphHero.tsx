@@ -181,9 +181,9 @@ export const MorphHero: React.FC = () => {
           pointerEvents: 'none',
           overflow: 'hidden',
           maskImage:
-            'radial-gradient(ellipse at center, transparent 32%, rgba(0, 0, 0, 0.8) 72%, transparent 100%)',
+            'radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.85) 68%, transparent 98%)',
           WebkitMaskImage:
-            'radial-gradient(ellipse at center, transparent 32%, rgba(0, 0, 0, 0.8) 72%, transparent 100%)',
+            'radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.85) 68%, transparent 98%)',
         }}
       >
         <FlickeringGrid
@@ -194,6 +194,34 @@ export const MorphHero: React.FC = () => {
           flickerChance={0.15}
         />
       </div>
+
+      {/* Top Gradient Fade: Smooth transition into navbar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '70px',
+          background: 'linear-gradient(to bottom, #ffffff 15%, rgba(255, 255, 255, 0) 100%)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
+
+      {/* Bottom Gradient Fade: Smooth transition into Safari demo */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '80px',
+          background: 'linear-gradient(to top, #ffffff 15%, rgba(255, 255, 255, 0) 100%)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
 
       {/* Hero Foreground Content: Elevated z-index and isolated from background */}
       <div

@@ -33,8 +33,37 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const mouseRef = useRef<{ x: number; y: number } | null>(null);
   const [isInView, setIsInView] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (x >= -40 && x <= rect.width + 40 && y >= -40 && y <= rect.height + 40) {
+        mouseRef.current = { x, y };
+      } else {
+        mouseRef.current = null;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      mouseRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    document.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, []);
 
   const memoizedColor = useMemo(() => {
     const toRGBA = (colorStr: string) => {
@@ -96,16 +125,40 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     ) => {
       ctx.clearRect(0, 0, w * dpr, h * dpr);
 
+      const mouse = mouseRef.current;
+      const hoverRadius = 140 * dpr;
+      const hoverRadiusSq = hoverRadius * hoverRadius;
+      const mouseXDpr = mouse ? mouse.x * dpr : -9999;
+      const mouseYDpr = mouse ? mouse.y * dpr : -9999;
+
+      const step = (squareSize + gridGap) * dpr;
+      const sSize = squareSize * dpr;
+
       for (let i = 0; i < cols; i++) {
+        const x = i * step;
+        const centerX = x + sSize / 2;
+        const dx = mouse ? centerX - mouseXDpr : 9999;
+        const dxSq = dx * dx;
+        const isNearX = mouse && dxSq < hoverRadiusSq;
+
         for (let j = 0; j < rows; j++) {
-          const opacity = squares[i * rows + j];
-          ctx.fillStyle = `${memoizedColor}${opacity})`;
-          ctx.fillRect(
-            i * (squareSize + gridGap) * dpr,
-            j * (squareSize + gridGap) * dpr,
-            squareSize * dpr,
-            squareSize * dpr
-          );
+          const y = j * step;
+          let opacity = squares[i * rows + j];
+
+          if (isNearX) {
+            const centerY = y + sSize / 2;
+            const dy = centerY - mouseYDpr;
+            const distSq = dxSq + dy * dy;
+            if (distSq < hoverRadiusSq) {
+              const boost = (1 - Math.sqrt(distSq) / hoverRadius) * 0.6;
+              opacity = Math.min(1, opacity + boost);
+            }
+          }
+
+          if (opacity > 0.01) {
+            ctx.fillStyle = `${memoizedColor}${opacity})`;
+            ctx.fillRect(x, y, sSize, sSize);
+          }
         }
       }
     },
