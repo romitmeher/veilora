@@ -250,7 +250,7 @@ export const VpnMapSection: React.FC = () => {
                       gap: '7px',
                       backgroundColor: '#ffffff',
                       borderRadius: '8px',
-                      padding: '4px 10px 4px 4px',
+                      padding: '5px 11px 5px 6px',
                       boxShadow:
                         '0 10px 28px -4px rgba(0, 0, 0, 0.2), 0 3px 8px -2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
                       border: 'none',
@@ -258,31 +258,18 @@ export const VpnMapSection: React.FC = () => {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {/* Squarish Badge for Flag matching flag aspect ratio & radius */}
-                    <span
+                    {/* Official Country Flag (no grey border wrapper) */}
+                    <CountryFlag
+                      countryCode={activeCountry.code}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '24px',
-                        height: '18px',
-                        borderRadius: '4px',
-                        backgroundColor: '#E5E5EA',
+                        width: '21px',
+                        height: '15px',
+                        borderRadius: '3px',
+                        boxShadow: 'none',
+                        border: 'none',
                         flexShrink: 0,
-                        overflow: 'hidden',
                       }}
-                    >
-                      <CountryFlag
-                        countryCode={activeCountry.code}
-                        style={{
-                          width: '20px',
-                          height: '14px',
-                          borderRadius: '3px',
-                          boxShadow: 'none',
-                          border: 'none',
-                        }}
-                      />
-                    </span>
+                    />
 
                     {/* Country Name */}
                     <span
