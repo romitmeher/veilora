@@ -1,9 +1,26 @@
 <p align="center"><img src="assets/brand/veilora.png" width="96" alt="Veilora ribbon logo" /></p>
 <h1 align="center">Veilora</h1>
 <p align="center">Desktop ad blocking and VPN controls. Clear status, local configuration.</p>
-<p align="center"><a href="#getting-started">Get started</a> · <a href="docs/VALIDATION.md">Validation</a> · <a href="PRIVACY_POLICY.md">Privacy</a> · <a href="LICENSE">MIT license</a></p>
+<p align="center"><a href="#downloads">Downloads</a> · <a href="#getting-started">Get started</a> · <a href="docs/VALIDATION.md">Validation</a> · <a href="PRIVACY_POLICY.md">Privacy</a> · <a href="LICENSE">MIT license</a></p>
 
 Veilora is a Go/Wails desktop application with a React interface, built on [Zen](https://github.com/irbis-sh/zen-desktop). It brings system-proxy filtering, request history, filter subscriptions, custom rules, and OpenVPN/SoftEther controls into one app.
+
+## Downloads
+
+Downloads are published automatically and links below update with the latest build. New commits pushed to `main` refresh the rolling release assets.
+
+| Platform | Architecture | Download |
+| --- | --- | --- |
+| Windows | AMD64 installer | [Veilora-amd64-installer.exe](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-amd64-installer.exe) |
+| Windows | AMD64 portable | [Veilora_windows_amd64.zip](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_windows_amd64.zip) |
+| Windows | ARM64 portable | [Veilora_windows_arm64.zip](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_windows_arm64.zip) |
+| macOS | AMD64 DMG | [Veilora-amd64.dmg](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-amd64.dmg) |
+| macOS | ARM64 DMG | [Veilora-arm64.dmg](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-arm64.dmg) |
+| Linux | AMD64 | [Veilora_linux_amd64.tar.gz](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_linux_amd64.tar.gz) |
+| Linux | ARM64 | [Veilora_linux_arm64.tar.gz](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_linux_arm64.tar.gz) |
+| Android | APK | [Build an APK](.github/workflows/build-android.yml) |
+
+GitHub [All releases](https://github.com/romitmeher/veilora/releases) contains versioned and rolling builds. Android is a separate Expo preview workflow and is not a native traffic-protecting VPN application; iOS builds are not currently produced. Windows and macOS signatures depend on repository signing credentials.
 
 ## Interface
 
@@ -54,7 +71,7 @@ wails build -skipbindings -tags bundledvpn
 # Output: build/bin/Veilora.exe
 ```
 
-For the NSIS installer, use [build-installer.ps1](build-installer.ps1). Built executables are ignored by Git; this source update does not publish a binary release.
+For the NSIS installer, use [build-installer.ps1](build-installer.ps1). Built executables are ignored by Git. Tagged and rolling builds are published by GitHub Actions.
 
 See [bundled VPN details](docs/BUNDLED-VPN.md) for architecture selection, adapter behavior, upstream notices, and headless test limitations. Plain `wails dev` builds continue to use separately installed engines.
 
