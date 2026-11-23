@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { TextMorph } from 'torph/react';
 import { Button } from './Button';
+import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 import {
   WindowsLogo,
   LinuxLogo,
@@ -161,82 +162,120 @@ export const MorphHero: React.FC = () => {
   return (
     <section
       style={{
+        position: 'relative',
+        width: '100%',
+        overflow: 'hidden',
+        padding: '48px 20px 48px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '48px 20px 48px',
-        maxWidth: '1040px',
-        margin: '0 auto',
-        textAlign: 'center',
       }}
     >
-      {/* Hero Typography Sentence with Inline Torph Chips */}
-      <h1
-        style={{
-          fontSize: 'clamp(24px, 3.8vw, 40px)',
-          fontWeight: 500,
-          lineHeight: 1.35,
-          color: '#0f172a',
-          letterSpacing: '-0.02em',
-          margin: 0,
-          maxWidth: '920px',
-        }}
-      >
-        A private shield for{' '}
-        <InlineChip item={PLATFORMS[platformIndex]} />
-        {', '}
-        <br style={{ display: 'none' }} className="responsive-br" />
-        blocks{' '}
-        <InlineChip item={TARGETS[targetIndex]} />
-        {', and routes '}
-        <br style={{ display: 'none' }} className="responsive-br" />
-        encrypted traffic with{' '}
-        <InlineChip item={PROTOCOLS[protocolIndex]} />
-        {'.'}
-      </h1>
-
-      {/* Concise Description */}
-      <p
-        style={{
-          fontSize: 'clamp(15px, 2vw, 18px)',
-          lineHeight: 1.55,
-          color: '#6e6e73',
-          maxWidth: '560px',
-          margin: '24px auto 32px',
-          fontWeight: 400,
-          letterSpacing: '-0.01em',
-        }}
-      >
-        Veilora is a lightweight, open-source privacy client that stops ads, telemetry, and trackers at the DNS layer—with built-in encrypted VPN tunneling.
-      </p>
-
-      {/* Primary Download for Windows CTA */}
+      {/* Ambient Flickering Grid Background: Hero only, masked to keep the text area crisp and clear */}
       <div
         style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          maskImage:
+            'radial-gradient(ellipse 720px 320px at 50% 45%, transparent 22%, rgba(0, 0, 0, 0.75) 65%, transparent 100%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 720px 320px at 50% 45%, transparent 22%, rgba(0, 0, 0, 0.75) 65%, transparent 100%)',
+        }}
+      >
+        <FlickeringGrid
+          squareSize={4}
+          gridGap={6}
+          color="#60A5FA"
+          maxOpacity={0.45}
+          flickerChance={0.1}
+          className="size-full"
+        />
+      </div>
+
+      {/* Hero Foreground Content: Elevated z-index and isolated from background */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: '1040px',
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px',
+          textAlign: 'center',
         }}
       >
-        <Button
-          size="lg"
-          href="https://github.com/veilora/veilora/releases/latest"
-          icon={<WindowsLogo style={{ width: '18px', height: '18px' }} fill="#0078D4" />}
-        >
-          Download for Windows
-        </Button>
-        <span
+        {/* Hero Typography Sentence with Inline Torph Chips */}
+        <h1
           style={{
-            fontSize: '12px',
-            color: '#86868b',
-            fontWeight: 400,
-            letterSpacing: '-0.005em',
+            fontSize: 'clamp(24px, 3.8vw, 40px)',
+            fontWeight: 500,
+            lineHeight: 1.35,
+            color: '#0f172a',
+            letterSpacing: '-0.02em',
+            margin: 0,
+            maxWidth: '920px',
           }}
         >
-          Windows 10 / 11 · 64-bit · Free & Open Source
-        </span>
+          A private shield for{' '}
+          <InlineChip item={PLATFORMS[platformIndex]} />
+          {', '}
+          <br style={{ display: 'none' }} className="responsive-br" />
+          blocks{' '}
+          <InlineChip item={TARGETS[targetIndex]} />
+          {', and routes '}
+          <br style={{ display: 'none' }} className="responsive-br" />
+          encrypted traffic with{' '}
+          <InlineChip item={PROTOCOLS[protocolIndex]} />
+          {'.'}
+        </h1>
+
+        {/* Concise Description */}
+        <p
+          style={{
+            fontSize: 'clamp(15px, 2vw, 18px)',
+            lineHeight: 1.55,
+            color: '#6e6e73',
+            maxWidth: '560px',
+            margin: '24px auto 32px',
+            fontWeight: 400,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          Veilora is a lightweight, open-source privacy client that stops ads, telemetry, and trackers at the DNS layer—with built-in encrypted VPN tunneling.
+        </p>
+
+        {/* Primary Download for Windows CTA */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '10px',
+          }}
+        >
+          <Button
+            size="lg"
+            href="https://github.com/veilora/veilora/releases/latest"
+            icon={<WindowsLogo style={{ width: '18px', height: '18px' }} fill="#0078D4" />}
+          >
+            Download for Windows
+          </Button>
+          <span
+            style={{
+              fontSize: '12px',
+              color: '#86868b',
+              fontWeight: 400,
+              letterSpacing: '-0.005em',
+            }}
+          >
+            Windows 10 / 11 · 64-bit · Free & Open Source
+          </span>
+        </div>
       </div>
     </section>
   );
