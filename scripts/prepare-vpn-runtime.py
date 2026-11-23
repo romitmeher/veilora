@@ -17,14 +17,27 @@ VERSION = "2.7.9"
 
 MACHINE_AMD64 = 0x8664
 MACHINE_ARM64 = 0xAA64
-MACHINE_ARM64EC = 0xA64E
-MACHINE_ARM64X = 0xA641
+MACHINE_ARM64EC = 0xA641
+MACHINE_ARM64X = 0xA64E
+
+VC_RUNTIME_NAMES = {
+    "concrt140.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "vcamp140.dll",
+    "vcomp140.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+}
 
 
-def matches_architecture(machine, arch):
+def matches_architecture(machine, arch, name):
     if arch == "amd64":
         return machine == MACHINE_AMD64
-    return machine in (MACHINE_ARM64, MACHINE_ARM64EC, MACHINE_ARM64X)
+    if machine in (MACHINE_ARM64, MACHINE_ARM64EC, MACHINE_ARM64X):
+        return True
+    return name.lower() in VC_RUNTIME_NAMES and machine == MACHINE_AMD64
 
 
 def download(url, limit):
@@ -54,7 +67,7 @@ def collect_runtime(runtime_dir, arch, commit):
             if pe + 6 > len(data) or data[pe:pe + 4] != b"PE\x00\x00":
                 raise RuntimeError(f"Invalid PE header: {source.name}")
             machine = struct.unpack_from("<H", data, pe + 4)[0]
-            if not matches_architecture(machine, arch):
+            if not matches_architecture(machine, arch, source.name):
                 raise RuntimeError(f"Wrong architecture: {source.name}")
         contents[source.name] = data
     for required in ("openvpn.exe", "tapctl.exe", "vcruntime140.dll"):

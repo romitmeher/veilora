@@ -54,6 +54,25 @@ class PackagingTests(unittest.TestCase):
             result = packaging.collect_runtime(root, "arm64", "fixture")
             self.assertIn("vcruntime140.dll", result)
 
+    def test_accepts_amd64_vcruntime140_1_for_arm64(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            root.joinpath("source-build.json").write_text(
+                json.dumps({"engine": "openvpn", "arch": "arm64", "commit": "fixture"})
+            )
+            for name in ("openvpn.exe", "tapctl.exe", "vcruntime140.dll"):
+                data = bytearray((root / name).read_bytes())
+                struct.pack_into("<H", data, 68, packaging.MACHINE_ARM64)
+                (root / name).write_bytes(data)
+            extra = root / "vcruntime140_1.dll"
+            data = bytearray((root / "vcruntime140.dll").read_bytes())
+            struct.pack_into("<H", data, 68, packaging.MACHINE_AMD64)
+            extra.write_bytes(data)
+
+            result = packaging.collect_runtime(root, "arm64", "fixture")
+            self.assertIn("vcruntime140_1.dll", result)
+
     def test_collects_binaries_and_notices_without_installer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
