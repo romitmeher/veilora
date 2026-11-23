@@ -181,18 +181,17 @@ export const MorphHero: React.FC = () => {
           pointerEvents: 'none',
           overflow: 'hidden',
           maskImage:
-            'radial-gradient(ellipse 720px 320px at 50% 45%, transparent 22%, rgba(0, 0, 0, 0.75) 65%, transparent 100%)',
+            'radial-gradient(ellipse at center, transparent 32%, rgba(0, 0, 0, 0.8) 72%, transparent 100%)',
           WebkitMaskImage:
-            'radial-gradient(ellipse 720px 320px at 50% 45%, transparent 22%, rgba(0, 0, 0, 0.75) 65%, transparent 100%)',
+            'radial-gradient(ellipse at center, transparent 32%, rgba(0, 0, 0, 0.8) 72%, transparent 100%)',
         }}
       >
         <FlickeringGrid
           squareSize={4}
           gridGap={6}
           color="#60A5FA"
-          maxOpacity={0.45}
-          flickerChance={0.1}
-          className="size-full"
+          maxOpacity={0.5}
+          flickerChance={0.15}
         />
       </div>
 

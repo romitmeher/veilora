@@ -125,8 +125,8 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
 
     const updateDimensions = () => {
       if (!container) return;
-      const w = width || container.clientWidth;
-      const h = height || container.clientHeight;
+      const w = width || container.clientWidth || container.offsetWidth;
+      const h = height || container.clientHeight || container.offsetHeight;
       if (w <= 0 || h <= 0) return;
       setCanvasSize({ width: w, height: h });
       gridParams = setupCanvas(canvas, w, h);
@@ -193,15 +193,26 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   return (
     <div
       ref={containerRef}
-      className={cn("relative h-full w-full overflow-hidden", className)}
+      className={cn("relative overflow-hidden", className)}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        ...props.style,
+      }}
       {...props}
     >
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none"
         style={{
-          width: canvasSize.width,
-          height: canvasSize.height,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
         }}
       />
     </div>
