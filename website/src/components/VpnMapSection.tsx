@@ -391,17 +391,13 @@ export const VpnMapSection: React.FC = () => {
               width: '26px',
               height: '26px',
               borderRadius: '50%',
-              backgroundColor: isConnected
-                ? 'rgba(16, 185, 129, 0.14)'
-                : isConnecting
-                  ? 'rgba(245, 158, 11, 0.14)'
-                  : 'rgba(239, 68, 68, 0.12)',
+              backgroundColor: '#f2f2f7',
               color: isConnected
                 ? '#059669'
                 : isConnecting
                   ? '#d97706'
                   : '#dc2626',
-              transition: 'background-color 0.25s ease, color 0.25s ease',
+              transition: 'color 0.25s ease',
               flexShrink: 0,
             }}
           >
