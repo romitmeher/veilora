@@ -218,7 +218,7 @@ export const VpnMapSection: React.FC = () => {
                 <circle
                   cx={activeCountry.x}
                   cy={activeCountry.y}
-                  r="26"
+                  r="16"
                   fill="url(#vpn-green-glow)"
                   className="vpn-aura-breathe"
                 />
@@ -227,34 +227,34 @@ export const VpnMapSection: React.FC = () => {
                 <circle
                   cx={activeCountry.x}
                   cy={activeCountry.y}
-                  r="20"
+                  r="12"
                   fill="url(#vpn-red-glow)"
                 />
               )}
 
-              {/* Solid White Ring Disc (Proton VPN Pin Rim) */}
+              {/* Solid White Ring Disc (Refined thin rim) */}
               <circle
                 cx={activeCountry.x}
                 cy={activeCountry.y}
-                r="7.5"
+                r="4.2"
                 fill="#ffffff"
-                style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22))' }}
+                style={{ filter: 'drop-shadow(0 1.5px 3px rgba(0, 0, 0, 0.2))' }}
               />
 
               {/* Solid Pin Center Dot */}
               <circle
                 cx={activeCountry.x}
                 cy={activeCountry.y}
-                r="3.8"
+                r="3.0"
                 fill={isConnected ? '#00E599' : '#ef4444'}
               />
 
               {/* Floating Country Badge with Proper Vertical Spacing & Elevation Shadow */}
               <foreignObject
                 x={activeCountry.x - 100}
-                y={activeCountry.y - 64}
+                y={activeCountry.y - 56}
                 width="200"
-                height="48"
+                height="44"
                 style={{ overflow: 'visible', pointerEvents: 'none' }}
               >
                 <div
