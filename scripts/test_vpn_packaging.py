@@ -39,6 +39,21 @@ class PackagingTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "architecture"):
                 packaging.collect_runtime(root, "amd64", "fixture")
 
+    def test_accepts_arm64_hybrid_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            root.joinpath("source-build.json").write_text(
+                json.dumps({"engine": "openvpn", "arch": "arm64", "commit": "fixture"})
+            )
+            for name in ("openvpn.exe", "tapctl.exe", "vcruntime140.dll"):
+                data = bytearray((root / name).read_bytes())
+                struct.pack_into("<H", data, 68, packaging.MACHINE_ARM64X)
+                (root / name).write_bytes(data)
+
+            result = packaging.collect_runtime(root, "arm64", "fixture")
+            self.assertIn("vcruntime140.dll", result)
+
     def test_collects_binaries_and_notices_without_installer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
