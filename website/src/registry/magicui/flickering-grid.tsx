@@ -21,14 +21,14 @@ export interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement
 }
 
 export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
-  squareSize = 2.5,
-  gridGap = 14,
-  flickerChance = 0.06,
+  squareSize = 4,
+  gridGap = 6,
+  flickerChance = 0.1,
   color = "#60A5FA",
   width,
   height,
   className,
-  maxOpacity = 0.22,
+  maxOpacity = 0.5,
   ...props
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
