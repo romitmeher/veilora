@@ -176,6 +176,22 @@ export const VpnMapSection: React.FC = () => {
             display: 'block',
           }}
         >
+          {/* Radial Gradients for Proton-style Glowing Aura */}
+          <defs>
+            <radialGradient id="vpn-green-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#00E599" stopOpacity="0.85" />
+              <stop offset="35%" stopColor="#00E599" stopOpacity="0.45" />
+              <stop offset="70%" stopColor="#00E599" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#00E599" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="vpn-red-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.75" />
+              <stop offset="35%" stopColor="#ef4444" stopOpacity="0.4" />
+              <stop offset="70%" stopColor="#ef4444" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
           {/* Animated Camera Group: Moves and zooms directly to the active country */}
           <g
             style={{
@@ -196,45 +212,41 @@ export const VpnMapSection: React.FC = () => {
 
             {/* ONLY the active country is shown - all non-connected dots removed */}
             <g>
-              {/* Connected State: Smooth Green Radar Beacons */}
-              {isConnected && (
-                <>
-                  <circle
-                    cx={activeCountry.x}
-                    cy={activeCountry.y}
-                    r="14"
-                    fill="rgba(16, 185, 129, 0.35)"
-                    className="vpn-beacon-radar"
-                  />
-                  <circle
-                    cx={activeCountry.x}
-                    cy={activeCountry.y}
-                    r="14"
-                    fill="rgba(16, 185, 129, 0.35)"
-                    className="vpn-beacon-radar-delayed"
-                  />
-                </>
-              )}
-
-              {/* Disconnected State: STATIC red halo ripple (No border line, no animation) */}
-              {!isConnected && (
+              {/* Outer Glowing Circular Aura: Proton VPN style soft radial disc */}
+              {isConnected ? (
+                /* Connected: Aura smoothly grows and becomes small (breathing animation) */
                 <circle
                   cx={activeCountry.x}
                   cy={activeCountry.y}
-                  r="11"
-                  fill="rgba(239, 68, 68, 0.14)"
+                  r="26"
+                  fill="url(#vpn-green-glow)"
+                  className="vpn-aura-breathe"
+                />
+              ) : (
+                /* Disconnected: Red glowing aura disc */
+                <circle
+                  cx={activeCountry.x}
+                  cy={activeCountry.y}
+                  r="20"
+                  fill="url(#vpn-red-glow)"
                 />
               )}
 
-              {/* Pin Center Dot with clean white hairline rim */}
+              {/* Solid White Ring Disc (Proton VPN Pin Rim) */}
               <circle
                 cx={activeCountry.x}
                 cy={activeCountry.y}
-                r="4.5"
-                fill={isConnected ? '#10b981' : '#ef4444'}
-                stroke="#ffffff"
-                strokeWidth="1.6"
-                style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }}
+                r="7.5"
+                fill="#ffffff"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22))' }}
+              />
+
+              {/* Solid Pin Center Dot */}
+              <circle
+                cx={activeCountry.x}
+                cy={activeCountry.y}
+                r="3.8"
+                fill={isConnected ? '#00E599' : '#ef4444'}
               />
 
               {/* Floating Country Badge with Proper Vertical Spacing & Elevation Shadow */}
@@ -271,15 +283,14 @@ export const VpnMapSection: React.FC = () => {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {/* Official Country Flag (no grey border wrapper) */}
+                    {/* Official Country Flag with thin grey border */}
                     <CountryFlag
                       countryCode={activeCountry.code}
                       style={{
                         width: '21px',
                         height: '15px',
                         borderRadius: '3px',
-                        boxShadow: 'none',
-                        border: 'none',
+                        boxShadow: '0 0 0 1px #d1d1d6, 0 1px 2px rgba(0, 0, 0, 0.05)',
                         flexShrink: 0,
                       }}
                     />
@@ -549,20 +560,44 @@ export const VpnMapSection: React.FC = () => {
                     <span style={{ fontSize: '12px', color: '#86868b' }}>
                       Auto-selected from
                     </span>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    {/* Overlapping Flag Stack (like Proton reference) */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '2px' }}>
                       <CountryFlag
                         countryCode="NL"
-                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                        style={{
+                          width: '18px',
+                          height: '13px',
+                          borderRadius: '2px',
+                          boxShadow: '0 0 0 1.5px #ffffff',
+                          position: 'relative',
+                          zIndex: 1,
+                        }}
                       />
                       <CountryFlag
                         countryCode="JP"
-                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                        style={{
+                          width: '18px',
+                          height: '13px',
+                          borderRadius: '2px',
+                          boxShadow: '0 0 0 1.5px #ffffff',
+                          position: 'relative',
+                          zIndex: 2,
+                          marginLeft: '-5px',
+                        }}
                       />
                       <CountryFlag
                         countryCode="CH"
-                        style={{ width: '16px', height: '11px', borderRadius: '2px', boxShadow: 'none', border: 'none' }}
+                        style={{
+                          width: '18px',
+                          height: '13px',
+                          borderRadius: '2px',
+                          boxShadow: '0 0 0 1.5px #ffffff',
+                          position: 'relative',
+                          zIndex: 3,
+                          marginLeft: '-5px',
+                        }}
                       />
-                      <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#86868b', marginLeft: '1px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#86868b', marginLeft: '5px' }}>
                         +5
                       </span>
                     </div>
