@@ -34,6 +34,8 @@ export function VPNConnectToServer(arg1:string,arg2:vpn.EngineType,arg3:boolean,
 
 export function VPNDisconnect():Promise<void>;
 
+export function VPNEngineAvailability():Promise<Array<vpn.EngineAvailability>>;
+
 export function VPNGetCountries():Promise<Array<string>>;
 
 export function VPNGetDNSResolver():Promise<string>;
@@ -43,6 +45,8 @@ export function VPNGetServers(arg1:string,arg2:boolean):Promise<Array<vpngate.Se
 export function VPNGetStatus():Promise<vpn.ConnectionInfo>;
 
 export function VPNInstallEngine(arg1:string):Promise<void>;
+
+export function VPNProvisionSoftEther():Promise<vpn.SoftEtherOwnership>;
 
 export function VPNRefreshServers():Promise<void>;
 

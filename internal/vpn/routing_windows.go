@@ -14,13 +14,20 @@ type routeMetricSnapshot struct {
 	Automatic bool   `json:"automatic"`
 }
 
-const snapshotRoutesScript = `$items = @(Get-NetIPInterface -AddressFamily IPv4 | ForEach-Object {
+const snapshotRoutesScript = `$vpn = @(Get-NetAdapter -IncludeHidden | Where-Object {
+ $_.Status -eq 'Up' -and (
+  $_.Name -eq 'VPN' -or $_.InterfaceDescription -match 'SoftEther Virtual Network Adapter'
+ )
+})
+$items = @($vpn | Sort-Object -Unique ifIndex | ForEach-Object {
+ $interface = Get-NetIPInterface -AddressFamily IPv4 -InterfaceIndex $_.ifIndex -ErrorAction SilentlyContinue
  [pscustomobject]@{
-  index=[int]$_.InterfaceIndex
-  metric=[uint32]$_.InterfaceMetric
-  automatic=[bool]$_.AutomaticMetric
+  index=[int]$_.ifIndex
+  metric=[uint32]$(if ($interface) { $interface.InterfaceMetric } else { 0 })
+  automatic=[bool]$(if ($interface) { $interface.AutomaticMetric } else { $true })
  }
 })
+if ($items.Count -eq 0) { throw 'SoftEther VPN adapter not found' }
 ConvertTo-Json -InputObject $items -Compress -Depth 3`
 
 func enableSoftEtherRouting() (string, error) {
@@ -42,21 +49,14 @@ $vpn = @()
 for ($i = 0; $i -lt 20 -and $vpn.Count -ne 1; $i++) {
  $vpn = @(Get-NetAdapter -IncludeHidden | Where-Object {
   $_.Status -eq 'Up' -and (
-   $_.InterfaceDescription -match 'VPN Client Adapter|SoftEther'
+   $_.InterfaceDescription -match 'VPN|VPN Client Adapter|SoftEther'
   )
  })
  if ($vpn.Count -ne 1) { Start-Sleep -Milliseconds 250 }
 }
 if ($vpn.Count -ne 1) { throw 'SoftEther VPN adapter not found' }
 Set-NetIPInterface -InterfaceIndex $vpn[0].ifIndex -AddressFamily IPv4 -AutomaticMetric Disabled -InterfaceMetric 1
-$physical = @(Get-NetAdapter -IncludeHidden | Where-Object {
- $_.Status -eq 'Up' -and
- $_.ifIndex -ne $vpn[0].ifIndex -and
- $_.InterfaceDescription -notmatch 'Hyper-V|Tailscale|Loopback|Virtual'
-})
-foreach ($adapter in $physical) {
- Set-NetIPInterface -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -AutomaticMetric Disabled -InterfaceMetric 200
-}`
+`
 	if out, err := hiddenCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", script).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("apply route priority: %w (%s)", err, out)
 	}
@@ -79,6 +79,7 @@ func restoreSoftEtherRouting(snapshot string) error {
 
 	script := `$ErrorActionPreference='Stop'
 $routes = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('` + base64.StdEncoding.EncodeToString(plans) + `')))
+$failures = @()
 foreach ($route in $routes) {
  try {
   if ($route.automatic) {
@@ -86,7 +87,11 @@ foreach ($route in $routes) {
   } else {
    Set-NetIPInterface -InterfaceIndex $route.index -AddressFamily IPv4 -AutomaticMetric Disabled -InterfaceMetric $route.metric -ErrorAction Stop
   }
- } catch {}
+  } catch {
+   $failures += "interface $($route.index): $($_.Exception.Message)"
+  }
+}
+if ($failures.Count) { throw ($failures -join '; ') }
 }`
 	if out, err := hiddenCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", script).CombinedOutput(); err != nil {
 		return fmt.Errorf("restore route priority: %w (%s)", err, out)

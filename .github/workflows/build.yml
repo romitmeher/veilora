@@ -201,6 +201,20 @@ jobs:
           task build:prod-noupdate ARCH=${{ matrix.arch }}
           Copy-Item .\build\bin\Veilora.exe .\ci-upload\unsigned\Veilora-noselfupdate.exe
           Copy-Item .\build\bin\Veilora-vpn-sources.zip .\ci-upload\final\Veilora-vpn-sources-${{ matrix.arch }}.zip
+          if (Test-Path -LiteralPath "internal/vpn/payload/windows-${{ matrix.arch }}.zip") {
+            Write-Host "OpenVPN payload present"
+          } else { throw "Missing OpenVPN runtime payload" }
+          if ("${{ matrix.arch }}" -eq "amd64") {
+            if (Test-Path -LiteralPath "internal/vpn/payload/windows-amd64-softether.zip") {
+              Write-Host "SoftEther payload present"
+            } else { throw "Missing SoftEther runtime payload" }
+            if (Test-Path -LiteralPath "build/bin/Veilora-softether-sources.zip") {
+              Copy-Item "build/bin/Veilora-softether-sources.zip" ".\ci-upload\final\Veilora-softether-sources.zip"
+              if (Test-Path -LiteralPath "build/bin/Veilora-softether-vcpkg-sources.zip") {
+                Copy-Item "build/bin/Veilora-softether-vcpkg-sources.zip" ".\ci-upload\final\Veilora-softether-vcpkg-sources.zip"
+              } else { throw "Missing SoftEther vcpkg source archive" }
+            } else { throw "Missing SoftEther source archive" }
+          }
       - name: Test bundled runtime without external engines
         if: matrix.arch == 'amd64'
         run: go test -tags bundledvpn . ./internal/...

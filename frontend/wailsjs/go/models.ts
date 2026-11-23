@@ -127,6 +127,34 @@ export namespace vpn {
 		    return a;
 		}
 	}
+	export class EngineAvailability {
+	    engine: string;
+	    ready: boolean;
+	    message: string;
+	    static createFrom(source: any = {}) {
+	        return new EngineAvailability(source);
+	    }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.engine = source["engine"];
+	        this.ready = source["ready"];
+	        this.message = source["message"];
+	    }
+	}
+	export class SoftEtherOwnership {
+	    service: string;
+	    adapter: string;
+	    account: string;
+	    static createFrom(source: any = {}) {
+	        return new SoftEtherOwnership(source);
+	    }
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.service = source["service"];
+	        this.adapter = source["adapter"];
+	        this.account = source["account"];
+	    }
+	}
 
 }
 

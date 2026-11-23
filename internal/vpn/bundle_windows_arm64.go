@@ -8,3 +8,5 @@ import _ "embed"
 var vpnPayload []byte
 
 func embeddedVPN() []byte { return vpnPayload }
+
+func embeddedSoftEther() []byte { return nil }

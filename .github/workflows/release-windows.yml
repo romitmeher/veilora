@@ -102,6 +102,17 @@ jobs:
         shell: bash
         run: task build:prod ARCH=${{ github.event.inputs.arch || 'amd64' }}
 
+      - name: Verify bundled engine payload manifests
+        shell: pwsh
+        run: |
+          $arch = "${{ github.event.inputs.arch || 'amd64' }}"
+          $openvpn = "internal/vpn/payload/windows-$arch.zip"
+          if (-not (Test-Path $openvpn)) { throw "Missing OpenVPN runtime payload: $openvpn" }
+          if ($arch -eq 'amd64') {
+            $softether = "internal/vpn/payload/windows-amd64-softether.zip"
+            if (-not (Test-Path $softether)) { throw "Missing SoftEther runtime payload: $softether" }
+          }
+
       # Save the self-update Veilora.exe NOW before prod-noupdate overwrites it
       - name: Stage self-update binary
         shell: pwsh
@@ -130,6 +141,14 @@ jobs:
           # Installer exe (produced by -nsis flag in prod task)
           Copy-Item "build\bin\Veilora-${arch}-installer.exe" "output\Veilora-${arch}-installer.exe"
           Copy-Item "build\bin\Veilora-vpn-sources.zip" "output\Veilora-vpn-sources.zip"
+          if (Test-Path "build\bin\Veilora-softether-sources.zip") {
+            Copy-Item "build\bin\Veilora-softether-sources.zip" "output\Veilora-softether-sources.zip"
+            if (Test-Path "build\bin\Veilora-softether-vcpkg-sources.zip") {
+              Copy-Item "build\bin\Veilora-softether-vcpkg-sources.zip" "output\Veilora-softether-vcpkg-sources.zip"
+            } else { throw "Missing SoftEther vcpkg source archive" }
+          } elseif ($arch -eq 'amd64') {
+            throw "Missing SoftEther source archive"
+          }
 
           # Portable zip — self-update build (staged before prod-noupdate ran)
           Compress-Archive -Path "output\Veilora-selfupdate.exe" -DestinationPath "output\Veilora_windows_${arch}.zip"

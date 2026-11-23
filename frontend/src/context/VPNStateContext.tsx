@@ -4,7 +4,14 @@ import { VPNGetStatus } from 'wails/go/app/App';
 import { vpn } from 'wails/go/models';
 import { EventsOn } from 'wails/runtime/runtime';
 
-export type VPNState = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error';
+export type VPNState =
+  | 'disconnected'
+  | 'preparing'
+  | 'connecting'
+  | 'reconnecting'
+  | 'connected'
+  | 'disconnecting'
+  | 'error';
 
 export interface VPNStatus {
   state: VPNState;
@@ -47,7 +54,9 @@ function normalizeInfo(info: vpn.ConnectionInfo): VPNConnectionInfo {
   const state = info.status?.state;
   const knownState: VPNState =
     state === 'connected' ||
+    state === 'preparing' ||
     state === 'connecting' ||
+    state === 'reconnecting' ||
     state === 'disconnecting' ||
     state === 'disconnected' ||
     state === 'error'
@@ -77,7 +86,11 @@ export function VPNStateProvider({ children }: { children: ReactNode }) {
 
   const vpnState = vpnInfo.status?.state ?? 'disconnected';
   const isConnected = vpnState === 'connected';
-  const isTransitioning = vpnState === 'connecting' || vpnState === 'disconnecting';
+  const isTransitioning =
+    vpnState === 'preparing' ||
+    vpnState === 'connecting' ||
+    vpnState === 'reconnecting' ||
+    vpnState === 'disconnecting';
 
   const value = useMemo(
     () => ({
@@ -95,6 +108,14 @@ export function VPNStateProvider({ children }: { children: ReactNode }) {
 
 export function useVPNState() {
   const context = useContext(VPNStateContext);
-  if (!context) throw new Error('useVPNState must be used within VPNStateProvider');
+  if (!context) {
+    return {
+      vpnInfo: defaultInfo,
+      vpnState: 'disconnected' as VPNState,
+      isConnected: false,
+      isTransitioning: false,
+      refreshStatus: () => {},
+    };
+  }
   return context;
 }

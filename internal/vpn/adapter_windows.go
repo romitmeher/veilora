@@ -44,7 +44,7 @@ func createBundledAdapter(dir, pnputil string, run adapterCommand) (string, func
 	id := fields[0]
 	cleanup := func() error {
 		if out, err := run(tapctl, "delete", id); err != nil {
-			return fmt.Errorf("remove Veilora adapter: %w: %s", err, out)
+			return fmt.Errorf("remove OpenVPN adapter: %w: %s", err, out)
 		}
 		return nil
 	}

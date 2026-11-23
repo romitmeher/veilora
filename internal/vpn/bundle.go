@@ -22,6 +22,11 @@ var bundleState struct {
 	dir string
 }
 
+var softEtherBundleState struct {
+	sync.Mutex
+	dir string
+}
+
 // A fresh private directory avoids trusting an old, editable runtime cache.
 func bundledBinary() (string, error) {
 	bundleState.Lock()
@@ -46,18 +51,58 @@ func CleanupBundledRuntime() {
 	}
 }
 
+func bundledSoftEtherBinary() (string, error) {
+	softEtherBundleState.Lock()
+	defer softEtherBundleState.Unlock()
+	if softEtherBundleState.dir == "" {
+		dir, err := extractNamedRuntime(embeddedSoftEther(), "", runtime.GOARCH, "softether",
+			[]string{"vpnclient.exe", "vpncmd.exe", "vpndrvinst.exe", "hamcore.se2"})
+		if err != nil {
+			return "", err
+		}
+		softEtherBundleState.dir = dir
+	}
+	return filepath.Join(softEtherBundleState.dir, "vpnclient.exe"), nil
+}
+
+func bundledSoftEtherRuntimeDir() (string, error) {
+	if _, err := bundledSoftEtherBinary(); err != nil {
+		return "", err
+	}
+	softEtherBundleState.Lock()
+	defer softEtherBundleState.Unlock()
+	return softEtherBundleState.dir, nil
+}
+
+// CleanupBundledSoftEtherRuntime releases only this process's extracted SoftEther files.
+func CleanupBundledSoftEtherRuntime() {
+	softEtherBundleState.Lock()
+	defer softEtherBundleState.Unlock()
+	if softEtherBundleState.dir != "" {
+		_ = os.RemoveAll(softEtherBundleState.dir)
+		softEtherBundleState.dir = ""
+	}
+}
+
 func extractRuntime(data []byte, parent, arch string) (result string, err error) {
+	return extractNamedRuntime(data, parent, arch, "openvpn",
+		[]string{"openvpn.exe", "tapctl.exe", "OemVista.inf", "tap0901.sys", "tap0901.cat", "vcruntime140.dll"})
+}
+
+func extractNamedRuntime(data []byte, parent, arch, engine string, required []string) (result string, err error) {
 	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return "", fmt.Errorf("bundled VPN archive: %w", err)
+		return "", fmt.Errorf("bundled %s archive: %w", engine, err)
 	}
 	manifestData, err := r.Open("manifest.json")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("bundled %s manifest: %w", engine, err)
 	}
 	var manifest struct {
-		Arch  string            `json:"arch"`
-		Files map[string]string `json:"files"`
+		Engine     string            `json:"engine"`
+		Arch       string            `json:"arch"`
+		Provenance string            `json:"provenance"`
+		Files      map[string]string `json:"files"`
 	}
 	err = json.NewDecoder(io.LimitReader(manifestData, 1024*1024)).Decode(&manifest)
 	manifestData.Close()
@@ -65,14 +110,17 @@ func extractRuntime(data []byte, parent, arch string) (result string, err error)
 		return "", err
 	}
 	if manifest.Arch != arch {
-		return "", errors.New("bundled VPN architecture mismatch")
+		return "", fmt.Errorf("bundled %s architecture mismatch", engine)
 	}
-	for _, required := range []string{"openvpn.exe", "tapctl.exe", "OemVista.inf", "tap0901.sys", "tap0901.cat", "vcruntime140.dll"} {
-		if manifest.Files[required] == "" {
-			return "", fmt.Errorf("bundled VPN missing %s", required)
+	if manifest.Engine != "" && manifest.Engine != engine {
+		return "", fmt.Errorf("bundled runtime engine mismatch: got %q, want %q", manifest.Engine, engine)
+	}
+	for _, name := range required {
+		if manifest.Files[name] == "" {
+			return "", fmt.Errorf("bundled %s missing %s", engine, name)
 		}
 	}
-	dir, err := os.MkdirTemp(parent, "veilora-runtime-")
+	dir, err := os.MkdirTemp(parent, "veilora-"+engine+"-runtime-")
 	if err != nil {
 		return "", err
 	}

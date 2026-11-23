@@ -62,6 +62,10 @@ export function VPNDisconnect() {
   return window['go']['app']['App']['VPNDisconnect']();
 }
 
+export function VPNEngineAvailability() {
+  return window['go']['app']['App']['VPNEngineAvailability']();
+}
+
 export function VPNGetCountries() {
   return window['go']['app']['App']['VPNGetCountries']();
 }
@@ -80,6 +84,10 @@ export function VPNGetStatus() {
 
 export function VPNInstallEngine(arg1) {
   return window['go']['app']['App']['VPNInstallEngine'](arg1);
+}
+
+export function VPNProvisionSoftEther() {
+  return window['go']['app']['App']['VPNProvisionSoftEther']();
 }
 
 export function VPNRefreshServers() {

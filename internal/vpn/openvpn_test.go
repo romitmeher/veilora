@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -53,5 +54,36 @@ func TestManagementRejectsClosedConnection(t *testing.T) {
 	server.Close()
 	if err := startManagement(client); err == nil {
 		t.Fatal("expected error for closed management connection")
+	}
+}
+
+func TestExtractRemoteForDial(t *testing.T) {
+	host, port, err := extractRemoteForDial("proto tcp\nremote 175.129.64.205 1526\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if host != "175.129.64.205" || port != "1526" {
+		t.Fatalf("remote = %s:%s", host, port)
+	}
+}
+
+func TestOpenVPNProtoParsing(t *testing.T) {
+	for _, tc := range []struct {
+		config string
+		want   string
+	}{
+		{"proto tcp\nremote host 443\n", "tcp"},
+		{"proto udp\nremote host 1194\n", "udp"},
+	} {
+		proto := "udp"
+		for _, line := range strings.Split(tc.config, "\n") {
+			fields := strings.Fields(strings.TrimSpace(line))
+			if len(fields) >= 2 && fields[0] == "proto" {
+				proto = fields[1]
+			}
+		}
+		if proto != tc.want {
+			t.Fatalf("proto = %q, want %q", proto, tc.want)
+		}
 	}
 }

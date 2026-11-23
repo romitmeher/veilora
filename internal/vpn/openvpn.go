@@ -39,6 +39,9 @@ func (e *OpenVPNEngine) Available() bool {
 	if len(embeddedVPN()) > 0 {
 		return true
 	}
+	if runtime.GOOS == "windows" {
+		return false
+	}
 	return e.FindBinary() != ""
 }
 
@@ -124,6 +127,26 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	if err != nil {
 		// Config might already be plain text.
 		configData = ovpnConfigB64
+	}
+	if runtime.GOOS == "windows" {
+		host, port, remoteErr := extractRemoteForDial(string(configData))
+		if remoteErr == nil {
+			proto := "udp"
+			for _, line := range strings.Split(string(configData), "\n") {
+				fields := strings.Fields(strings.TrimSpace(line))
+				if len(fields) >= 2 && fields[0] == "proto" {
+					proto = strings.ToLower(fields[1])
+					break
+				}
+			}
+			if proto == "tcp" {
+				conn, dialErr := net.DialTimeout("tcp", net.JoinHostPort(host, port), 5*time.Second)
+				if dialErr != nil {
+					return fmt.Errorf("OpenVPN server %s:%s is unreachable: %w", host, port, dialErr)
+				}
+				conn.Close()
+			}
+		}
 	}
 
 	tmpDir, err := os.MkdirTemp("", "veilora-vpn-*")
@@ -254,22 +277,17 @@ func (e *OpenVPNEngine) Disconnect() error {
 
 func (e *OpenVPNEngine) killProcess() error {
 	if e.mgmtConn != nil {
-		fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
 		e.mgmtConn.Close()
 		e.mgmtConn = nil
 	}
 	if e.cmd != nil && e.cmd.Process != nil {
+		if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return err
+		}
 		select {
 		case <-e.processDone:
 		case <-time.After(3 * time.Second):
-			if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-				return err
-			}
-			select {
-			case <-e.processDone:
-			case <-time.After(3 * time.Second):
-				return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
-			}
+			return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
 		}
 	}
 	if e.cancelDone != nil {
@@ -339,6 +357,24 @@ func (e *OpenVPNEngine) drainLog(r io.Reader) {
 	}
 }
 
+func extractRemoteForDial(config string) (host, port string, err error) {
+	for _, line := range strings.Split(config, "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) >= 2 && fields[0] == "remote" {
+			host = strings.TrimSpace(fields[1])
+			port = "1194"
+			if len(fields) >= 3 {
+				port = strings.TrimSpace(fields[2])
+			}
+			if host == "" || port == "" {
+				return "", "", errors.New("invalid remote directive")
+			}
+			return host, port, nil
+		}
+	}
+	return "", "", errors.New("no remote directive")
+}
+
 // parseManagementLine converts an OpenVPN management protocol line to a Status.
 func parseManagementLine(line string) (Status, bool) {
 	if !strings.HasPrefix(line, ">STATE:") {
@@ -363,7 +399,7 @@ func parseManagementLine(line string) (Status, bool) {
 	case "EXITING":
 		return Status{State: StateDisconnecting, Message: desc}, true
 	case "RECONNECTING":
-		return Status{State: StateConnecting, Message: "reconnecting: " + desc}, true
+		return Status{State: StateReconnecting, Message: "reconnecting: " + desc}, true
 	}
 	return Status{}, false
 }
