@@ -13,14 +13,12 @@ Downloads are published automatically and links below update with the latest bui
 | --- | --- | --- |
 | Windows | AMD64 installer | [Veilora-amd64-installer.exe](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-amd64-installer.exe) |
 | Windows | AMD64 portable | [Veilora_windows_amd64.zip](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_windows_amd64.zip) |
+| Windows | ARM64 installer | [Veilora-arm64-installer.exe](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-arm64-installer.exe) |
 | Windows | ARM64 portable | [Veilora_windows_arm64.zip](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_windows_arm64.zip) |
-| macOS | AMD64 DMG | [Veilora-amd64.dmg](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-amd64.dmg) |
-| macOS | ARM64 DMG | [Veilora-arm64.dmg](https://github.com/romitmeher/veilora/releases/latest/download/Veilora-arm64.dmg) |
 | Linux | AMD64 | [Veilora_linux_amd64.tar.gz](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_linux_amd64.tar.gz) |
 | Linux | ARM64 | [Veilora_linux_arm64.tar.gz](https://github.com/romitmeher/veilora/releases/latest/download/Veilora_linux_arm64.tar.gz) |
-| Android | APK | [Build an APK](.github/workflows/build-android.yml) |
 
-GitHub [All releases](https://github.com/romitmeher/veilora/releases) contains versioned and rolling builds. Android is a separate Expo preview workflow and is not a native traffic-protecting VPN application; iOS builds are not currently produced. Windows and macOS signatures depend on repository signing credentials.
+GitHub [All releases](https://github.com/romitmeher/veilora/releases) contains versioned and rolling builds. Windows and macOS signatures depend on repository signing credentials.
 
 ## Interface
 
