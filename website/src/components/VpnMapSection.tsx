@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { TextMorph } from 'torph/react';
 import { CountryFlag } from './CountryFlags';
-import { ShieldAlert, ShieldCheck, Zap, RefreshCw, Power, Info, ChevronUp, Lock, Unlock } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Zap, RefreshCw, Power, Info, ChevronUp } from 'lucide-react';
+import { SquareLock02 } from './animate-ui/icons/hugeicons/square-lock-02';
 
 export interface VpnCountry {
   id: string;
@@ -355,24 +356,26 @@ export const VpnMapSection: React.FC = () => {
           High-speed privacy exit nodes worldwide.
         </h2>
 
-        {/* Animated Connection Status Pill powered by Torph TextMorph & spring lock icons */}
+        {/* Animated Connection Status Pill (Fixed size to prevent layout shifts during TextMorph) */}
         <div
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '9px',
+            justifyContent: 'center',
+            gap: '8px',
+            width: '154px',
+            height: '38px',
+            boxSizing: 'border-box',
             backgroundColor: '#ffffff',
             borderRadius: '9999px',
-            padding: '5px 16px 5px 6px',
+            padding: '5px 12px 5px 6px',
             boxShadow:
               '0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
             userSelect: 'none',
-            transition: 'all 0.3s ease',
           }}
         >
-          {/* Animated Lock / Unlock Icon Badge */}
+          {/* Animated SquareLock02 Icon Badge from @animate-ui/icons-hugeicons */}
           <div
-            key={status}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -394,43 +397,28 @@ export const VpnMapSection: React.FC = () => {
               flexShrink: 0,
             }}
           >
-            {isConnected ? (
-              <Lock className="vpn-lock-bounce" style={{ width: '13px', height: '13px' }} />
-            ) : isConnecting ? (
-              <RefreshCw style={{ width: '13px', height: '13px', animation: 'spin 1s linear infinite' }} />
-            ) : (
-              <Unlock className="vpn-unlock-tilt" style={{ width: '13px', height: '13px' }} />
-            )}
+            <SquareLock02
+              key={status}
+              size={14}
+              animateOnHover
+              animation={isConnected ? 'lock' : isConnecting ? 'default' : 'unlock'}
+            />
           </div>
 
-          {/* Glowing Status Dot */}
+          {/* Morphing Connection Status Text with stable fixed width container */}
           <span
             style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: isConnected
-                ? '#10b981'
-                : isConnecting
-                  ? '#f59e0b'
-                  : '#ef4444',
-              boxShadow: isConnected
-                ? '0 0 8px rgba(16, 185, 129, 0.7)'
-                : '0 0 6px rgba(239, 68, 68, 0.5)',
-              transition: 'all 0.3s ease',
-              flexShrink: 0,
-            }}
-          />
-
-          {/* Morphing Connection Status Text */}
-          <span
-            style={{
+              width: '92px',
               fontSize: '13px',
               fontWeight: 600,
               color: isConnected ? '#059669' : isConnecting ? '#d97706' : '#dc2626',
               letterSpacing: '-0.01em',
               lineHeight: 1,
               display: 'inline-flex',
+              alignItems: 'center',
+              textAlign: 'left',
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
             }}
           >
             <TextMorph ease={{ stiffness: 220, damping: 22 }}>
