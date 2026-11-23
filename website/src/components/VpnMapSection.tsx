@@ -111,11 +111,14 @@ export const VpnMapSection: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [activeCountry, setActiveCountry] = useState<VpnCountry>(INDIA_COUNTRY);
   const [lastIndex, setLastIndex] = useState<number>(-1);
+  const [actionCount, setActionCount] = useState<number>(0);
+  const [isDisconnecting, setIsDisconnecting] = useState<boolean>(false);
 
   // Quick Connect / Switch to next random country
   const handleQuickConnect = () => {
     if (status === 'connecting') return;
     setStatus('connecting');
+    setActionCount(c => c + 1);
 
     let nextIdx: number;
     do {
@@ -132,8 +135,14 @@ export const VpnMapSection: React.FC = () => {
   };
 
   const handleDisconnect = () => {
-    setStatus('disconnected');
-    setActiveCountry(INDIA_COUNTRY);
+    if (isDisconnecting) return;
+    setIsDisconnecting(true);
+    setActionCount(c => c + 1);
+    setTimeout(() => {
+      setStatus('disconnected');
+      setActiveCountry(INDIA_COUNTRY);
+      setIsDisconnecting(false);
+    }, 380);
   };
 
   const isConnected = status === 'connected';
@@ -155,7 +164,7 @@ export const VpnMapSection: React.FC = () => {
         flexDirection: 'column',
         justifyContent: 'space-between',
         boxSizing: 'border-box',
-        padding: '60px 24px 80px',
+        padding: '60px 24px 140px',
       }}
     >
       {/* FULL-SECTION SKELETON MAP WITH CAMERA PAN & ZOOM */}
@@ -358,25 +367,22 @@ export const VpnMapSection: React.FC = () => {
           High-speed privacy exit nodes worldwide.
         </h2>
 
-        {/* Animated Connection Status Pill (Fixed size to prevent layout shifts during TextMorph) */}
+        {/* Animated Connection Status Pill (Dynamic width based on text, following our pill UI) */}
         <div
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
             gap: '8px',
-            width: '154px',
-            height: '38px',
-            boxSizing: 'border-box',
             backgroundColor: '#ffffff',
             borderRadius: '9999px',
-            padding: '5px 12px 5px 6px',
+            padding: '3px 13px 3px 3px',
             boxShadow:
-              '0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.06)',
             userSelect: 'none',
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          {/* Animated SquareLock02 Icon Badge from @animate-ui/icons-hugeicons */}
+          {/* Animated SquareLock02 Icon Badge from @animate-ui/icons-hugeicons (Animates on status event) */}
           <div
             style={{
               display: 'flex',
@@ -386,41 +392,36 @@ export const VpnMapSection: React.FC = () => {
               height: '26px',
               borderRadius: '50%',
               backgroundColor: isConnected
-                ? 'rgba(16, 185, 129, 0.12)'
+                ? 'rgba(16, 185, 129, 0.14)'
                 : isConnecting
-                  ? 'rgba(245, 158, 11, 0.12)'
-                  : 'rgba(239, 68, 68, 0.1)',
+                  ? 'rgba(245, 158, 11, 0.14)'
+                  : 'rgba(239, 68, 68, 0.12)',
               color: isConnected
                 ? '#059669'
                 : isConnecting
                   ? '#d97706'
                   : '#dc2626',
-              transition: 'all 0.3s ease',
+              transition: 'background-color 0.25s ease, color 0.25s ease',
               flexShrink: 0,
             }}
           >
             <SquareLock02
-              key={status}
+              key={`lock-${status}`}
               size={14}
-              animateOnHover
-              animation={isConnected ? 'lock' : isConnecting ? 'default' : 'unlock'}
+              animate={isConnected ? 'lock' : isConnecting ? 'default' : 'unlock'}
             />
           </div>
 
-          {/* Static connection status text (stable fixed width, icon animates) */}
+          {/* Connection status text (sizes pill naturally to text without fixed width) */}
           <span
             style={{
-              width: '92px',
               fontSize: '13px',
               fontWeight: 600,
               color: isConnected ? '#059669' : isConnecting ? '#d97706' : '#dc2626',
               letterSpacing: '-0.01em',
               lineHeight: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              textAlign: 'left',
-              overflow: 'hidden',
               whiteSpace: 'nowrap',
+              transition: 'color 0.25s ease',
             }}
           >
             {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
@@ -428,14 +429,14 @@ export const VpnMapSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Foreground Content: Proton VPN HUD Floating Over the Zoomed Map */}
+      {/* Foreground Content: Proton VPN HUD Floating Over the Zoomed Map (Shifted upward) */}
       <div
         style={{
           position: 'relative',
           zIndex: 12,
           width: '100%',
           maxWidth: '1240px',
-          margin: '0 auto',
+          margin: '-90px auto 0',
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'flex-start',
@@ -488,7 +489,7 @@ export const VpnMapSection: React.FC = () => {
                     boxShadow: '0 2px 8px rgba(0, 229, 153, 0.28)',
                   }}
                 >
-                  <Flash animateOnHover size={18} style={{ color: '#09090b' }} />
+                  <Flash key={`zap-${status}`} animate={false} size={18} style={{ color: '#09090b' }} />
                 </div>
               ) : (
                 /* Connected: Mint Green Zap Badge with Connected Country Flag overlapping */
@@ -505,7 +506,7 @@ export const VpnMapSection: React.FC = () => {
                       boxShadow: '0 2px 8px rgba(0, 229, 153, 0.28)',
                     }}
                   >
-                    <Flash animateOnHover size={18} style={{ color: '#09090b' }} />
+                    <Flash key={`zap-${status}-${actionCount}`} animate="shake" size={18} style={{ color: '#09090b' }} />
                   </div>
                   <div
                     style={{
@@ -633,7 +634,7 @@ export const VpnMapSection: React.FC = () => {
                 boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
               }}
             >
-              <Flash animateOnHover animation="fill" size={17} style={{ color: '#fde047' }} />
+              <Flash key={`quick-flash-${actionCount}`} animate="fill" size={17} style={{ color: '#fde047' }} />
               Quick Connect
             </button>
           ) : isConnecting ? (
@@ -655,7 +656,7 @@ export const VpnMapSection: React.FC = () => {
                 gap: '8px',
               }}
             >
-              <Refresh animateOnHover animation="rotate" size={16} />
+              <Refresh loop animation="rotate" size={16} />
               Securing Handshake...
             </button>
           ) : (
@@ -663,6 +664,7 @@ export const VpnMapSection: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
               <button
                 onClick={handleDisconnect}
+                disabled={isDisconnecting}
                 style={{
                   width: '100%',
                   height: '44px',
@@ -672,7 +674,7 @@ export const VpnMapSection: React.FC = () => {
                   backgroundColor: '#f2f2f7',
                   color: '#1c1c1e',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: isDisconnecting ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -682,8 +684,13 @@ export const VpnMapSection: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e5e5ea')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f2f2f7')}
               >
-                <Power animateOnHover size={16} style={{ color: '#dc2626' }} />
-                Disconnect
+                <Power
+                  key={`power-${isDisconnecting}`}
+                  animate={isDisconnecting ? 'default' : false}
+                  size={16}
+                  style={{ color: '#dc2626' }}
+                />
+                {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
               </button>
 
               <button
@@ -708,7 +715,7 @@ export const VpnMapSection: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
-                <Refresh animateOnHover animation="rotate" size={16} />
+                <Refresh key={`refresh-${actionCount}`} animate="rotate" size={16} />
                 Change server
               </button>
             </div>
