@@ -18,6 +18,7 @@ export interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement
   height?: number;
   className?: string;
   maxOpacity?: number;
+  hoverRadius?: number;
 }
 
 export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
@@ -29,6 +30,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   height,
   className,
   maxOpacity = 0.5,
+  hoverRadius = 75,
   ...props
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,8 +128,8 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
       ctx.clearRect(0, 0, w * dpr, h * dpr);
 
       const mouse = mouseRef.current;
-      const hoverRadius = 200 * dpr;
-      const hoverRadiusSq = hoverRadius * hoverRadius;
+      const hRadius = hoverRadius * dpr;
+      const hoverRadiusSq = hRadius * hRadius;
       const mouseXDpr = mouse ? mouse.x * dpr : -9999;
       const mouseYDpr = mouse ? mouse.y * dpr : -9999;
 
@@ -150,7 +152,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
             const dy = centerY - mouseYDpr;
             const distSq = dxSq + dy * dy;
             if (distSq < hoverRadiusSq) {
-              const boost = (1 - Math.sqrt(distSq) / hoverRadius) * 0.75;
+              const boost = (1 - Math.sqrt(distSq) / hRadius) * 0.75;
               opacity = Math.min(0.9, opacity + boost);
             }
           }
@@ -162,7 +164,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
         }
       }
     },
-    [memoizedColor, squareSize, gridGap]
+    [memoizedColor, squareSize, gridGap, hoverRadius]
   );
 
   useEffect(() => {
@@ -243,18 +245,21 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     isInView,
   ]);
 
+  const { style: styleProp, ...restProps } = props;
+
   return (
     <div
       ref={containerRef}
-      className={cn("relative overflow-hidden", className)}
+      className={cn("absolute inset-0 overflow-hidden", className)}
       style={{
+        position: 'absolute',
+        inset: 0,
         width: '100%',
         height: '100%',
-        position: 'relative',
         overflow: 'hidden',
-        ...props.style,
+        ...styleProp,
       }}
-      {...props}
+      {...restProps}
     >
       <canvas
         ref={canvasRef}

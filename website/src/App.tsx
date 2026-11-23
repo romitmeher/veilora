@@ -149,46 +149,49 @@ export const App: React.FC = () => {
             }}
           >
             <FlickeringGrid
-              className="relative inset-0 z-0 [mask-image:radial-gradient(circle_800px_at_50%_30%,black_25%,transparent_100%)]"
+              className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_520px_240px_at_50%_230px,transparent_35%,rgba(0,0,0,0.6)_70%,black_100%)]"
               squareSize={4}
               gridGap={6}
               color="#60A5FA"
               maxOpacity={0.5}
               flickerChance={0.1}
+              hoverRadius={75}
               style={{
-                maskImage: 'radial-gradient(circle 800px at 50% 30%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 100%)',
-                WebkitMaskImage: 'radial-gradient(circle 800px at 50% 30%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 100%)',
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                maskImage: 'radial-gradient(ellipse 520px 240px at 50% 230px, transparent 35%, rgba(0, 0, 0, 0.6) 70%, rgba(0, 0, 0, 1) 100%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 520px 240px at 50% 230px, transparent 35%, rgba(0, 0, 0, 0.6) 70%, rgba(0, 0, 0, 1) 100%)',
+              }}
+            />
+
+            {/* Top Gradient Fade: Smooth 80px transition into navbar */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '80px',
+                background: 'linear-gradient(to bottom, #ffffff 20%, rgba(255, 255, 255, 0) 100%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Bottom Gradient Fade: Progressive 140px fade under Safari mockup */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '140px',
+                background: 'linear-gradient(to top, #ffffff 25%, rgba(255, 255, 255, 0) 100%)',
+                pointerEvents: 'none',
               }}
             />
           </div>
-
-          {/* Top Gradient Fade: Smooth 80px transition into navbar */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '80px',
-              background: 'linear-gradient(to bottom, #ffffff 20%, rgba(255, 255, 255, 0) 100%)',
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
-          />
-
-          {/* Bottom Gradient Fade: Progressive 140px fade under Safari mockup */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '140px',
-              background: 'linear-gradient(to top, #ffffff 25%, rgba(255, 255, 255, 0) 100%)',
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
-          />
 
           {/* Stage Foreground Content */}
           <div
