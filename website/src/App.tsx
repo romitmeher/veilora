@@ -149,15 +149,15 @@ export const App: React.FC = () => {
             }}
           >
             <FlickeringGrid
-              className="relative inset-0 z-0 [mask-image:radial-gradient(450px_circle_at_center,white,transparent)]"
+              className="relative inset-0 z-0 [mask-image:radial-gradient(circle_800px_at_50%_30%,black_25%,transparent_100%)]"
               squareSize={4}
               gridGap={6}
               color="#60A5FA"
               maxOpacity={0.5}
               flickerChance={0.1}
               style={{
-                maskImage: 'radial-gradient(450px circle at center, white, transparent)',
-                WebkitMaskImage: 'radial-gradient(450px circle at center, white, transparent)',
+                maskImage: 'radial-gradient(circle 800px at 50% 30%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 100%)',
+                WebkitMaskImage: 'radial-gradient(circle 800px at 50% 30%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 100%)',
               }}
             />
           </div>
