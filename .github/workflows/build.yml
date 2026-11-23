@@ -325,7 +325,7 @@ jobs:
 
             Source commit: `${{ github.sha }}`
 
-            Windows and Linux builds are automated. macOS artifacts require repository signing credentials.
+            Windows and Linux builds are automated. macOS artifacts require repository signing credentials and are currently not included.
 
       - name: Create versioned GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
