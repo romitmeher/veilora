@@ -464,80 +464,14 @@ export const VpnMapSection: React.FC = () => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             borderRadius: '20px',
-            padding: '24px',
+            padding: '18px',
             boxShadow: '0 20px 45px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '18px',
+            gap: '12px',
             pointerEvents: 'auto',
           }}
         >
-          {/* Status Header Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingBottom: '14px',
-              borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                fontSize: '12px',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                backgroundColor: isConnected
-                  ? 'rgba(16, 185, 129, 0.1)'
-                  : isConnecting
-                    ? 'rgba(245, 158, 11, 0.1)'
-                    : 'rgba(239, 68, 68, 0.09)',
-                color: isConnected
-                  ? '#059669'
-                  : isConnecting
-                    ? '#d97706'
-                    : '#dc2626',
-                transition: 'all 0.3s ease',
-              }}
-            >
-              <span
-                style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  backgroundColor: isConnected
-                    ? '#10b981'
-                    : isConnecting
-                      ? '#f59e0b'
-                      : '#ef4444',
-                  boxShadow: isConnected
-                    ? '0 0 8px rgba(16, 185, 129, 0.7)'
-                    : 'none',
-                }}
-              />
-              {isConnected
-                ? 'PROTECTED'
-                : isConnecting
-                  ? 'SECURING TUNNEL...'
-                  : 'UNPROTECTED'}
-            </span>
-
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 600,
-                color: '#86868b',
-              }}
-            >
-              WireGuard · UDP
-            </span>
-          </div>
-
           {/* Server Row (Proton-style layout in Apple aesthetic) */}
           <div
             style={{
