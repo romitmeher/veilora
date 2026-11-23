@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextMorph } from 'torph/react';
 import { CountryFlag } from './CountryFlags';
 import { ShieldAlert, ShieldCheck, Zap, RefreshCw, Power, Info, ChevronUp } from 'lucide-react';
@@ -12,6 +12,13 @@ export interface VpnCountry {
   y: number;
   isp: string;
 }
+
+const PRIVACY_FEATURES = [
+  'WireGuard UDP · Sub-millisecond local proxy',
+  'RAM-only servers · Zero-log diskless routing',
+  'System-wide DNS & socket leak protection',
+  'AES-256-GCM encrypted privacy exit nodes',
+];
 
 const getServerTag = (code: string): string => {
   switch (code) {
@@ -108,6 +115,14 @@ export const VpnMapSection: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [activeCountry, setActiveCountry] = useState<VpnCountry>(INDIA_COUNTRY);
   const [lastIndex, setLastIndex] = useState<number>(-1);
+  const [featureIdx, setFeatureIdx] = useState<number>(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFeatureIdx((prev) => (prev + 1) % PRIVACY_FEATURES.length);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, []);
 
   // Quick Connect / Switch to next random country
   const handleQuickConnect = () => {
@@ -232,20 +247,20 @@ export const VpnMapSection: React.FC = () => {
                 />
               )}
 
-              {/* Solid White Ring Disc (Proton VPN Pin Rim) */}
+              {/* Solid White Ring Disc (Refined, sleeker border) */}
               <circle
                 cx={activeCountry.x}
                 cy={activeCountry.y}
-                r="7.5"
+                r="5.6"
                 fill="#ffffff"
-                style={{ filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22))' }}
+                style={{ filter: 'drop-shadow(0 1.5px 3px rgba(0, 0, 0, 0.2))' }}
               />
 
               {/* Solid Pin Center Dot */}
               <circle
                 cx={activeCountry.x}
                 cy={activeCountry.y}
-                r="3.8"
+                r="4.0"
                 fill={isConnected ? '#00E599' : '#ef4444'}
               />
 
@@ -339,19 +354,6 @@ export const VpnMapSection: React.FC = () => {
           margin: '0 auto 36px',
         }}
       >
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: '#6e6e73',
-            marginBottom: '10px',
-            display: 'inline-block',
-          }}
-        >
-          Encrypted Tunneling
-        </span>
         <h2
           style={{
             fontSize: 'clamp(26px, 3.5vw, 42px)',
@@ -359,21 +361,54 @@ export const VpnMapSection: React.FC = () => {
             letterSpacing: '-0.025em',
             color: '#0f172a',
             lineHeight: 1.25,
-            margin: '0 0 12px',
+            margin: 0,
           }}
         >
           High-speed privacy exit nodes worldwide.
         </h2>
-        <p
-          style={{
-            fontSize: 'clamp(15px, 1.8vw, 17px)',
-            lineHeight: 1.6,
-            color: '#6e6e73',
-            margin: 0,
-          }}
-        >
-          Route device traffic through private, zero-log endpoints with WireGuard and OpenVPN protocols.
-        </p>
+
+        {/* Dynamic Animated Pill powered by torph */}
+        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#f4f4f6',
+              border: '1px solid #e5e5ea',
+              borderRadius: '9999px',
+              padding: '6px 16px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: isConnected ? '#10b981' : isConnecting ? '#f59e0b' : '#ef4444',
+                boxShadow: isConnected ? '0 0 8px rgba(16, 185, 129, 0.7)' : 'none',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#1c1c1e',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              <TextMorph ease={{ stiffness: 220, damping: 22 }}>
+                {isConnected
+                  ? `Active Tunnel · ${activeCountry.country} (${activeCountry.ip}) · Zero-Logs`
+                  : isConnecting
+                    ? 'Securing WireGuard handshake...'
+                    : PRIVACY_FEATURES[featureIdx]}
+              </TextMorph>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Foreground Content: Proton VPN HUD Floating Over the Zoomed Map */}
@@ -625,74 +660,7 @@ export const VpnMapSection: React.FC = () => {
             )}
           </div>
 
-          {/* Real-time IP Display with Torph Morphing Animation */}
-          <div
-            style={{
-              backgroundColor: '#fbfbfd',
-              borderRadius: '14px',
-              padding: '16px',
-              border: '1px solid #f0f0f4',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '6px',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  color: '#86868b',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                IP Address
-              </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: isConnected ? '#059669' : '#dc2626',
-                  fontWeight: 500,
-                }}
-              >
-                {isConnected ? 'Shielded' : 'Exposed'}
-              </span>
-            </div>
-
-            {/* Torph Numerical IP Morphing */}
-            <div
-              style={{
-                fontSize: '19px',
-                fontWeight: 600,
-                color: '#1c1c1e',
-                fontFamily: 'SF Mono, Menlo, Monaco, Consolas, monospace',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.2,
-              }}
-            >
-              <TextMorph numbers ease={{ stiffness: 240, damping: 24 }}>
-                {activeCountry.ip}
-              </TextMorph>
-            </div>
-
-            <span
-              style={{
-                fontSize: '12px',
-                color: '#86868b',
-                marginTop: '4px',
-                display: 'block',
-              }}
-            >
-              {activeCountry.isp}
-            </span>
-          </div>
-
-          {/* Action Button: Connect / Disconnect / Change Server */}
+          {/* Action Button: Connect / Disconnect / Change Server with TextMorph Animation */}
           {!isConnected ? (
             <button
               onClick={handleQuickConnect}
@@ -714,36 +682,20 @@ export const VpnMapSection: React.FC = () => {
                 boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
               }}
             >
-              <Zap style={{ width: '16px', height: '16px', color: '#fde047', fill: '#fde047' }} />
-              Quick Connect
-            </button>
-          ) : isConnecting ? (
-            <button
-              disabled
-              style={{
-                width: '100%',
-                height: '46px',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 600,
-                backgroundColor: '#f3f4f6',
-                color: '#86868b',
-                border: '1px solid #e5e5ea',
-                cursor: 'wait',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              <RefreshCw
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  animation: 'spin 1s linear infinite',
-                }}
-              />
-              Securing Handshake...
+              {isConnecting ? (
+                <RefreshCw
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              ) : (
+                <Zap style={{ width: '16px', height: '16px', color: '#fde047', fill: '#fde047' }} />
+              )}
+              <TextMorph ease={{ stiffness: 240, damping: 24 }}>
+                {isConnecting ? 'Securing Handshake...' : 'Quick Connect'}
+              </TextMorph>
             </button>
           ) : (
             /* Connected state: Stacked buttons as in reference (Disconnect & Change server, NO RED BORDER) */
@@ -770,7 +722,9 @@ export const VpnMapSection: React.FC = () => {
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f2f2f7')}
               >
                 <Power style={{ width: '15px', height: '15px', color: '#dc2626' }} />
-                Disconnect
+                <TextMorph ease={{ stiffness: 240, damping: 24 }}>
+                  Disconnect
+                </TextMorph>
               </button>
 
               <button
@@ -795,8 +749,16 @@ export const VpnMapSection: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
-                <RefreshCw style={{ width: '14px', height: '14px' }} />
-                Change server
+                <RefreshCw
+                  style={{
+                    width: '14px',
+                    height: '14px',
+                    animation: isConnecting ? 'spin 1s linear infinite' : 'none',
+                  }}
+                />
+                <TextMorph ease={{ stiffness: 240, damping: 24 }}>
+                  {isConnecting ? 'Switching Server...' : 'Change server'}
+                </TextMorph>
               </button>
             </div>
           )}
