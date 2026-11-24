@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
+import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 
 interface Contributor {
   login: string;
@@ -93,26 +94,99 @@ export const OpenSourceSection: React.FC = () => {
   return (
     <section
       style={{
+        position: 'relative',
         width: '100%',
-        maxWidth: '820px',
-        margin: '0 auto 130px',
-        padding: '0 20px',
-        textAlign: 'center',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         boxSizing: 'border-box',
+        padding: '60px 20px 140px',
+        margin: '0 auto',
       }}
     >
-      <h2
+      {/* FlickeringGrid Background with Soft Radial Fade */}
+      <div
         style={{
-          fontSize: 'clamp(24px, 3.2vw, 36px)',
-          fontWeight: 600,
-          letterSpacing: '-0.025em',
-          color: '#0f172a',
-          lineHeight: 1.25,
-          marginBottom: '16px',
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
         }}
       >
-        Open Source
-      </h2>
+        <FlickeringGrid
+          className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_750px_360px_at_50%_50%,transparent_24%,rgba(0,0,0,0.65)_60%,transparent_100%)]"
+          squareSize={4}
+          gridGap={6}
+          color="#60A5FA"
+          maxOpacity={0.45}
+          flickerChance={0.1}
+          hoverRadius={75}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            maskImage:
+              'radial-gradient(ellipse 750px 360px at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+            WebkitMaskImage:
+              'radial-gradient(ellipse 750px 360px at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+          }}
+        />
+
+        {/* Top Gradient Fade */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '80px',
+            background: 'linear-gradient(to bottom, #ffffff 20%, rgba(255, 255, 255, 0) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Bottom Gradient Fade */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '100px',
+            background: 'linear-gradient(to top, #ffffff 25%, rgba(255, 255, 255, 0) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+
+      {/* Foreground Content */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          maxWidth: '820px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 'clamp(24px, 3.2vw, 36px)',
+            fontWeight: 600,
+            letterSpacing: '-0.025em',
+            color: '#0f172a',
+            lineHeight: 1.25,
+            marginBottom: '16px',
+          }}
+        >
+          Open Source
+        </h2>
 
       <p
         style={{
@@ -305,6 +379,7 @@ export const OpenSourceSection: React.FC = () => {
             </a>
           ))}
         </div>
+      </div>
       </div>
     </section>
   );
