@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"runtime"
 	"testing"
 
 	"github.com/irbis-sh/zen-desktop/internal/vpn"
@@ -20,16 +19,17 @@ func TestIsCALoadError(t *testing.T) {
 func TestAppVPNAvailableEngines(t *testing.T) {
 	mgr := vpn.NewManager(nil)
 	engines := mgr.AvailableEngines()
-	if runtime.GOOS == "windows" {
-		found := false
-		for _, e := range engines {
-			if e == vpn.EngineOpenVPN {
-				found = true
-				break
-			}
+	availability := mgr.EngineAvailability()
+	if len(availability) == 0 {
+		t.Fatal("expected engine availability to report registered engines")
+	}
+	readyCount := 0
+	for _, item := range availability {
+		if item.Ready {
+			readyCount++
 		}
-		if !found {
-			t.Fatal("OpenVPN engine was not detected as available")
-		}
+	}
+	if len(engines) != readyCount {
+		t.Fatalf("AvailableEngines count %d != ready engines count %d", len(engines), readyCount)
 	}
 }

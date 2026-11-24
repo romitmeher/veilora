@@ -274,17 +274,22 @@ func (e *OpenVPNEngine) Disconnect() error {
 
 func (e *OpenVPNEngine) killProcess() error {
 	if e.mgmtConn != nil {
+		_, _ = fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
 		e.mgmtConn.Close()
 		e.mgmtConn = nil
 	}
 	if e.cmd != nil && e.cmd.Process != nil {
-		if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			return err
-		}
 		select {
 		case <-e.processDone:
 		case <-time.After(3 * time.Second):
-			return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
+			if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				return err
+			}
+			select {
+			case <-e.processDone:
+			case <-time.After(3 * time.Second):
+				return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
+			}
 		}
 	}
 	if e.cancelDone != nil {

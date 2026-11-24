@@ -4,7 +4,6 @@ package vpn
 
 import (
 	"context"
-	"errors"
 	"os/exec"
 )
 
