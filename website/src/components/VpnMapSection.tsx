@@ -292,7 +292,7 @@ export const VpnMapSection: React.FC = () => {
                       borderRadius: '8px',
                       padding: '5px 11px 5px 6px',
                       boxShadow:
-                        '0 10px 28px -4px rgba(0, 0, 0, 0.2), 0 3px 8px -2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+                        '0 10px 28px -4px rgba(0, 0, 0, 0.16), 0 3px 8px -2px rgba(0, 0, 0, 0.06)',
                       border: 'none',
                       userSelect: 'none',
                       whiteSpace: 'nowrap',
@@ -384,7 +384,8 @@ export const VpnMapSection: React.FC = () => {
             borderRadius: '9999px',
             padding: '3px 13px 3px 3px',
             boxShadow:
-              '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+              '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+            border: 'none',
             userSelect: 'none',
             transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
