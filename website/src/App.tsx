@@ -7,6 +7,7 @@ import { AboutSection } from './components/AboutSection';
 import { VpnMapSection } from './components/VpnMapSection';
 import { VpnFeatureSection } from './components/VpnFeatureSection';
 import { OpenSourceSection } from './components/OpenSourceSection';
+import { Footer } from './components/Footer';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 import { ProgressiveBlur } from '@/registry/magicui/progressive-blur';
 
@@ -209,15 +210,28 @@ export const App: React.FC = () => {
             }}
           >
             <MorphHero />
-            <SafariDemo />
+            <div id="ad-blocker" style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+              <SafariDemo />
+            </div>
           </div>
         </section>
 
-        <AboutSection />
-        <VpnMapSection />
-        <VpnFeatureSection />
-        <OpenSourceSection />
+        <div id="about" style={{ width: '100%' }}>
+          <AboutSection />
+        </div>
+        <div id="exit-nodes" style={{ width: '100%' }}>
+          <VpnMapSection />
+        </div>
+        <div id="protocols" style={{ width: '100%' }}>
+          <VpnFeatureSection />
+        </div>
+        <div id="opensource" style={{ width: '100%' }}>
+          <OpenSourceSection />
+        </div>
       </main>
+
+      {/* Comprehensive Open Source Apple-Style Footer */}
+      <Footer />
 
       {/* Progressive Blur at the bottom of the webpage for smooth scrolling fade */}
       <ProgressiveBlur
