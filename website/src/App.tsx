@@ -151,20 +151,22 @@ export const App: React.FC = () => {
             }}
           >
             <FlickeringGrid
-              className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_850px_440px_at_50%_240px,transparent_28%,rgba(0,0,0,0.65)_62%,transparent_100%)]"
+              className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_940px_440px_at_50%_230px,transparent_28%,rgba(0,0,0,0.65)_60%,transparent_100%)]"
               squareSize={4}
               gridGap={6}
               color="#60A5FA"
               maxOpacity={0.45}
               flickerChance={0.1}
-              hoverRadius={75}
+              hoverRadius={85}
               style={{
                 position: 'absolute',
                 inset: 0,
                 width: '100%',
                 height: '100%',
-                maskImage: 'radial-gradient(ellipse 850px 440px at 50% 240px, transparent 28%, rgba(0, 0, 0, 0.65) 62%, transparent 100%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 850px 440px at 50% 240px, transparent 28%, rgba(0, 0, 0, 0.65) 62%, transparent 100%)',
+                maskImage:
+                  'radial-gradient(ellipse 940px 440px at 50% 230px, transparent 28%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse 940px 440px at 50% 230px, transparent 28%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
               }}
             />
 
