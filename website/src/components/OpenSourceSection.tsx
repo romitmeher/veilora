@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
 import { TextMorph } from 'torph/react';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
+import { ShinyText } from '@/registry/react-bits/ShinyText';
 
 interface Contributor {
   login: string;
@@ -57,6 +58,83 @@ const RESOURCE_LINKS = [
     icon: <GitPullRequest size={14} strokeWidth={2.4} />,
   },
 ];
+
+const ResourcePill: React.FC<{
+  link: (typeof RESOURCE_LINKS)[0];
+}> = ({ link }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <a
+      href={link.href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="inline-morph-chip"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        backgroundColor: isHovered ? '#dadade' : '#E5E5EA',
+        borderRadius: '9999px',
+        padding: '4px 14px 4px 4px',
+        textDecoration: 'none',
+        boxShadow: isHovered
+          ? '0 4px 14px rgba(0, 0, 0, 0.12)'
+          : '0 1px 3px rgba(0, 0, 0, 0.08)',
+        transform: isHovered ? 'translateY(-1.5px)' : 'translateY(0)',
+        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* White Circular Icon Disc */}
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '26px',
+          height: '26px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          color: '#0f172a',
+          flexShrink: 0,
+        }}
+      >
+        {link.icon}
+      </span>
+      <span
+        style={{
+          fontSize: '13.5px',
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap',
+          display: 'inline-flex',
+          alignItems: 'center',
+        }}
+      >
+        <ShinyText
+          text={link.label}
+          color="#1c1c1e"
+          shineColor="#ffffff"
+          speed={2}
+          shineWidth={40}
+          softness={0.8}
+          trigger="hover"
+          angle={120}
+          bands={1}
+          glow={0}
+          direction="left"
+          easing="smooth"
+          triggerHover={isHovered}
+        />
+      </span>
+    </a>
+  );
+};
 
 const ContributorPill: React.FC<{ contributor: Contributor }> = ({ contributor }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -149,18 +227,6 @@ export const OpenSourceSection: React.FC = () => {
         // Fallback default is already set
       });
   }, []);
-
-  const handlePillEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor = '#dadade';
-    e.currentTarget.style.transform = 'translateY(-1.5px)';
-    e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.12)';
-  };
-
-  const handlePillLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.currentTarget.style.backgroundColor = '#E5E5EA';
-    e.currentTarget.style.transform = 'translateY(0)';
-    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
-  };
 
   return (
     <section
@@ -284,57 +350,7 @@ export const OpenSourceSection: React.FC = () => {
         }}
       >
         {RESOURCE_LINKS.map((link) => (
-          <a
-            key={link.label}
-            href={link.href}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-morph-chip"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#E5E5EA',
-              borderRadius: '9999px',
-              padding: '4px 14px 4px 4px',
-              textDecoration: 'none',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              cursor: 'pointer',
-              userSelect: 'none',
-            }}
-            onMouseEnter={handlePillEnter}
-            onMouseLeave={handlePillLeave}
-          >
-            {/* White Circular Icon Disc */}
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '26px',
-                height: '26px',
-                borderRadius: '50%',
-                backgroundColor: '#ffffff',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-                color: '#0f172a',
-                flexShrink: 0,
-              }}
-            >
-              {link.icon}
-            </span>
-            <span
-              style={{
-                fontSize: '13.5px',
-                fontWeight: 600,
-                color: '#1c1c1e',
-                letterSpacing: '-0.01em',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {link.label}
-            </span>
-          </a>
+          <ResourcePill key={link.label} link={link} />
         ))}
       </div>
 
