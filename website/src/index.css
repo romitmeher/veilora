@@ -115,33 +115,31 @@ button, input, select, textarea, a {
   transform: translateX(-320px) rotate(15deg);
 }
 
-/* Full-pill specular light reflection (slowed down, returns back on mouse leave like .btn-shine) */
+/* Full-pill specular light reflection (moves left on hover, returns right on leave, identical to .btn-shine) */
 .pill-shine {
   position: absolute;
   right: 0;
   top: 50%;
   margin-top: -64px;
   height: 128px;
-  width: 44px;
-  transform: translateX(70px) rotate(16deg);
+  width: 42px;
+  transform: translateX(72px) rotate(15deg);
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.65) 30%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0.65) 70%,
+    rgba(255, 255, 255, 0.55) 30%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.55) 70%,
     rgba(255, 255, 255, 0) 100%
   );
-  opacity: 0;
   pointer-events: none;
   z-index: 2;
-  transition: transform 1.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .resource-pill:hover .pill-shine,
 .inline-morph-chip:hover .pill-shine {
-  transform: translateX(-280px) rotate(16deg);
-  opacity: 1;
+  transform: translateX(-300px) rotate(15deg);
 }
 
 /* Ambient luminous pearlescent center glow when hovered */
