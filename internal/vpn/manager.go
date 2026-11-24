@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +23,12 @@ type ConnectionInfo struct {
 	Status          Status     `json:"status"`
 	KillSwitchOn    bool       `json:"killSwitchOn"`
 	DNSProtectionOn bool       `json:"dnsProtectionOn"`
+}
+
+type EngineAvailability struct {
+	Engine  EngineType `json:"engine"`
+	Ready   bool       `json:"ready"`
+	Message string     `json:"message"`
 }
 
 // Manager coordinates VPN connections, engine selection, kill switch, and DNS protection.
@@ -57,7 +64,7 @@ func NewManager(onStatusChange func(ConnectionInfo)) *Manager {
 		vpngateClient:  vpngate.NewClient(),
 		onStatusChange: onStatusChange,
 		retryInterval:  100 * time.Millisecond,
-		connectTimeout: 30 * time.Second,
+		connectTimeout: 45 * time.Second,
 	}
 	m.connInfo.Status = Status{State: StateDisconnected}
 	m.connInfo.DNSProtectionOn = false
@@ -70,6 +77,27 @@ func (m *Manager) AvailableEngines() []EngineType {
 	for t, e := range m.engines {
 		if e.Available() {
 			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// EngineAvailability returns readiness without implying that a missing engine
+// is installed or that a connection was established.
+func (m *Manager) EngineAvailability() []EngineAvailability {
+	out := make([]EngineAvailability, 0, len(m.engines))
+	for _, engine := range []EngineType{EngineOpenVPN, EngineSoftEther} {
+		if e, ok := m.engines[engine]; ok {
+			ready := e.Available()
+			message := "Ready"
+			if !ready {
+				if engine == EngineSoftEther {
+					message = "Bundled runtime or Windows provisioning is not ready"
+				} else {
+					message = "OpenVPN runtime is not available"
+				}
+			}
+			out = append(out, EngineAvailability{Engine: engine, Ready: ready, Message: message})
 		}
 	}
 	return out
@@ -188,6 +216,19 @@ func (m *Manager) autoFailoverMonitor(backups []vpngate.Server, engine EngineTyp
 			m.mu.Unlock()
 			continue
 		}
+		if state == StateError {
+			message := strings.ToLower(m.connInfo.Status.Message)
+			if strings.Contains(message, "service does not exist") ||
+				strings.Contains(message, "no bundled softether") ||
+				strings.Contains(message, "openvpn binary not found") ||
+				strings.Contains(message, "not provisioned") ||
+				strings.Contains(message, "elevation") ||
+				strings.Contains(message, "adapter is unavailable") ||
+				strings.Contains(message, "softether vpn service") {
+				m.mu.Unlock()
+				return
+			}
+		}
 		if err := m.disconnectLocked(); err != nil {
 			m.connInfo.Status = Status{State: StateError, Message: err.Error()}
 			info := m.connInfo
@@ -248,18 +289,7 @@ func (m *Manager) ConnectToServer(server vpngate.Server, engine EngineType, kill
 func (m *Manager) connectLocked(server vpngate.Server, engine EngineType, dnsProtect bool) error {
 	eng, ok := m.engines[engine]
 	if !ok || !eng.Available() {
-		for _, t := range []EngineType{EngineSoftEther, EngineOpenVPN} {
-			if e, exists := m.engines[t]; exists && e.Available() {
-				log.Printf("vpn: requested engine %q unavailable, falling back to %q", engine, t)
-				eng = e
-				engine = t
-				ok = true
-				break
-			}
-		}
-	}
-	if !ok || !eng.Available() {
-		return fmt.Errorf("no VPN engine is available on this system (install OpenVPN or SoftEther)")
+		return fmt.Errorf("requested VPN engine %q is not available", engine)
 	}
 	if server.OpenVPNConfigBase64 == "" {
 		return fmt.Errorf("server %s has no OpenVPN config", server.HostName)

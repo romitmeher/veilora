@@ -251,7 +251,9 @@
     "vpn": {
       "connected": "Connected",
       "disconnected": "Disconnected",
+      "preparing": "Preparing…",
       "connecting": "Connecting…",
+      "reconnecting": "Reconnecting…",
       "disconnecting": "Disconnecting…",
       "error": "Connection error"
     },

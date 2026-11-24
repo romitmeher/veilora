@@ -2,4 +2,5 @@
 
 package vpn
 
-func embeddedVPN() []byte { return nil }
+func embeddedVPN() []byte       { return nil }
+func embeddedSoftEther() []byte { return nil }

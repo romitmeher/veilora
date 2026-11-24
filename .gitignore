@@ -1,4 +1,5 @@
 build/bin
+*.syso
 internal/vpn/payload/*.zip
 build/windows/installer/wails_tools.nsh
 node_modules
@@ -20,3 +21,4 @@ frontend/dist
 .agents/
 .claude/
 skills-lock.json
+third_party/softether_stable/

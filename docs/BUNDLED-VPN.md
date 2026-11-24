@@ -73,11 +73,24 @@ its history and licenses. The application UI and Go backend remain the existing
 Veilora project. No new VPN protocol implementation is being written.
 
 `build-vpn-source.ps1 -Engine softether -Arch amd64` provides an optional upstream
-SoftEther client/tool build. Its service and adapter lifecycle are not yet embedded
-in Veilora; the standalone default is OpenVPN. Pulling SoftEther's source alone
-must not make the UI claim that an installed/running SoftEther service exists.
+SoftEther client/tool build and writes a separate
+`windows-amd64-softether.zip` payload. It contains `vpnclient.exe`, `vpncmd.exe`,
+`vpndrvinst.exe`, `hamcore.se2`, and upstream notices. The payload is extracted
+and hash-checked independently from the OpenVPN payload. A bundled build does not
+claim SoftEther is ready until the private runtime validates and the Windows
+service and Neo6 adapter lifecycle is provisioned successfully.
 
 The source-build path has not yet been executed in this workspace because the
 Visual Studio C++ toolchain is absent. Earlier embedded-payload tests used official
 prebuilt binaries and do not validate the replacement native source build. Use the
 Windows CI build for native compilation before distributing a source-built release.
+
+The bundled SoftEther package now has separate archive, manifest, and runtime
+extraction support. This workspace has not executed a SoftEther CMake build or
+verified its signed Neo6 adapter package, `SEVPNCLIENTDEV` service lifecycle,
+UAC/rollback behavior, or live VPN session. Those remain Windows-native validation
+requirements.
+
+Veilora exposes engine readiness separately from connection status. A ready
+engine must have validated binaries/payload and completed its required Windows
+provisioning. Reporting ready is not a claim that a tunnel is connected.

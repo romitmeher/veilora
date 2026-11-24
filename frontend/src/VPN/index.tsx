@@ -10,7 +10,9 @@ import {
   VPNConnectToServer,
   VPNDisconnect,
   VPNAvailableEngines,
+  VPNEngineAvailability,
   VPNInstallEngine,
+  VPNProvisionSoftEther,
   VPNGetDNSResolver,
   VPNSetDNSResolver,
   VPNGetCountries,
@@ -28,8 +30,12 @@ function stateLabel(state: string): string {
   switch (state) {
     case 'connected':
       return 'Connected';
+    case 'preparing':
+      return 'Preparing…';
     case 'connecting':
       return 'Connecting…';
+    case 'reconnecting':
+      return 'Reconnecting…';
     case 'disconnecting':
       return 'Disconnecting…';
     case 'error':
@@ -46,6 +52,10 @@ export function VPN() {
   // The bundled OpenVPN engine works without a separate client installation.
   const [engine, setEngine] = useState<EngineType>('openvpn');
   const [availableEngines, setAvailableEngines] = useState<EngineType[]>([]);
+  const [engineStatuses, setEngineStatuses] = useState<Record<EngineType, string>>({
+    openvpn: 'Checking...',
+    softether: 'Checking...',
+  });
   const [enginesLoading, setEnginesLoading] = useState(true);
   const [enginesError, setEnginesError] = useState(false);
   const [country, setCountry] = useState('');
@@ -79,12 +89,27 @@ export function VPN() {
     setEnginesLoading(true);
     setEnginesError(false);
     try {
-      const engines = await VPNAvailableEngines();
+      let engines: EngineType[] = [];
+      try {
+        const availability = await VPNEngineAvailability();
+        engines = (availability ?? []).filter((item) => item.ready).map((item) => item.engine as EngineType);
+        setEngineStatuses((prev) => {
+          const next = { ...prev };
+          for (const item of availability ?? []) {
+            if (item.engine === 'openvpn' || item.engine === 'softether') {
+              next[item.engine] = item.ready ? 'Ready' : item.message;
+            }
+          }
+          return next;
+        });
+      } catch {
+        engines = await VPNAvailableEngines();
+      }
       const supported = (engines ?? []).filter(
         (value): value is EngineType => value === 'openvpn' || value === 'softether',
       );
       setAvailableEngines(supported);
-      // Prefer the bundled engine; retain an explicit available selection.
+      // Prefer OpenVPN as the default engine since it works dynamically out of the box.
       if (supported.length > 0) {
         setEngine((prev) => {
           if (supported.includes(prev)) return prev;
@@ -119,7 +144,11 @@ export function VPN() {
     const engineLabel = targetEngine === 'softether' ? 'SoftEther VPN Gate Plug-in' : 'OpenVPN';
     setInstallProgress({ stage: 'starting', percent: 10, message: `Starting ${engineLabel} setup...` });
     try {
-      await VPNInstallEngine(targetEngine);
+      if (targetEngine === 'softether') {
+        await VPNProvisionSoftEther();
+      } else {
+        await VPNInstallEngine(targetEngine);
+      }
       await loadEngines();
     } catch (err) {
       setInstalling(false);
@@ -147,8 +176,9 @@ export function VPN() {
     const saved = localStorage.getItem('veilora_vpn_autoconnect');
     if (saved === 'openvpn' && vpnState === 'disconnected') {
       VPNAvailableEngines().then((avail) => {
-        if (avail && avail.includes('openvpn')) {
-          VPNConnectBest('', 'openvpn', false, true).catch(() => {});
+        const preferred = avail?.includes('softether') ? 'softether' : avail?.includes('openvpn') ? 'openvpn' : null;
+        if (preferred) {
+          VPNConnectBest('', preferred, false, true).catch(() => {});
         }
       });
     }
@@ -156,32 +186,21 @@ export function VPN() {
 
   const handleConnect = useCallback(async () => {
     try {
-      let activeEngine = engine;
       if (!availableEngines.includes(engine)) {
-        if (availableEngines.length > 0) {
-          // Prefer the bundled OpenVPN runtime.
-          activeEngine = availableEngines.includes('openvpn') ? 'openvpn' : availableEngines[0];
-          AppToaster.show({
-            message: `${engine === 'softether' ? 'SoftEther' : 'OpenVPN'} is not installed. Connecting via ${activeEngine === 'softether' ? 'SoftEther' : 'OpenVPN'}...`,
-            intent: 'primary',
-          });
-          setEngine(activeEngine);
-        } else {
-          AppToaster.show({
-            message: 'VPN runtime unavailable. Use a standalone Windows build or configure an external engine.',
-            intent: 'warning',
-          });
-          return;
-        }
+        AppToaster.show({
+          message: `${engine === 'softether' ? 'Veilora VPN' : 'OpenVPN'} runtime is not ready. No VPN connection was attempted.`,
+          intent: 'warning',
+        });
+        return;
       }
       if (autoSelect) {
-        await VPNConnectBest(country, activeEngine, killSwitch, dnsProtect);
+        await VPNConnectBest(country, engine, killSwitch, dnsProtect);
       } else {
         if (!selectedServer) {
           AppToaster.show({ message: t('vpn.noServerSelected'), intent: 'warning' });
           return;
         }
-        await VPNConnectToServer(selectedServer.hostName, activeEngine, killSwitch, dnsProtect);
+        await VPNConnectToServer(selectedServer.hostName, engine, killSwitch, dnsProtect);
       }
     } catch (err) {
       AppToaster.show({ message: t('vpn.connectError', { error: err }), intent: 'danger' });
@@ -221,7 +240,7 @@ export function VPN() {
     }
   };
 
-  const isConnecting = vpnState === 'connecting';
+  const isConnecting = vpnState === 'preparing' || vpnState === 'connecting' || vpnState === 'reconnecting';
   const canAct = !isTransitioning;
   const statusClass = `vpn-status vpn-status--${vpnState}`;
 
@@ -246,7 +265,7 @@ export function VPN() {
                 {engine === 'softether' && !availableEngines.includes('softether')
                   ? 'SoftEther is optional. Select OpenVPN to use the runtime included in standalone Windows builds.'
                   : engine === 'openvpn' && !availableEngines.includes('openvpn')
-                    ? 'This build has no usable OpenVPN runtime. Use a standalone Windows release or install an external engine.'
+                    ? 'This build has no usable bundled OpenVPN runtime. Windows policy MSI 1625 blocks external OpenVPN installation.'
                     : 'Veilora requires a tunneling engine (SoftEther VPN Gate client plug-in or OpenVPN) to encrypt and route your traffic.'}
               </p>
             </div>
@@ -265,19 +284,17 @@ export function VPN() {
           {engine === 'softether' && !installing && (
             <div className="vpn-softether-guide">
               <div className="vpn-softether-guide__title">
-                <Icon icon="help" size={14} /> SoftEther Setup Guide
+                <Icon icon="help" size={14} /> Veilora VPN Setup
               </div>
               <ol className="vpn-softether-guide__steps">
                 <li>
-                  Click <strong>Fetch SoftEther Plugin</strong> to download and launch the installer.
+                  Click <strong>Provision Veilora VPN</strong>; Veilora will request Windows administrator approval.
                 </li>
                 <li>
-                  In the installer wizard, select <strong>SoftEther VPN Client</strong> (do not choose Server/Bridge).
+                  Veilora uses <strong>SEVPNCLIENT</strong> when installed, otherwise <strong>SEVPNCLIENTDEV</strong>,
+                  and configures the <strong>VPN</strong> adapter for <strong>VeiloraVPN</strong>.
                 </li>
-                <li>
-                  Accept the default folder (<code>C:\Program Files\SoftEther VPN Client</code>) and allow virtual
-                  network driver installation.
-                </li>
+                <li>Veilora verifies the service, virtual adapter, and native endpoint before reporting ready.</li>
                 <li>
                   When finished, click <strong>Check Again</strong> to verify detection.
                 </li>
@@ -309,7 +326,7 @@ export function VPN() {
                     onClick={() => handleInstallEngine('softether')}
                     loading={enginesLoading}
                   >
-                    Fetch SoftEther Plugin
+                    Provision Veilora VPN
                   </Button>
                   {availableEngines.includes('openvpn') && (
                     <Button intent="none" icon="shield" size="large" onClick={() => setEngine('openvpn')}>
@@ -319,15 +336,9 @@ export function VPN() {
                 </>
               ) : engine === 'openvpn' && !availableEngines.includes('openvpn') ? (
                 <>
-                  <Button
-                    intent="primary"
-                    icon="shield"
-                    size="large"
-                    onClick={() => handleInstallEngine('openvpn')}
-                    loading={enginesLoading}
-                  >
-                    Install OpenVPN
-                  </Button>
+                  <Tag intent="danger" size="large" fill>
+                    OpenVPN runtime not bundled
+                  </Tag>
                   {availableEngines.includes('softether') && (
                     <Button intent="none" icon="download" size="large" onClick={() => setEngine('softether')}>
                       Use SoftEther (Installed)
@@ -336,24 +347,7 @@ export function VPN() {
                 </>
               ) : (
                 <>
-                  <Button
-                    intent="primary"
-                    icon="download"
-                    size="large"
-                    onClick={() => handleInstallEngine('softether')}
-                    loading={enginesLoading}
-                  >
-                    Fetch SoftEther Plugin
-                  </Button>
-                  <Button
-                    intent="none"
-                    icon="shield"
-                    size="large"
-                    onClick={() => handleInstallEngine('openvpn')}
-                    loading={enginesLoading}
-                  >
-                    Install OpenVPN
-                  </Button>
+                  <Tag intent="none">Select an available engine</Tag>
                 </>
               )}
               <Button icon="refresh" variant="minimal" onClick={loadEngines}>
@@ -399,8 +393,12 @@ export function VPN() {
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              {availableEngines.includes('openvpn') && <option value="openvpn">OpenVPN (ready)</option>}
-              {availableEngines.includes('softether') && <option value="softether">SoftEther (installed)</option>}
+              <option value="openvpn">
+                OpenVPN ({availableEngines.includes('openvpn') ? 'Ready' : engineStatuses.openvpn})
+              </option>
+              <option value="softether">
+                SoftEther ({availableEngines.includes('softether') ? 'Ready' : engineStatuses.softether})
+              </option>
             </HTMLSelect>
           </div>
 

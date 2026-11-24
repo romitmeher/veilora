@@ -30,7 +30,11 @@ export function ProxyStateProvider({ children }: { children: ReactNode }) {
 export function useProxyState() {
   const context = useContext(ProxyStateContext);
   if (context === undefined) {
-    throw new Error('useProxyState must be used within a ProxyStateProvider');
+    return {
+      proxyState: 'off' as ProxyState,
+      setProxyState: () => {},
+      isProxyRunning: false,
+    };
   }
   return context;
 }

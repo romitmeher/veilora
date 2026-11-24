@@ -125,6 +125,26 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 		// Config might already be plain text.
 		configData = ovpnConfigB64
 	}
+	if runtime.GOOS == "windows" {
+		host, port, remoteErr := extractRemoteForDial(string(configData))
+		if remoteErr == nil {
+			proto := "udp"
+			for _, line := range strings.Split(string(configData), "\n") {
+				fields := strings.Fields(strings.TrimSpace(line))
+				if len(fields) >= 2 && fields[0] == "proto" {
+					proto = strings.ToLower(fields[1])
+					break
+				}
+			}
+			if strings.HasPrefix(proto, "tcp") {
+				conn, dialErr := net.DialTimeout("tcp", net.JoinHostPort(host, port), 5*time.Second)
+				if dialErr != nil {
+					return fmt.Errorf("OpenVPN server %s:%s is unreachable: %w", host, port, dialErr)
+				}
+				conn.Close()
+			}
+		}
+	}
 
 	tmpDir, err := os.MkdirTemp("", "veilora-vpn-*")
 	if err != nil {
@@ -155,7 +175,11 @@ func (e *OpenVPNEngine) Connect(ovpnConfigB64 []byte, statusCh chan<- Status) er
 	}
 
 	if runtime.GOOS == "windows" {
-		args = append(args, "--data-ciphers-fallback", "AES-128-CBC", "--disable-dco")
+		args = append(args,
+			"--data-ciphers", "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC:AES-256-CBC",
+			"--data-ciphers-fallback", "AES-128-CBC",
+			"--disable-dco",
+		)
 	} else {
 		args = append(args, "--script-security", "1")
 	}
@@ -253,33 +277,46 @@ func (e *OpenVPNEngine) Disconnect() error {
 }
 
 func (e *OpenVPNEngine) killProcess() error {
-	if e.mgmtConn != nil {
-		fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
-		e.mgmtConn.Close()
-		e.mgmtConn = nil
-	}
-	if e.cmd != nil && e.cmd.Process != nil {
-		select {
-		case <-e.processDone:
-		case <-time.After(3 * time.Second):
-			if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-				return err
-			}
-			select {
-			case <-e.processDone:
-			case <-time.After(3 * time.Second):
-				return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
-			}
-		}
-	}
 	if e.cancelDone != nil {
 		select {
 		case <-e.cancelDone:
 		default:
 			close(e.cancelDone)
 		}
-		e.cancelDone = nil
 	}
+	if e.mgmtConn != nil {
+		_, _ = fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
+	}
+	if e.cmd != nil && e.cmd.Process != nil {
+		if e.processDone != nil {
+			select {
+			case <-e.processDone:
+			case <-time.After(3 * time.Second):
+				if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+					if e.mgmtConn != nil {
+						e.mgmtConn.Close()
+						e.mgmtConn = nil
+					}
+					return err
+				}
+				select {
+				case <-e.processDone:
+				case <-time.After(3 * time.Second):
+					if e.mgmtConn != nil {
+						e.mgmtConn.Close()
+						e.mgmtConn = nil
+					}
+					return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
+				}
+			}
+		}
+	}
+	if e.mgmtConn != nil {
+		e.mgmtConn.Close()
+		e.mgmtConn = nil
+	}
+	e.cancelDone = nil
+	e.processDone = nil
 	if e.tmpDir != "" {
 		os.RemoveAll(e.tmpDir)
 		e.tmpDir = ""
@@ -304,6 +341,9 @@ func (e *OpenVPNEngine) monitorManagement(conn net.Conn, statusCh chan<- Status,
 		}
 		line := scanner.Text()
 		log.Printf("openvpn mgmt: %s", line)
+		if strings.HasPrefix(line, ">HOLD:") {
+			_, _ = io.WriteString(conn, "hold release\n")
+		}
 		if status, ok := parseManagementLine(line); ok {
 			statusCh <- status
 		}
@@ -339,6 +379,24 @@ func (e *OpenVPNEngine) drainLog(r io.Reader) {
 	}
 }
 
+func extractRemoteForDial(config string) (host, port string, err error) {
+	for _, line := range strings.Split(config, "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) >= 2 && fields[0] == "remote" {
+			host = strings.TrimSpace(fields[1])
+			port = "1194"
+			if len(fields) >= 3 {
+				port = strings.TrimSpace(fields[2])
+			}
+			if host == "" || port == "" {
+				return "", "", errors.New("invalid remote directive")
+			}
+			return host, port, nil
+		}
+	}
+	return "", "", errors.New("no remote directive")
+}
+
 // parseManagementLine converts an OpenVPN management protocol line to a Status.
 func parseManagementLine(line string) (Status, bool) {
 	if !strings.HasPrefix(line, ">STATE:") {
@@ -363,7 +421,7 @@ func parseManagementLine(line string) (Status, bool) {
 	case "EXITING":
 		return Status{State: StateDisconnecting, Message: desc}, true
 	case "RECONNECTING":
-		return Status{State: StateConnecting, Message: "reconnecting: " + desc}, true
+		return Status{State: StateReconnecting, Message: "reconnecting: " + desc}, true
 	}
 	return Status{}, false
 }

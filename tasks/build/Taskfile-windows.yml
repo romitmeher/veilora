@@ -12,6 +12,7 @@ tasks:
     desc: Prepare the bundled Windows VPN runtime without installing it.
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-vpn-source.ps1 -Arch {{default .ARCH64 .ARCH}}
+      - powershell -NoProfile -ExecutionPolicy Bypass -Command "if ('{{default .ARCH64 .ARCH}}' -eq 'amd64') { & scripts/build-vpn-source.ps1 -Engine softether -Arch amd64 }"
 
   prod:
     desc: Create a production build of the application.

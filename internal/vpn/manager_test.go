@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/irbis-sh/zen-desktop/internal/vpngate"
 )
@@ -95,5 +96,60 @@ func TestMissingEngineDoesNotAttemptConnection(t *testing.T) {
 	}
 	if fake.config != nil {
 		t.Fatal("unavailable engine was invoked")
+	}
+}
+
+func TestUnavailableRequestedEngineDoesNotFallBack(t *testing.T) {
+	m := NewManager(nil)
+	available := &recordingEngine{available: true}
+	m.engines = map[EngineType]Engine{
+		EngineOpenVPN: available,
+	}
+	server := vpngate.Server{OpenVPNConfigBase64: base64.StdEncoding.EncodeToString([]byte("client\n"))}
+
+	if err := m.ConnectToServer(server, EngineSoftEther, false, false); err == nil {
+		t.Fatal("SoftEther request unexpectedly fell back to OpenVPN")
+	}
+	if available.config != nil {
+		t.Fatal("OpenVPN was invoked after a unavailable SoftEther request")
+	}
+}
+
+func TestEngineAvailabilityReportsBothEngines(t *testing.T) {
+	openvpn := &recordingEngine{available: true}
+	softether := &recordingEngine{available: false}
+	m := NewManager(nil)
+	m.engines = map[EngineType]Engine{
+		EngineOpenVPN:   openvpn,
+		EngineSoftEther: softether,
+	}
+
+	statuses := m.EngineAvailability()
+	if len(statuses) != 2 {
+		t.Fatalf("availability count = %d, want 2", len(statuses))
+	}
+	if statuses[0].Engine != EngineOpenVPN || !statuses[0].Ready {
+		t.Fatalf("OpenVPN readiness = %+v", statuses[0])
+	}
+	if statuses[1].Engine != EngineSoftEther || statuses[1].Ready {
+		t.Fatalf("SoftEther readiness = %+v", statuses[1])
+	}
+}
+
+func TestManagerUsesLongerConnectionTimeout(t *testing.T) {
+	m := NewManager(nil)
+	if m.connectTimeout != 45*time.Second {
+		t.Fatalf("connection timeout = %v, want 45s", m.connectTimeout)
+	}
+}
+
+func TestMissingRuntimeDoesNotFallBackToBackupServers(t *testing.T) {
+	m, e := newSupervisorFixture(t)
+	m.mu.Lock()
+	m.connInfo.Status = Status{State: StateError, Message: "openvpn binary not found"}
+	m.mu.Unlock()
+	m.handleStatusUpdate(Status{State: StateError, Message: "openvpn binary not found"}, m.stopMon, false)
+	if e.count.Load() != 0 {
+		t.Fatal("missing runtime unexpectedly started an engine")
 	}
 }

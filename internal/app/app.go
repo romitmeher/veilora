@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	goruntime "runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -158,6 +159,7 @@ func (a *App) BeforeClose(ctx context.Context) bool {
 	if err := a.vpnManager.Disconnect(); err != nil {
 		log.Printf("vpn: disconnect on shutdown: %v", err)
 	}
+	a.cleanupSoftEtherOnShutdown(ctx)
 	if err := a.StopProxy(); err != nil {
 		dialog, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 			Type:          runtime.QuestionDialog,
@@ -174,6 +176,10 @@ func (a *App) BeforeClose(ctx context.Context) bool {
 	}
 	a.systrayMgr.Quit()
 	return false
+}
+
+func isCALoadError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "CA load")
 }
 
 // StartProxy starts the proxy.
@@ -255,7 +261,16 @@ func (a *App) StartProxy() (err error) {
 	}
 
 	if err := a.certStore.Init(); err != nil {
-		return fmt.Errorf("initialize cert store: %v", err)
+		if isCALoadError(err) {
+			a.config.SetCAInstalled(false)
+			if retryErr := a.certStore.Init(); retryErr == nil {
+				log.Printf("certificate store recovered by regenerating the local CA")
+			} else {
+				return fmt.Errorf("initialize cert store after recovery: %v", retryErr)
+			}
+		} else {
+			return fmt.Errorf("initialize cert store: %v", err)
+		}
 	}
 
 	port, err := a.proxy.Start()

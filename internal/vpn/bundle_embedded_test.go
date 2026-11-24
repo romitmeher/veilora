@@ -20,8 +20,8 @@ func TestEmbeddedRuntimeHasMatchingArchitecture(t *testing.T) {
 	if !NewOpenVPNEngine().Available() {
 		t.Fatal("embedded engine requires external installation")
 	}
-	if NewSoftEtherEngine().Available() {
-		t.Fatal("bundled build must not advertise external SoftEther")
+	if NewSoftEtherEngine().Available() != (len(embeddedSoftEther()) > 0) {
+		t.Fatal("bundled SoftEther availability does not match the embedded payload")
 	}
 	dir, err := extractRuntime(embeddedVPN(), t.TempDir(), runtime.GOARCH)
 	if err != nil {

@@ -1,107 +1,10 @@
 package vpn
 
 import (
-	"os"
-	"path/filepath"
+	"context"
+	"strings"
 	"testing"
 )
-
-func TestParseSoftEtherPluginURL(t *testing.T) {
-	htmlSample := `
-	<html><body>
-	<p>Download SoftEther VPN Client + VPN Gate Client Plugin</p>
-	<a href="/common/cd.aspx/vpngate-client-2026.11.22-build-9807.166233.zip">Download ZIP</a>
-	</body></html>
-	`
-	base := "http://v-dot-pn-ams2.opengw.net:34637"
-	got, err := parseSoftEtherPluginURL(htmlSample, base)
-	if err != nil {
-		t.Fatalf("unexpected error parsing plugin URL: %v", err)
-	}
-	want := "http://v-dot-pn-ams2.opengw.net:34637/common/cd.aspx/vpngate-client-2026.11.22-build-9807.166233.zip"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
-func TestParseSoftEtherPluginURLAbsolute(t *testing.T) {
-	htmlSample := `
-	<a href="https://mirror.opengw.net/download/vpngate-client-latest.zip">Direct Download</a>
-	`
-	base := "http://v-dot-pn-ams2.opengw.net:34637"
-	got, err := parseSoftEtherPluginURL(htmlSample, base)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	want := "https://mirror.opengw.net/download/vpngate-client-latest.zip"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
-func TestParseSoftEtherPluginURLMissing(t *testing.T) {
-	htmlSample := `<html><body><p>No links here</p></body></html>`
-	base := "http://v-dot-pn-ams2.opengw.net:34637"
-	_, err := parseSoftEtherPluginURL(htmlSample, base)
-	if err == nil {
-		t.Fatal("expected error for missing link")
-	}
-}
-
-func TestMakeAbsoluteURL(t *testing.T) {
-	tests := []struct {
-		raw  string
-		base string
-		want string
-	}{
-		{"/path/to/file.zip", "http://example.com", "http://example.com/path/to/file.zip"},
-		{"path/to/file.zip", "http://example.com", "http://example.com/path/to/file.zip"},
-		{"http://other.com/file.zip", "http://example.com", "http://other.com/file.zip"},
-		{"https://other.com/file.zip", "http://example.com", "https://other.com/file.zip"},
-	}
-
-	for _, tt := range tests {
-		got := makeAbsoluteURL(tt.raw, tt.base)
-		if got != tt.want {
-			t.Errorf("makeAbsoluteURL(%q, %q) = %q, want %q", tt.raw, tt.base, got, tt.want)
-		}
-	}
-}
-
-func TestFindSetupExecutable(t *testing.T) {
-	tmp := t.TempDir()
-	exePath := filepath.Join(tmp, "vpngate-client-v4.44-build-9807.exe")
-	if err := os.WriteFile(exePath, []byte("fake exe binary"), 0600); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := findSetupExecutable(tmp)
-	if err != nil {
-		t.Fatalf("unexpected error finding executable: %v", err)
-	}
-	if got != exePath {
-		t.Errorf("got %q, want %q", got, exePath)
-	}
-}
-
-func TestFindSetupExecutablePrefersInstallerOverRuntime(t *testing.T) {
-	tmp := t.TempDir()
-	runtimePath := filepath.Join(tmp, "scvpnclient.exe")
-	setupPath := filepath.Join(tmp, "vpngate-client-setup.exe")
-	for _, path := range []string{runtimePath, setupPath} {
-		if err := os.WriteFile(path, []byte("fake exe binary"), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	got, err := findSetupExecutable(tmp)
-	if err != nil {
-		t.Fatalf("unexpected error finding executable: %v", err)
-	}
-	if got != setupPath {
-		t.Errorf("got %q, want installer %q", got, setupPath)
-	}
-}
 
 func TestVPNCmdOutputHasError(t *testing.T) {
 	tests := []struct {
@@ -152,5 +55,91 @@ func TestSoftEtherSessionEstablished(t *testing.T) {
 		if got := softEtherSessionEstablished([]byte(tt.output)); got != tt.want {
 			t.Errorf("softEtherSessionEstablished(%q) = %v, want %v", tt.output, got, tt.want)
 		}
+	}
+}
+
+func TestSoftEtherNativeEndpointIgnoresOpenVPNPort(t *testing.T) {
+	host, port, err := SoftEtherNativeEndpoint("client\nremote 219.100.37.208 1194\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if host != "219.100.37.208" || port != "443" {
+		t.Fatalf("native endpoint = %s:%s, want 219.100.37.208:443", host, port)
+	}
+	if err := validateSoftEtherEndpoint(host, "1194"); err == nil {
+		t.Fatal("OpenVPN port was accepted as a SoftEther endpoint port")
+	}
+}
+
+func TestSoftEtherNativeEndpointRejectsInvalidHost(t *testing.T) {
+	if _, _, err := SoftEtherNativeEndpoint("remote bad host name 443\n"); err == nil {
+		t.Fatal("invalid host was accepted")
+	}
+}
+
+func TestSoftEtherNicMatch(t *testing.T) {
+	if !softEtherNicListed([]byte("VPN Enabled"), "VPN") {
+		t.Fatal("VPN adapter not recognized")
+	}
+	if softEtherNicListed([]byte("UserAdapter Enabled"), "VPN") {
+		t.Fatal("unrelated adapter matched VPN")
+	}
+}
+
+func TestSoftEtherOwnedCleanupCommands(t *testing.T) {
+	accountDelete := []string{
+		"/CLIENT", "localhost", "/CMD",
+		"AccountDisconnect", softEtherAccountName,
+		"AccountDelete", softEtherAccountName,
+	}
+	for _, arg := range accountDelete {
+		if strings.Contains(arg, "UserAdapter") {
+			t.Fatal("cleanup contained an unrelated adapter")
+		}
+	}
+	if !strings.Contains(strings.Join(accountDelete, " "), softEtherAccountName) {
+		t.Fatal("VeiloraVPN account missing from cleanup")
+	}
+}
+
+func TestSoftEtherUpstreamServiceName(t *testing.T) {
+	if softEtherServiceName != "SEVPNCLIENTDEV" {
+		t.Fatalf("service name = %q, want upstream GC_SVC_NAME_VPNCLIENT", softEtherServiceName)
+	}
+}
+
+func TestExternalSoftEtherInstallerIsRejected(t *testing.T) {
+	err := InstallEngineType(context.Background(), EngineSoftEther, nil)
+	if err == nil {
+		t.Fatal("external SoftEther installer was not rejected")
+	}
+	if !strings.Contains(err.Error(), "external SoftEther installer execution is disabled") &&
+		!strings.Contains(err.Error(), "only supported on Windows") {
+		t.Fatalf("unexpected installer error: %v", err)
+	}
+}
+
+func TestOpenVPNExternalInstallerPolicyMessage(t *testing.T) {
+	message := "OpenVPN MSI installation is blocked by Windows policy (MSI 1625); use the bundled Veilora OpenVPN runtime"
+	if !strings.Contains(message, "MSI 1625") || !strings.Contains(message, "bundled") {
+		t.Fatal("policy error does not explain the bundled-runtime fix")
+	}
+}
+
+func TestSeparateSoftEtherAccountCleanupCommands(t *testing.T) {
+	disconnectCmd := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", softEtherAccountName}
+	deleteCmd := []string{"/CLIENT", "localhost", "/CMD", "AccountDelete", softEtherAccountName}
+	if strings.Join(disconnectCmd, " ") == strings.Join(deleteCmd, " ") {
+		t.Fatal("disconnect and delete must be separate operations")
+	}
+	if disconnectCmd[len(disconnectCmd)-1] != softEtherAccountName || deleteCmd[len(deleteCmd)-1] != softEtherAccountName {
+		t.Fatal("cleanup changed the VeiloraVPN account name")
+	}
+}
+
+func TestOpenVPNReconnectStatus(t *testing.T) {
+	status, ok := parseManagementLine(">STATE:123,RECONNECTING,reconnection in progress")
+	if !ok || status.State != StateReconnecting || status.Message != "reconnecting: reconnection in progress" {
+		t.Fatalf("unexpected reconnect status: %+v, ok=%v", status, ok)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/irbis-sh/zen-desktop/internal/elevate"
 	"github.com/irbis-sh/zen-desktop/internal/vpn"
 	"github.com/irbis-sh/zen-desktop/internal/vpngate"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -40,9 +41,18 @@ func (a *App) VPNAvailableEngines() []vpn.EngineType {
 	return a.vpnManager.AvailableEngines()
 }
 
+// VPNEngineAvailability returns readiness and status for every supported engine.
+func (a *App) VPNEngineAvailability() []vpn.EngineAvailability {
+	<-a.startupDone
+	return a.vpnManager.EngineAvailability()
+}
+
 // StartVPNFromTray connects through the first available engine for tray-initiated actions.
 func (a *App) StartVPNFromTray() error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
+	}
 	engines := a.vpnManager.AvailableEngines()
 	for _, engine := range []vpn.EngineType{vpn.EngineOpenVPN, vpn.EngineSoftEther} {
 		for _, available := range engines {
@@ -61,6 +71,9 @@ func (a *App) StartVPNFromTray() error {
 // dnsProtect: override system DNS through VPN.
 func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
+	}
 	err := a.vpnManager.ConnectBest(country, engine, killSwitch, dnsProtect)
 	if err != nil {
 		log.Printf("vpn: connect best: %v", err)
@@ -71,6 +84,9 @@ func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, 
 // VPNConnectToServer connects to a specific VPNGate server by hostname.
 func (a *App) VPNConnectToServer(hostName string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
+	}
 	servers, err := a.vpnManager.GetServers("", false)
 	if err != nil {
 		return fmt.Errorf("fetch server list: %w", err)
@@ -125,6 +141,19 @@ func (a *App) VPNGetDNSResolver() string {
 func (a *App) VPNRefreshServers() {
 	<-a.startupDone
 	a.vpnManager.RefreshServers()
+}
+
+// VPNProvisionSoftEther requests elevation and prepares the bundled SoftEther
+// client, shared service, and virtual adapter components.
+func (a *App) VPNProvisionSoftEther() (vpn.SoftEtherOwnership, error) {
+	<-a.startupDone
+	if !elevate.IsElevated() {
+		if err := elevate.RelaunchElevated(); err != nil {
+			return vpn.SoftEtherOwnership{}, fmt.Errorf("request administrator approval: %w", err)
+		}
+		return vpn.SoftEtherOwnership{}, errors.New("veilora elevation was requested; approve the Windows prompt and retry")
+	}
+	return vpn.ProvisionBundledSoftEther(a.ctx)
 }
 
 // VPNInstallEngine runs the in-app engine installer to download and configure OpenVPN or SoftEther.

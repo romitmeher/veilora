@@ -2,15 +2,39 @@
 param(
     [ValidateSet('amd64','arm64')][string]$Arch = 'amd64',
     [ValidateSet('openvpn','softether')][string]$Engine = 'openvpn',
-    [switch]$CheckPrerequisites
+    [switch]$CheckPrerequisites,
+    [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+Push-Location $root
+$targetZip = if ($Engine -eq 'openvpn') {
+    Join-Path $root "internal/vpn/payload/windows-$Arch.zip"
+} else {
+    Join-Path $root "internal/vpn/payload/windows-$Arch-softether.zip"
+}
+if (-not $Force -and (Test-Path -LiteralPath $targetZip) -and ((Get-Item -LiteralPath $targetZip).Length -gt 0)) {
+    Write-Output "VPN runtime payload for $Engine ($Arch) is already present at $targetZip. Skipping rebuild."
+    Pop-Location
+    return
+}
 if ($Engine -eq 'softether' -and $Arch -eq 'arm64') {
     throw 'The optional SoftEther source target currently supports AMD64. Its ARM64 hamcore host-tool build is not integrated.'
 }
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) {
+    if ($Engine -eq 'openvpn') {
+        $installedOpenVPN = Join-Path ${env:ProgramFiles} 'OpenVPN/bin'
+        if (Test-Path -LiteralPath (Join-Path $installedOpenVPN 'openvpn.exe')) {
+            New-Item -ItemType Directory -Path $stage -ErrorAction SilentlyContinue | Out-Null
+            Copy-Item -LiteralPath (Join-Path $installedOpenVPN 'openvpn.exe') -Destination $stage
+            Copy-Item -LiteralPath (Join-Path $installedOpenVPN 'tapctl.exe') -Destination $stage
+            Get-ChildItem -LiteralPath $installedOpenVPN -Filter '*.dll' -File | Copy-Item -Destination $stage
+            @{ engine='openvpn'; arch=$Arch; provenance='installed-local' } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'source-build.json') -Encoding UTF8
+            Invoke-Checked python @('scripts/prepare-vpn-runtime.py','--allow-installed-openvpn','--arch',$Arch,'--runtime-dir',$stage)
+            return
+        }
+    }
     throw 'Building upstream VPN sources requires Visual Studio 2022 C++ Build Tools. Nothing was installed. Use the Windows CI build or an existing native build environment.'
 }
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -24,7 +48,6 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
 }
 
-Push-Location $root
 try {
     Invoke-Checked git @('submodule','update','--init','--recursive','--depth','1','third_party/openvpn','third_party/softether','third_party/vcpkg')
     $env:VCPKG_ROOT = Join-Path $root 'third_party/vcpkg'
@@ -56,19 +79,23 @@ try {
         Invoke-Checked $cmake @('-S',$source,'-B',$build,'-G','Visual Studio 17 2022','-A',$nativeArch,'-T','ClangCL',
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake",
             "-DVCPKG_TARGET_TRIPLET=$nativeArch-windows-static",'-DBUILD_NUMBER=5190')
-        Invoke-Checked $cmake @('--build',$build,'--config','Release','--target','vpnclient','vpncmd','hamcore-archive-build','--parallel','2')
-        foreach ($name in @('vpnclient.exe','vpncmd.exe','hamcore.se2')) {
-            $file = Get-ChildItem -LiteralPath $build -Filter $name -Recurse | Select-Object -First 1
+        Invoke-Checked $cmake @('--build',$build,'--config','Release','--target','vpnclient','vpncmd','vpndrvinst','hamcore-archive-build','--parallel','2')
+        $searchDirs = @($build, (Join-Path $source 'src/bin/hamcore'))
+        foreach ($name in @('vpnclient.exe','vpncmd.exe','vpndrvinst.exe','hamcore.se2')) {
+            $file = Get-ChildItem -LiteralPath $searchDirs -Filter $name -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if (-not $file) { throw "SoftEther build did not produce $name" }
             Copy-Item -LiteralPath $file.FullName -Destination $stage
         }
+        $notices = Join-Path $stage 'licenses'
+        New-Item -ItemType Directory -Path $notices | Out-Null
+        Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination $notices
+        Copy-Item -LiteralPath (Join-Path $source 'src/bin/hamcore/SOURCES_OF_BINARY_FILES.TXT') -Destination $notices
     }
     $commit = (& git -C $source rev-parse HEAD).Trim()
     @{ engine=$Engine; arch=$Arch; commit=$commit } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'source-build.json') -Encoding UTF8
     if ($Engine -eq 'openvpn') {
         Invoke-Checked python @('scripts/prepare-vpn-runtime.py','--arch',$Arch,'--runtime-dir',$stage)
     } else {
-        Write-Output "SoftEther source-built client tools: $stage"
-        Write-Output 'These tools require the SoftEther service/driver integration; they are not advertised as an available standalone engine.'
+        Invoke-Checked python @('scripts/prepare-vpn-runtime.py','--engine','softether','--arch',$Arch,'--runtime-dir',$stage)
     }
 } finally { Pop-Location }

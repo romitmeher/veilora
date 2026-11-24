@@ -49,6 +49,20 @@ def download(url, limit):
     return data
 
 
+def validate_pe_files(contents, arch, allowed_names=None):
+    for name, data in contents.items():
+        if allowed_names is not None and name not in allowed_names:
+            continue
+        if len(data) < 64 or data[:2] != b"MZ":
+            raise RuntimeError(f"Invalid PE file: {name}")
+        pe = struct.unpack_from("<I", data, 60)[0]
+        if pe + 6 > len(data) or data[pe:pe + 4] != b"PE\x00\x00":
+            raise RuntimeError(f"Invalid PE header: {name}")
+        machine = struct.unpack_from("<H", data, pe + 4)[0]
+        if not matches_architecture(machine, arch, name):
+            raise RuntimeError(f"Wrong architecture: {name}")
+
+
 def collect_runtime(runtime_dir, arch, commit):
     provenance = json.loads((runtime_dir / "source-build.json").read_text(encoding="utf-8-sig"))
     if provenance != {"engine": "openvpn", "arch": arch, "commit": commit}:
@@ -79,15 +93,113 @@ def collect_runtime(runtime_dir, arch, commit):
     return contents
 
 
+def collect_softether_runtime(runtime_dir, arch, commit):
+    if arch != "amd64":
+        raise RuntimeError("SoftEther bundles are currently supported only for AMD64")
+    provenance = json.loads((runtime_dir / "source-build.json").read_text(encoding="utf-8-sig"))
+    if provenance != {"engine": "softether", "arch": arch, "commit": commit}:
+        raise RuntimeError("SoftEther runtime provenance does not match the pinned upstream source/architecture")
+
+    required = ("vpnclient.exe", "vpncmd.exe", "vpndrvinst.exe", "hamcore.se2")
+    contents = {}
+    for name in required:
+        source = runtime_dir / name
+        if not source.is_file():
+            raise RuntimeError(f"SoftEther source build is missing {name}")
+        contents[name] = source.read_bytes()
+
+    pe_names = ("vpnclient.exe", "vpncmd.exe", "vpndrvinst.exe")
+    validate_pe_files({name: contents[name] for name in pe_names}, arch)
+    for notice in (runtime_dir / "licenses").glob("*"):
+        if notice.is_file():
+            contents["licenses/" + notice.name] = notice.read_bytes()
+    return contents
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--engine", choices=["openvpn", "softether"], default="openvpn")
+    parser.add_argument("--allow-installed-openvpn", action="store_true",
+                        help="Package an existing verified OpenVPN installation on policy-blocked machines")
     parser.add_argument("--arch", choices=["amd64", "arm64"], default="amd64")
     parser.add_argument("--runtime-dir", type=Path, required=True,
                         help="Source-built binaries staged by build-vpn-source.ps1")
     args = parser.parse_args()
     lock = json.loads((ROOT / "scripts/vpn-runtime.lock.json").read_text(encoding="utf-8"))
-    source = ROOT / "third_party/openvpn"
+    engine_dir = "openvpn" if args.engine == "openvpn" else "softether"
+    source = ROOT / "third_party" / engine_dir
     commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+
+    if args.allow_installed_openvpn:
+        if args.engine != "openvpn":
+            raise RuntimeError("Installed OpenVPN fallback supports only OpenVPN")
+        contents = {}
+        for name in ("openvpn.exe", "tapctl.exe"):
+            source_file = args.runtime_dir / name
+            if not source_file.is_file():
+                raise RuntimeError(f"Installed OpenVPN runtime is missing {name}")
+            contents[name] = source_file.read_bytes()
+        for source_file in args.runtime_dir.glob("*.dll"):
+            contents[source_file.name] = source_file.read_bytes()
+        validate_pe_files({n: v for n, v in contents.items() if n.endswith((".exe", ".dll"))}, args.arch)
+
+    if args.engine == "softether":
+        contents = collect_softether_runtime(args.runtime_dir, args.arch, commit)
+        contents["licenses/softether-LICENSE"] = (source / "LICENSE").read_bytes()
+        contents["licenses/softether-SOURCES_OF_BINARY_FILES.TXT"] = (
+            source / "src" / "bin" / "hamcore" / "SOURCES_OF_BINARY_FILES.TXT"
+        ).read_bytes()
+        contents["manifest.json"] = json.dumps({
+            "engine": "softether",
+            "arch": args.arch,
+            "version": "5.2.5190",
+            "source": "https://github.com/SoftEtherVPN/SoftEtherVPN",
+            "commit": commit,
+            "files": {n: hashlib.sha256(v).hexdigest() for n, v in contents.items()},
+        }, indent=2).encode()
+        target = ROOT / "internal/vpn/payload" / f"windows-{args.arch}-softether.zip"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(contents):
+                info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, contents[name])
+        softether_sources = ROOT / "build/bin/Veilora-softether-sources.zip"
+        softether_sources.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.check_call(["git", "-C", str(source), "archive", "--format=zip", "-o", str(softether_sources), commit])
+        vcpkg_source = ROOT / "third_party/vcpkg"
+        vcpkg_commit = subprocess.check_output(["git", "-C", str(vcpkg_source), "rev-parse", "HEAD"], text=True).strip()
+        vcpkg_sources = ROOT / "build/bin/Veilora-softether-vcpkg-sources.zip"
+        subprocess.check_call(["git", "-C", str(vcpkg_source), "archive", "--format=zip", "-o", str(vcpkg_sources), vcpkg_commit])
+        print(f"Prepared source-built runtime: {target}")
+        return
+
+    if args.allow_installed_openvpn:
+        lock = json.loads((ROOT / "scripts/vpn-runtime.lock.json").read_text(encoding="utf-8"))
+        tap = download(lock["tap"]["url"], 10 * 1024 * 1024)
+        if hashlib.sha256(tap).hexdigest() != lock["tap"]["sha256"]:
+            raise RuntimeError("TAP archive checksum mismatch")
+        import io
+        with zipfile.ZipFile(io.BytesIO(tap)) as archive:
+            for name in ("OemVista.inf", "tap0901.sys", "tap0901.cat"):
+                contents[name] = archive.read(f"dist.win10/{args.arch}/{name}")
+        contents["manifest.json"] = json.dumps({
+            "engine": "openvpn",
+            "arch": args.arch,
+            "provenance": "installed-local",
+            "source": "https://github.com/OpenVPN/openvpn",
+            "files": {n: hashlib.sha256(v).hexdigest() for n, v in contents.items()},
+        }, indent=2).encode()
+        target = ROOT / "internal/vpn/payload" / f"windows-{args.arch}.zip"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(contents):
+                info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, contents[name])
+        print(f"Prepared installed OpenVPN runtime fallback: {target}")
+        return
+
     contents = collect_runtime(args.runtime_dir, args.arch, commit)
     tap = download(lock["tap"]["url"], 10 * 1024 * 1024)
     if hashlib.sha256(tap).hexdigest() != lock["tap"]["sha256"]:

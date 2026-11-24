@@ -26,7 +26,9 @@ type State string
 
 const (
 	StateDisconnected  State = "disconnected"
+	StatePreparing     State = "preparing"
 	StateConnecting    State = "connecting"
+	StateReconnecting  State = "reconnecting"
 	StateConnected     State = "connected"
 	StateDisconnecting State = "disconnecting"
 	StateError         State = "error"
