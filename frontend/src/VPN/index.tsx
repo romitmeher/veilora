@@ -109,11 +109,11 @@ export function VPN() {
         (value): value is EngineType => value === 'openvpn' || value === 'softether',
       );
       setAvailableEngines(supported);
-      // Prefer the bundled engine; retain an explicit available selection.
+      // Prefer OpenVPN as the default engine since it works dynamically out of the box.
       if (supported.length > 0) {
         setEngine((prev) => {
           if (supported.includes(prev)) return prev;
-          return supported.includes('softether') ? 'softether' : supported[0];
+          return supported.includes('openvpn') ? 'openvpn' : supported[0];
         });
       }
     } catch {

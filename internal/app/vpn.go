@@ -50,6 +50,12 @@ func (a *App) VPNEngineAvailability() []vpn.EngineAvailability {
 // StartVPNFromTray connects through the first available engine for tray-initiated actions.
 func (a *App) StartVPNFromTray() error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		if err := elevate.RelaunchElevated(); err != nil {
+			return fmt.Errorf("administrator rights required for VPN: %w", err)
+		}
+		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+	}
 	engines := a.vpnManager.AvailableEngines()
 	for _, engine := range []vpn.EngineType{vpn.EngineOpenVPN, vpn.EngineSoftEther} {
 		for _, available := range engines {
@@ -68,6 +74,12 @@ func (a *App) StartVPNFromTray() error {
 // dnsProtect: override system DNS through VPN.
 func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		if err := elevate.RelaunchElevated(); err != nil {
+			return fmt.Errorf("administrator rights required for VPN: %w", err)
+		}
+		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+	}
 	err := a.vpnManager.ConnectBest(country, engine, killSwitch, dnsProtect)
 	if err != nil {
 		log.Printf("vpn: connect best: %v", err)
@@ -78,6 +90,12 @@ func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, 
 // VPNConnectToServer connects to a specific VPNGate server by hostname.
 func (a *App) VPNConnectToServer(hostName string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
+	if !elevate.IsElevated() {
+		if err := elevate.RelaunchElevated(); err != nil {
+			return fmt.Errorf("administrator rights required for VPN: %w", err)
+		}
+		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+	}
 	servers, err := a.vpnManager.GetServers("", false)
 	if err != nil {
 		return fmt.Errorf("fetch server list: %w", err)
