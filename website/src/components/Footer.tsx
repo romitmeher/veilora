@@ -100,7 +100,68 @@ export const Footer: React.FC = () => {
           boxSizing: 'border-box',
         }}
       >
-        {/* 4-Column Grid Layout */}
+        {/* Brand & Open Source Statement */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: '14px',
+            maxWidth: '520px',
+            margin: '0 auto',
+          }}
+        >
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            <img
+              src="./veilora.png"
+              alt="Veilora Logo"
+              style={{
+                width: '32px',
+                height: '32px',
+                objectFit: 'contain',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '20px',
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: '#0f172a',
+              }}
+            >
+              Veilora
+            </span>
+          </a>
+
+          <p
+            style={{
+              fontSize: '13.5px',
+              lineHeight: 1.6,
+              color: '#6e6e73',
+              letterSpacing: '-0.01em',
+              margin: 0,
+            }}
+          >
+            Local DNS ad-blocking and encrypted multi-protocol VPN client. Zero telemetry, built for privacy.
+          </p>
+        </div>
+
+        {/* Footer Link Columns (Commented out per request) */}
+        {/*
         <div
           style={{
             display: 'grid',
@@ -109,64 +170,6 @@ export const Footer: React.FC = () => {
             width: '100%',
           }}
         >
-          {/* Column 1: Brand & Open Source Statement */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '14px',
-              maxWidth: '300px',
-            }}
-          >
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                textDecoration: 'none',
-                color: 'inherit',
-              }}
-            >
-              <img
-                src="./veilora.png"
-                alt="Veilora Logo"
-                style={{
-                  width: '30px',
-                  height: '30px',
-                  objectFit: 'contain',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '19px',
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  color: '#0f172a',
-                }}
-              >
-                Veilora
-              </span>
-            </a>
-
-            <p
-              style={{
-                fontSize: '13.5px',
-                lineHeight: 1.6,
-                color: '#6e6e73',
-                letterSpacing: '-0.01em',
-                margin: 0,
-              }}
-            >
-              Local DNS ad-blocking and encrypted multi-protocol VPN client. Zero telemetry, built for privacy.
-            </p>
-          </div>
-
-          {/* Column 2: Product & Protocols */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <span
               style={{
@@ -191,7 +194,6 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Column 3: Open Source */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <span
               style={{
@@ -216,7 +218,6 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Column 4: Trust & Legal */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <span
               style={{
@@ -241,6 +242,7 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
         </div>
+        */}
 
         {/* Bottom Baseline (No horizontal line) */}
         <div
