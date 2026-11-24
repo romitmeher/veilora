@@ -83,8 +83,8 @@ export const Footer: React.FC = () => {
     <footer
       style={{
         width: '100%',
-        backgroundColor: '#ffffff',
-        borderTop: '1px solid #f1f1f4',
+        backgroundColor: 'transparent',
+        borderTop: 'none',
         position: 'relative',
         zIndex: 10,
         boxSizing: 'border-box',
@@ -94,7 +94,7 @@ export const Footer: React.FC = () => {
         style={{
           maxWidth: '1280px',
           margin: '0 auto',
-          padding: '64px 28px 140px',
+          padding: '72px 28px 140px',
           display: 'flex',
           flexDirection: 'column',
           boxSizing: 'border-box',
@@ -164,34 +164,6 @@ export const Footer: React.FC = () => {
             >
               Local DNS ad-blocking and encrypted multi-protocol VPN client. Zero telemetry, built for privacy.
             </p>
-
-            {/* Minimal MIT License Badge */}
-            <div style={{ marginTop: '4px' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  backgroundColor: '#E5E5EA',
-                  borderRadius: '9999px',
-                  padding: '3px 10px',
-                  fontSize: '11.5px',
-                  fontWeight: 600,
-                  color: '#1c1c1e',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                <span
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: '#10b981',
-                  }}
-                />
-                MIT License • Free & Open Source
-              </span>
-            </div>
           </div>
 
           {/* Column 2: Product & Protocols */}
@@ -270,12 +242,12 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Baseline Divider */}
+        {/* Bottom Baseline (No horizontal line) */}
         <div
           style={{
-            borderTop: '1px solid #f1f1f4',
+            borderTop: 'none',
             marginTop: '48px',
-            paddingTop: '24px',
+            paddingTop: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

@@ -31,7 +31,8 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', width: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Minimal & Professional Navbar */}
+      {/* Minimal & Professional Navbar (Temporarily commented out from webpage display) */}
+      {/*
       <header
         style={{
           width: '100%',
@@ -51,7 +52,6 @@ export const App: React.FC = () => {
             justifyContent: 'space-between',
           }}
         >
-          {/* Left Side: Product Logo & Title */}
           <a
             href="#"
             style={{
@@ -83,7 +83,6 @@ export const App: React.FC = () => {
             </span>
           </a>
 
-          {/* Right Side: Universal Primary Button for GitHub */}
           <Button
             href="https://github.com/romitmeher/veilora"
             target="_blank"
@@ -127,10 +126,12 @@ export const App: React.FC = () => {
           </Button>
         </div>
       </header>
+      */}
 
-      {/* Hero Section with Animated Torph Typography & Safari Mockup */}
+      {/* Main Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-        {/* Unified Hero Stage: Hero Typography + Safari Mockup resting on FlickeringGrid */}
+        {/* Hero Section (Temporarily commented out from webpage display) */}
+        {/*
         <section
           style={{
             position: 'relative',
@@ -141,7 +142,6 @@ export const App: React.FC = () => {
             alignItems: 'center',
           }}
         >
-          {/* FlickeringGrid Background spanning the entire Stage */}
           <div
             style={{
               position: 'absolute',
@@ -171,7 +171,6 @@ export const App: React.FC = () => {
               }}
             />
 
-            {/* Top Gradient Fade: Smooth 80px transition into navbar */}
             <div
               style={{
                 position: 'absolute',
@@ -184,7 +183,6 @@ export const App: React.FC = () => {
               }}
             />
 
-            {/* Bottom Gradient Fade: Progressive 140px fade under Safari mockup */}
             <div
               style={{
                 position: 'absolute',
@@ -198,7 +196,6 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Stage Foreground Content */}
           <div
             style={{
               position: 'relative',
@@ -225,13 +222,13 @@ export const App: React.FC = () => {
         <div id="protocols" style={{ width: '100%' }}>
           <VpnFeatureSection />
         </div>
+        */}
+
+        {/* Open Source Section with Continuous FlickeringGrid through Footer */}
         <div id="opensource" style={{ width: '100%' }}>
           <OpenSourceSection />
         </div>
       </main>
-
-      {/* Comprehensive Open Source Apple-Style Footer */}
-      <Footer />
 
       {/* Progressive Blur at the bottom of the webpage for smooth scrolling fade */}
       <ProgressiveBlur

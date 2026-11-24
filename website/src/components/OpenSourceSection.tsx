@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
+import { Footer } from './Footer';
 
 interface Contributor {
   login: string;
@@ -293,11 +294,11 @@ export const OpenSourceSection: React.FC = () => {
         flexDirection: 'column',
         alignItems: 'center',
         boxSizing: 'border-box',
-        padding: '60px 20px 140px',
+        padding: '60px 20px 0px',
         margin: '0 auto',
       }}
     >
-      {/* FlickeringGrid Background with Soft Radial Fade */}
+      {/* FlickeringGrid Background Spanning Open Source and Footer to the End of the Page */}
       <div
         style={{
           position: 'absolute',
@@ -308,7 +309,7 @@ export const OpenSourceSection: React.FC = () => {
         }}
       >
         <FlickeringGrid
-          className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_920px_440px_at_50%_50%,transparent_26%,rgba(0,0,0,0.65)_60%,transparent_100%)]"
+          className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_1100px_92%_at_50%_48%,transparent_16%,rgba(0,0,0,0.65)_55%,transparent_100%)]"
           squareSize={4}
           gridGap={6}
           color="#60A5FA"
@@ -321,9 +322,9 @@ export const OpenSourceSection: React.FC = () => {
             width: '100%',
             height: '100%',
             maskImage:
-              'radial-gradient(ellipse 920px 440px at 50% 50%, transparent 26%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+              'radial-gradient(ellipse 1100px 92% at 50% 48%, transparent 16%, rgba(0, 0, 0, 0.65) 55%, transparent 100%)',
             WebkitMaskImage:
-              'radial-gradient(ellipse 920px 440px at 50% 50%, transparent 26%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+              'radial-gradient(ellipse 1100px 92% at 50% 48%, transparent 16%, rgba(0, 0, 0, 0.65) 55%, transparent 100%)',
           }}
         />
 
@@ -340,7 +341,7 @@ export const OpenSourceSection: React.FC = () => {
           }}
         />
 
-        {/* Bottom Gradient Fade: 140px smooth washout before fixed ProgressiveBlur */}
+        {/* Bottom Gradient Fade: 140px smooth washout before fixed ProgressiveBlur at the very end of the page */}
         <div
           style={{
             position: 'absolute',
@@ -468,6 +469,11 @@ export const OpenSourceSection: React.FC = () => {
           ))}
         </div>
       </div>
+      </div>
+
+      {/* Footer rendered directly over the continuous FlickeringGrid until the end of the page */}
+      <div style={{ position: 'relative', zIndex: 1, width: '100%' }}>
+        <Footer />
       </div>
     </section>
   );
