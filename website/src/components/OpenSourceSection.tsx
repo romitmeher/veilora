@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
+import { TextMorph } from 'torph/react';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 
 interface Contributor {
@@ -56,6 +57,76 @@ const RESOURCE_LINKS = [
     icon: <GitPullRequest size={14} strokeWidth={2.4} />,
   },
 ];
+
+const ContributorPill: React.FC<{ contributor: Contributor }> = ({ contributor }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <a
+      href={contributor.html_url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="inline-morph-chip"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        backgroundColor: isHovered ? '#dadade' : '#E5E5EA',
+        borderRadius: '9999px',
+        padding: '4px 14px 4px 4px',
+        textDecoration: 'none',
+        boxShadow: isHovered
+          ? '0 4px 14px rgba(0, 0, 0, 0.12)'
+          : '0 1px 3px rgba(0, 0, 0, 0.08)',
+        transform: isHovered ? 'translateY(-1.5px)' : 'translateY(0)',
+        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Contributor Avatar Disc (Static, not animated) */}
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '26px',
+          height: '26px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src={contributor.avatar_url}
+          alt={contributor.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </span>
+
+      {/* Morphing Text Transition: Transitions smoothly between name and @handle */}
+      <span
+        style={{
+          fontSize: '13.5px',
+          fontWeight: 600,
+          color: '#1c1c1e',
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap',
+          display: 'inline-flex',
+          alignItems: 'center',
+        }}
+      >
+        <TextMorph ease={{ stiffness: 220, damping: 22 }}>
+          {isHovered ? `@${contributor.login}` : contributor.name}
+        </TextMorph>
+      </span>
+    </a>
+  );
+};
 
 export const OpenSourceSection: React.FC = () => {
   const [contributors, setContributors] = useState<Contributor[]>(FALLBACK_CONTRIBUTORS);
@@ -322,61 +393,7 @@ export const OpenSourceSection: React.FC = () => {
           }}
         >
           {contributors.map((c) => (
-            <a
-              key={c.login}
-              href={c.html_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-morph-chip"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#E5E5EA',
-                borderRadius: '9999px',
-                padding: '4px 14px 4px 4px',
-                textDecoration: 'none',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-              onMouseEnter={handlePillEnter}
-              onMouseLeave={handlePillLeave}
-            >
-              {/* Contributor Avatar Disc */}
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '50%',
-                  backgroundColor: '#ffffff',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                }}
-              >
-                <img
-                  src={c.avatar_url}
-                  alt={c.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </span>
-              <span
-                style={{
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  color: '#1c1c1e',
-                  letterSpacing: '-0.01em',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {c.name}
-              </span>
-            </a>
+            <ContributorPill key={c.login} contributor={c} />
           ))}
         </div>
       </div>
