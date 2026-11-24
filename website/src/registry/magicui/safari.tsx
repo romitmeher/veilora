@@ -1,11 +1,11 @@
 import type { HTMLAttributes } from "react"
 
 const SAFARI_WIDTH = 1203
-const SAFARI_HEIGHT = 823
+const SAFARI_HEIGHT = 633
 const SCREEN_X = 1
 const SCREEN_Y = 52
 const SCREEN_WIDTH = 1200
-const SCREEN_HEIGHT = 770
+const SCREEN_HEIGHT = 581
 
 // Calculated percentages
 const LEFT_PCT = (SCREEN_X / SAFARI_WIDTH) * 100
@@ -145,7 +145,7 @@ export function Safari({
               fill="white"
             />
             <path
-              d="M1 52H1201V811C1201 817.075 1196.08 822 1190 822H12C5.92486 822 1 817.075 1 811V52Z"
+              d="M1 52H1201V621C1201 627.075 1196.08 632 1190 632H12C5.92486 632 1 627.075 1 621V52Z"
               fill="black"
             />
           </mask>
@@ -156,7 +156,7 @@ export function Safari({
 
           <clipPath id="roundedBottom">
             <path
-              d="M1 52H1201V811C1201 817.075 1196.08 822 1190 822H12C5.92486 822 1 817.075 1 811V52Z"
+              d="M1 52H1201V621C1201 627.075 1196.08 632 1190 632H12C5.92486 632 1 627.075 1 621V52Z"
               fill="white"
             />
           </clipPath>
@@ -167,7 +167,7 @@ export function Safari({
           mask={hasMedia ? "url(#safariPunch)" : undefined}
         >
           <path
-            d="M0 52H1202V811C1202 817.627 1196.63 823 1190 823H12C5.37258 823 0 817.627 0 811V52Z"
+            d="M0 52H1202V621C1202 627.627 1196.63 633 1190 633H12C5.37258 633 0 627.627 0 621V52Z"
             fill="#E5E5E5"
             className="fill-[#E5E5E5] dark:fill-[#404040]"
           />

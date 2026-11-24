@@ -91,7 +91,7 @@ const MacOSCompareHandle: React.FC = () => {
 };
 
 export function SafariDemo({
-  url = 'dictionary.com',
+  url = 'forbes.com',
   itemOne,
   itemTwo,
 }: SafariDemoProps) {
@@ -99,7 +99,7 @@ export function SafariDemo({
     <div
       style={{
         width: '100%',
-        maxWidth: 'min(920px, 90vw, calc((100vh - 120px) * 1.4617))',
+        maxWidth: 'min(960px, 92vw, calc((100vh - 120px) * 1.90))',
         margin: '0 auto 60px',
         padding: '0 16px',
         display: 'flex',
