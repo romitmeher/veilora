@@ -232,12 +232,6 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-        {/* Open Source Section with Continuous FlickeringGrid through Footer */}
-        <div id="opensource" style={{ width: '100%' }}>
-          <OpenSourceSection />
-        </div>
-      </main>
-
       {/* Progressive Blur at the bottom of the webpage for smooth scrolling fade */}
       <ProgressiveBlur
         position="bottom"
