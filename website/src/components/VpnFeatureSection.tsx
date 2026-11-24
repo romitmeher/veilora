@@ -92,13 +92,13 @@ export const VpnFeatureSection: React.FC = () => {
           margin: 0,
         }}
       >
-        Beyond local DNS filtering, Veilora enables full-device encrypted tunneling. Route your traffic through privacy-hardened exit nodes powered by{' '}
+        Beyond local DNS filtering, <ProtocolPill label="Veilora" logo="./veilora.png" /> enables full-device encrypted tunneling. Route your traffic through privacy-hardened exit nodes powered by{' '}
         <ProtocolPill label="WireGuard" logo="./logos/wireguard.png" />
         {', '}
         <ProtocolPill label="OpenVPN" logo="./logos/openvpn.png" />
         {', and '}
         <ProtocolPill label="SoftEther" logo="./logos/softether.png" />
-        {' '}— keeping your real IP masked and your connection secure against ISP monitoring, deep packet inspection, and untrusted public networks.
+        {' '}to keep your real IP masked and your connection secure against ISP monitoring, deep packet inspection, and untrusted public networks.
       </p>
     </section>
   );

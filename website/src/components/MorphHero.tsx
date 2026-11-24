@@ -210,7 +210,7 @@ export const MorphHero: React.FC = () => {
             letterSpacing: '-0.01em',
           }}
         >
-          Veilora is a lightweight, open-source privacy client that stops ads, telemetry, and trackers at the DNS layer—with built-in encrypted VPN tunneling.
+          Veilora is a lightweight, open-source privacy client that stops ads, telemetry, and trackers at the DNS layer, with built-in encrypted VPN tunneling.
         </p>
 
         {/* Primary Download for Windows CTA */}
