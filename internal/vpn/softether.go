@@ -354,9 +354,11 @@ func (e *SoftEtherEngine) runVpnClient() error {
 	if err != nil {
 		if (strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist")) && len(embeddedSoftEther()) > 0 {
 			log.Printf("softether: service not provisioned, auto-provisioning bundled SoftEther...")
-			if _, provErr := ProvisionBundledSoftEther(context.Background()); provErr != nil {
+			ownership, provErr := ProvisionBundledSoftEther(context.Background())
+			if provErr != nil {
 				return fmt.Errorf("auto-provision SoftEther VPN: %w", provErr)
 			}
+			log.Printf("softether: auto-provisioned service %s", ownership.Service)
 			return e.waitForVpnCmd()
 		}
 		if strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist") {

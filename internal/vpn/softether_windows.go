@@ -11,7 +11,9 @@ import (
 )
 
 func runSoftEtherProvisionCommand(ctx context.Context, exe string, args ...string) ([]byte, error) {
-	return hiddenCommandContext(ctx, exe, args...).CombinedOutput()
+	cmd := hiddenCommandContext(ctx, exe, args...)
+	cmd.Dir = filepath.Dir(exe)
+	return cmd.CombinedOutput()
 }
 
 func installedSoftEtherService(ctx context.Context) (string, bool) {
@@ -46,7 +48,6 @@ func ProvisionBundledSoftEther(ctx context.Context) (SoftEtherOwnership, error) 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	serviceExisted := false
 	serviceName, serviceExisted := installedSoftEtherService(ctx)
 
 	var out []byte
@@ -55,14 +56,28 @@ func ProvisionBundledSoftEther(ctx context.Context) (SoftEtherOwnership, error) 
 		if err != nil && !strings.Contains(strings.ToLower(string(out)), "already installed") {
 			return ownership, fmt.Errorf("install SoftEther service: %w: %s", err, out)
 		}
-		serviceName = softEtherServiceName
+		if foundName, ok := installedSoftEtherService(ctx); ok {
+			serviceName = foundName
+		} else {
+			serviceName = "SEVPNCLIENT"
+		}
+		ownership.Service = serviceName
 	}
-	out, err = runSoftEtherProvisionCommand(ctx, "sc.exe", "start", serviceName)
-	if err != nil {
+
+	var startErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		out, startErr = runSoftEtherProvisionCommand(ctx, "sc.exe", "start", serviceName)
+		if startErr == nil || strings.Contains(strings.ToLower(string(out)), "already been started") || strings.Contains(strings.ToLower(string(out)), "running") {
+			startErr = nil
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if startErr != nil {
 		if !serviceExisted {
 			_, _ = runSoftEtherProvisionCommand(ctx, client, "/uninstall")
 		}
-		return ownership, fmt.Errorf("start Veilora SoftEther service: %w: %s", err, out)
+		return ownership, fmt.Errorf("start Veilora SoftEther service: %w: %s", startErr, out)
 	}
 
 	waitCtx, cancelWait := context.WithTimeout(ctx, 15*time.Second)
