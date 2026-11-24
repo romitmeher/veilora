@@ -137,24 +137,24 @@ export const OpenSourceSection: React.FC = () => {
               alignItems: 'center',
               gap: '7px',
               backgroundColor: '#ffffff',
-              border: '1px solid #e5e5ea',
+              border: 'none',
               borderRadius: '9999px',
-              padding: '6px 14px',
+              padding: '7px 15px',
               fontSize: '13.5px',
               fontWeight: 500,
               color: '#1c1c1e',
               textDecoration: 'none',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f2f2f7';
-              e.currentTarget.style.borderColor = '#d1d1d6';
+              e.currentTarget.style.backgroundColor = '#fbfbfd';
+              e.currentTarget.style.boxShadow = '0 8px 24px -3px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06)';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#ffffff';
-              e.currentTarget.style.borderColor = '#e5e5ea';
+              e.currentTarget.style.boxShadow = '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
