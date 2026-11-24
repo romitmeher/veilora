@@ -350,21 +350,25 @@ export const VpnMapSection: React.FC = () => {
           position: 'relative',
           zIndex: 12,
           textAlign: 'center',
-          maxWidth: '820px',
+          maxWidth: '1040px',
+          width: '100%',
           margin: '0 auto 36px',
+          padding: '0 16px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
         <h2
+          className="vpn-heading-single-line"
           style={{
-            fontSize: 'clamp(26px, 3.5vw, 42px)',
+            fontSize: 'clamp(20px, 2.8vw, 36px)',
             fontWeight: 600,
             letterSpacing: '-0.025em',
             color: '#0f172a',
             lineHeight: 1.25,
             margin: '0 0 16px',
+            maxWidth: '100%',
           }}
         >
           Connect to encrypted exit nodes worldwide.
