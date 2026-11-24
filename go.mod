@@ -10,13 +10,14 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/irbis-sh/process v0.3.0
 	github.com/irbis-sh/zen-core v1.8.0
-	github.com/wailsapp/wails/v2 v2.11.0 // Use one minor version behind latest for stability, unless there are urgently needed features/bugfixes
-	golang.org/x/sys v0.43.0
+	github.com/wailsapp/wails/v2 v2.13.0 // Use one minor version behind latest for stability, unless there are urgently needed features/bugfixes
+	golang.org/x/sys v0.44.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
-	howett.net/plist v1.0.1
+	howett.net/plist v1.0.2-0.20250314012144-ee69052608d9
 )
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/getlantern/byteexec v0.0.0-20220903142956-e6ed20032cfd // indirect
@@ -63,7 +64,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
