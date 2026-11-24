@@ -275,22 +275,32 @@ func (e *OpenVPNEngine) Disconnect() error {
 func (e *OpenVPNEngine) killProcess() error {
 	if e.mgmtConn != nil {
 		_, _ = fmt.Fprintf(e.mgmtConn, "signal SIGTERM\n")
-		e.mgmtConn.Close()
-		e.mgmtConn = nil
 	}
 	if e.cmd != nil && e.cmd.Process != nil {
 		select {
 		case <-e.processDone:
 		case <-time.After(3 * time.Second):
 			if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				if e.mgmtConn != nil {
+					e.mgmtConn.Close()
+					e.mgmtConn = nil
+				}
 				return err
 			}
 			select {
 			case <-e.processDone:
 			case <-time.After(3 * time.Second):
+				if e.mgmtConn != nil {
+					e.mgmtConn.Close()
+					e.mgmtConn = nil
+				}
 				return errors.New("OpenVPN process did not stop; adapter retained for cleanup")
 			}
 		}
+	}
+	if e.mgmtConn != nil {
+		e.mgmtConn.Close()
+		e.mgmtConn = nil
 	}
 	if e.cancelDone != nil {
 		select {
@@ -324,6 +334,11 @@ func (e *OpenVPNEngine) monitorManagement(conn net.Conn, statusCh chan<- Status,
 		}
 		line := scanner.Text()
 		log.Printf("openvpn mgmt: %s", line)
+		if strings.HasPrefix(line, ">HOLD:") {
+			go func() {
+				_, _ = io.WriteString(conn, "hold release\n")
+			}()
+		}
 		if status, ok := parseManagementLine(line); ok {
 			statusCh <- status
 		}
