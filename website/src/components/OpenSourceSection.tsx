@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
 import { TextMorph } from 'torph/react';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
-import { ShinyText } from '@/registry/react-bits/ShinyText';
 
 interface Contributor {
   login: string;
@@ -69,7 +68,7 @@ const ResourcePill: React.FC<{
       href={link.href}
       target="_blank"
       rel="noreferrer noopener"
-      className="inline-morph-chip"
+      className="inline-morph-chip resource-pill"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -85,10 +84,15 @@ const ResourcePill: React.FC<{
         transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         cursor: 'pointer',
         userSelect: 'none',
+        position: 'relative',
+        overflow: 'hidden',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Full-Pill Light Sweep Specular Reflection (Loops when hovered, matching Button component) */}
+      <span className="pill-shine" aria-hidden="true" />
+
       {/* White Circular Icon Disc */}
       <span
         style={{
@@ -102,6 +106,8 @@ const ResourcePill: React.FC<{
           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
           color: '#0f172a',
           flexShrink: 0,
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {link.icon}
@@ -110,27 +116,16 @@ const ResourcePill: React.FC<{
         style={{
           fontSize: '13.5px',
           fontWeight: 600,
+          color: '#1c1c1e',
           letterSpacing: '-0.01em',
           whiteSpace: 'nowrap',
           display: 'inline-flex',
           alignItems: 'center',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        <ShinyText
-          text={link.label}
-          color="#1c1c1e"
-          shineColor="#ffffff"
-          speed={2}
-          shineWidth={40}
-          softness={0.8}
-          trigger="hover"
-          angle={120}
-          bands={1}
-          glow={0}
-          direction="left"
-          easing="smooth"
-          triggerHover={isHovered}
-        />
+        {link.label}
       </span>
     </a>
   );

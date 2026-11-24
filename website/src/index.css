@@ -115,6 +115,53 @@ button, input, select, textarea, a {
   transform: translateX(-320px) rotate(15deg);
 }
 
+/* Full-pill light sweep reflection (loops when hovered) */
+.pill-shine {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  margin-top: -64px;
+  height: 128px;
+  width: 38px;
+  transform: translateX(64px) rotate(15deg);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.resource-pill:hover .pill-shine,
+.inline-morph-chip:hover .pill-shine {
+  animation: pill-shine-loop 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes pill-shine-loop {
+  0% {
+    transform: translateX(64px) rotate(15deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-260px) rotate(15deg);
+    opacity: 1;
+  }
+  58% {
+    transform: translateX(-260px) rotate(15deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(64px) rotate(15deg);
+    opacity: 0;
+  }
+}
+
 /* Star icon inside GitHub button */
 .uiverse-star-icon {
   width: 16px;
