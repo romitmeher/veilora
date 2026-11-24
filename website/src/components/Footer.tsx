@@ -108,7 +108,7 @@ export const Footer: React.FC = () => {
             alignItems: 'center',
             textAlign: 'center',
             gap: '14px',
-            maxWidth: '520px',
+            width: '100%',
             margin: '0 auto',
           }}
         >
@@ -154,6 +154,7 @@ export const Footer: React.FC = () => {
               color: '#6e6e73',
               letterSpacing: '-0.01em',
               margin: 0,
+              whiteSpace: 'nowrap',
             }}
           >
             Local DNS ad-blocking and encrypted multi-protocol VPN client. Zero telemetry, built for privacy.
