@@ -5,6 +5,7 @@ import { MorphHero } from './components/MorphHero';
 import { SafariDemo } from './components/SafariDemo';
 import { AboutSection } from './components/AboutSection';
 import { VpnMapSection } from './components/VpnMapSection';
+import { VpnFeatureSection } from './components/VpnFeatureSection';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 import { ProgressiveBlur } from '@/registry/magicui/progressive-blur';
 
@@ -211,6 +212,7 @@ export const App: React.FC = () => {
 
         <AboutSection />
         <VpnMapSection />
+        <VpnFeatureSection />
       </main>
 
       {/* Progressive Blur at the bottom of the webpage for smooth scrolling fade */}
