@@ -23,7 +23,7 @@ const FALLBACK_CONTRIBUTORS: Contributor[] = [
   },
 ];
 
-const GitHubIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
+const GitHubIcon: React.FC<{ size?: number }> = ({ size = 15 }) => (
   <svg
     style={{ width: `${size}px`, height: `${size}px`, fill: 'currentColor' }}
     viewBox="0 0 438.549 438.549"
@@ -42,17 +42,17 @@ const RESOURCE_LINKS = [
   {
     label: 'Documentation',
     href: 'https://github.com/romitmeher/veilora#readme',
-    icon: <BookOpen size={14} />,
+    icon: <BookOpen size={14} strokeWidth={2.4} />,
   },
   {
     label: 'Report a Bug',
     href: 'https://github.com/romitmeher/veilora/issues/new',
-    icon: <Bug size={14} />,
+    icon: <Bug size={14} strokeWidth={2.4} />,
   },
   {
     label: 'Contributing',
     href: 'https://github.com/romitmeher/veilora/blob/main/CONTRIBUTING.md',
-    icon: <GitPullRequest size={14} />,
+    icon: <GitPullRequest size={14} strokeWidth={2.4} />,
   },
 ];
 
@@ -67,8 +67,8 @@ export const OpenSourceSection: React.FC = () => {
           const mapped: Contributor[] = data.map((c: any) => ({
             login: c.login,
             name: c.login === 'romitmeher' ? 'Romit Meher' : c.login === 'Harshit-patil56' ? 'Harshit Patil' : c.login,
-            avatar_url: c.avatar_url,
-            html_url: c.html_url,
+            avatar_url: c.avatar_url || `https://github.com/${c.login}.png`,
+            html_url: c.html_url || `https://github.com/${c.login}`,
           }));
           setContributors(mapped);
         }
@@ -77,6 +77,18 @@ export const OpenSourceSection: React.FC = () => {
         // Fallback default is already set
       });
   }, []);
+
+  const handlePillEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.currentTarget.style.backgroundColor = '#dadade';
+    e.currentTarget.style.transform = 'translateY(-1.5px)';
+    e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.12)';
+  };
+
+  const handlePillLeave = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.currentTarget.style.backgroundColor = '#E5E5EA';
+    e.currentTarget.style.transform = 'translateY(0)';
+    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
+  };
 
   return (
     <section
@@ -115,7 +127,7 @@ export const OpenSourceSection: React.FC = () => {
         Veilora is 100% free and open-source under the MIT license. There are no paywalls, closed-source tracking blobs, or proprietary network locks. Every line of code is inspectable, auditable, and built for device privacy.
       </p>
 
-      {/* Resource Action Links */}
+      {/* Resource Action Pills (Matching Signature Apple HIG Pill Style) */}
       <div
         style={{
           display: 'flex',
@@ -132,39 +144,56 @@ export const OpenSourceSection: React.FC = () => {
             href={link.href}
             target="_blank"
             rel="noreferrer noopener"
+            className="inline-morph-chip"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '7px',
-              backgroundColor: '#ffffff',
-              border: 'none',
+              gap: '8px',
+              backgroundColor: '#E5E5EA',
               borderRadius: '9999px',
-              padding: '7px 15px',
-              fontSize: '13.5px',
-              fontWeight: 500,
-              color: '#1c1c1e',
+              padding: '4px 14px 4px 4px',
               textDecoration: 'none',
-              boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              cursor: 'pointer',
+              userSelect: 'none',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#fbfbfd';
-              e.currentTarget.style.boxShadow = '0 8px 24px -3px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#ffffff';
-              e.currentTarget.style.boxShadow = '0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            onMouseEnter={handlePillEnter}
+            onMouseLeave={handlePillLeave}
           >
-            {link.icon}
-            <span>{link.label}</span>
+            {/* White Circular Icon Disc */}
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '26px',
+                height: '26px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                color: '#0f172a',
+                flexShrink: 0,
+              }}
+            >
+              {link.icon}
+            </span>
+            <span
+              style={{
+                fontSize: '13.5px',
+                fontWeight: 600,
+                color: '#1c1c1e',
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {link.label}
+            </span>
           </a>
         ))}
       </div>
 
-      {/* Contributor Pills in exact UI style */}
+      {/* Contributors Section with Direct Link to Official GitHub Contributors Page */}
       <div
         style={{
           display: 'flex',
@@ -173,17 +202,42 @@ export const OpenSourceSection: React.FC = () => {
           gap: '12px',
         }}
       >
-        <span
+        <a
+          href="https://github.com/romitmeher/veilora/graphs/contributors"
+          target="_blank"
+          rel="noreferrer noopener"
           style={{
             fontSize: '13px',
             color: '#86868b',
             fontWeight: 500,
             letterSpacing: '-0.01em',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'color 0.2s ease',
+            cursor: 'pointer',
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#86868b')}
         >
-          Contributors
-        </span>
+          <span>Contributors</span>
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M7 17L17 7M17 7H7M17 7V17" />
+          </svg>
+        </a>
 
+        {/* Contributor Pills linking directly to their official GitHub profiles */}
         <div
           style={{
             display: 'flex',
@@ -209,9 +263,14 @@ export const OpenSourceSection: React.FC = () => {
                 padding: '4px 14px 4px 4px',
                 textDecoration: 'none',
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                cursor: 'pointer',
+                userSelect: 'none',
               }}
+              onMouseEnter={handlePillEnter}
+              onMouseLeave={handlePillLeave}
             >
+              {/* Contributor Avatar Disc */}
               <span
                 style={{
                   display: 'flex',
