@@ -47,7 +47,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '185.156.172.48',
     x: 523.7,
     y: 159.0,
-    isp: 'Veilora Swiss Core #1 · Zero-Logs',
+    isp: 'Swiss Core #1 · Zero-Logs',
   },
   {
     id: 'is',
@@ -56,7 +56,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '194.26.29.112',
     x: 439.0,
     y: 112.3,
-    isp: 'Veilora Nordic Privacy #3 · Zero-Logs',
+    isp: 'Nordic Privacy #3 · Zero-Logs',
   },
   {
     id: 'jp',
@@ -65,7 +65,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '146.70.117.82',
     x: 887.9,
     y: 186.6,
-    isp: 'Veilora Asia-East #7 · Zero-Logs',
+    isp: 'Asia-East #7 · Zero-Logs',
   },
   {
     id: 'nl',
@@ -74,7 +74,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '185.220.101.5',
     x: 513.6,
     y: 146.2,
-    isp: 'Veilora Euro-Hub #2 · Zero-Logs',
+    isp: 'Euro-Hub #2 · Zero-Logs',
   },
   {
     id: 'se',
@@ -83,7 +83,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '193.180.118.42',
     x: 550.2,
     y: 126.9,
-    isp: 'Veilora Baltic Shield #5 · Zero-Logs',
+    isp: 'Baltic Shield #5 · Zero-Logs',
   },
   {
     id: 'de',
@@ -92,7 +92,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '194.126.177.10',
     x: 524.1,
     y: 152.1,
-    isp: 'Veilora High-Speed DE #4 · Zero-Logs',
+    isp: 'High-Speed DE #4 · Zero-Logs',
   },
   {
     id: 'sg',
@@ -101,7 +101,7 @@ export const VPN_COUNTRIES: VpnCountry[] = [
     ip: '103.114.162.24',
     x: 788.4,
     y: 257.3,
-    isp: 'Veilora Straits Secure #9 · Zero-Logs',
+    isp: 'Straits Secure #9 · Zero-Logs',
   },
 ];
 
@@ -367,7 +367,7 @@ export const VpnMapSection: React.FC = () => {
             margin: '0 0 16px',
           }}
         >
-          High-speed privacy exit nodes worldwide.
+          Connect to encrypted exit nodes worldwide.
         </h2>
 
         {/* Animated Connection Status Pill (Dynamic width based on text, following our pill UI) */}
