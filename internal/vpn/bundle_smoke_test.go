@@ -1,4 +1,4 @@
-//go:build (windows && !nobundledvpn) || (windows && bundledvpn)
+//go:build windows && bundledvpn
 
 package vpn
 

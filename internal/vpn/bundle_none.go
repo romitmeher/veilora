@@ -1,4 +1,4 @@
-//go:build !windows || !amd64 || nobundledvpn
+//go:build !windows || !bundledvpn
 
 package vpn
 

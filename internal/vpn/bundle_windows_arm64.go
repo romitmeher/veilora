@@ -1,4 +1,4 @@
-//go:build windows && arm64 && bundledvpn_arm64
+//go:build windows && arm64 && bundledvpn
 
 package vpn
 
