@@ -51,10 +51,7 @@ func (a *App) VPNEngineAvailability() []vpn.EngineAvailability {
 func (a *App) StartVPNFromTray() error {
 	<-a.startupDone
 	if !elevate.IsElevated() {
-		if err := elevate.RelaunchElevated(); err != nil {
-			return fmt.Errorf("administrator rights required for VPN: %w", err)
-		}
-		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
 	}
 	engines := a.vpnManager.AvailableEngines()
 	for _, engine := range []vpn.EngineType{vpn.EngineOpenVPN, vpn.EngineSoftEther} {
@@ -75,10 +72,7 @@ func (a *App) StartVPNFromTray() error {
 func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
 	if !elevate.IsElevated() {
-		if err := elevate.RelaunchElevated(); err != nil {
-			return fmt.Errorf("administrator rights required for VPN: %w", err)
-		}
-		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
 	}
 	err := a.vpnManager.ConnectBest(country, engine, killSwitch, dnsProtect)
 	if err != nil {
@@ -91,10 +85,7 @@ func (a *App) VPNConnectBest(country string, engine vpn.EngineType, killSwitch, 
 func (a *App) VPNConnectToServer(hostName string, engine vpn.EngineType, killSwitch, dnsProtect bool) error {
 	<-a.startupDone
 	if !elevate.IsElevated() {
-		if err := elevate.RelaunchElevated(); err != nil {
-			return fmt.Errorf("administrator rights required for VPN: %w", err)
-		}
-		return errors.New("administrator elevation requested; please approve the Windows prompt to continue")
+		return errors.New("administrator privileges are required to configure the VPN network adapter. Please run Veilora as Administrator")
 	}
 	servers, err := a.vpnManager.GetServers("", false)
 	if err != nil {

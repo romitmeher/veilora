@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"syscall"
-	"time"
 
 	"golang.org/x/sys/windows"
 )
@@ -57,10 +56,5 @@ func RelaunchElevated() error {
 	if err != nil {
 		return err
 	}
-	// Exit the unprivileged instance so the elevated instance can acquire the single instance lock.
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		os.Exit(0)
-	}()
 	return nil
 }
