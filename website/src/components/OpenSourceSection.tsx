@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Bug, GitPullRequest } from 'lucide-react';
-import { TextMorph } from 'torph/react';
 import { FlickeringGrid } from '@/registry/magicui/flickering-grid';
 
 interface Contributor {
@@ -160,7 +159,7 @@ const ContributorPill: React.FC<{ contributor: Contributor }> = ({ contributor }
           ? '0 4px 14px rgba(0, 0, 0, 0.12)'
           : '0 1px 3px rgba(0, 0, 0, 0.08)',
         transform: isHovered ? 'translateY(-1.5px)' : 'translateY(0)',
-        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         cursor: 'pointer',
         userSelect: 'none',
       }}
@@ -189,7 +188,7 @@ const ContributorPill: React.FC<{ contributor: Contributor }> = ({ contributor }
         />
       </span>
 
-      {/* Morphing Text Transition: Transitions smoothly between name and @handle */}
+      {/* Vertical Flip Text Container: Smoothly flips from Name to @handle (bottom to top) */}
       <span
         style={{
           fontSize: '13.5px',
@@ -197,13 +196,66 @@ const ContributorPill: React.FC<{ contributor: Contributor }> = ({ contributor }
           color: '#1c1c1e',
           letterSpacing: '-0.01em',
           whiteSpace: 'nowrap',
-          display: 'inline-flex',
-          alignItems: 'center',
+          display: 'inline-grid',
+          gridTemplateAreas: '"stack"',
+          overflow: 'hidden',
+          height: '18px',
+          lineHeight: '18px',
+          verticalAlign: 'middle',
         }}
       >
-        <TextMorph ease={{ stiffness: 220, damping: 22 }}>
-          {isHovered ? `@${contributor.login}` : contributor.name}
-        </TextMorph>
+        <span
+          style={{
+            gridArea: 'stack',
+            transform: isHovered ? 'translateY(-100%)' : 'translateY(0%)',
+            opacity: isHovered ? 0 : 1,
+            transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {contributor.name}
+        </span>
+        <span
+          style={{
+            gridArea: 'stack',
+            transform: isHovered ? 'translateY(0%)' : 'translateY(100%)',
+            opacity: isHovered ? 1 : 0,
+            transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          @{contributor.login}
+        </span>
+      </span>
+
+      {/* External Link Arrow (Slides in on hover to indicate clickability, matching Contributors link) */}
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: isHovered ? '12px' : '0px',
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? 'translate(0, 0) scale(1)' : 'translate(-4px, 4px) scale(0.6)',
+          transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          overflow: 'hidden',
+          color: '#86868b',
+          flexShrink: 0,
+        }}
+      >
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M7 17L17 7M17 7H7M17 7V17" />
+        </svg>
       </span>
     </a>
   );
