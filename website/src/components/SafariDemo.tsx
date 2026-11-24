@@ -5,6 +5,8 @@ import {
 } from 'react-compare-slider';
 import { Safari } from "@/registry/magicui/safari";
 import { MalwareLogo } from '../BrandLogos';
+import beforeForbesImg from '@/assets/comparison/before-forbes.png';
+import afterForbesImg from '@/assets/comparison/after-forbes.png';
 
 export interface SafariDemoProps {
   url?: string;
@@ -122,7 +124,7 @@ export function SafariDemo({
             itemOne ?? (
               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                 <ReactCompareSliderImage
-                  src="./comparison/before.png"
+                  src={beforeForbesImg}
                   alt="Webpage With Ads"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -180,7 +182,7 @@ export function SafariDemo({
             itemTwo ?? (
               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                 <ReactCompareSliderImage
-                  src="./comparison/after.png"
+                  src={afterForbesImg}
                   alt="Webpage Without Ads (Clean)"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
