@@ -130,7 +130,7 @@ export function SafariDemo({
                 <div
                   style={{
                     position: 'absolute',
-                    top: '50%',
+                    top: '28%',
                     transform: 'translateY(-50%)',
                     left: '16px',
                     zIndex: 25,
@@ -188,7 +188,7 @@ export function SafariDemo({
                 <div
                   style={{
                     position: 'absolute',
-                    top: '50%',
+                    top: '28%',
                     transform: 'translateY(-50%)',
                     right: '16px',
                     zIndex: 25,
