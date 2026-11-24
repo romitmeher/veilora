@@ -127,12 +127,12 @@ func TestOpenVPNExternalInstallerPolicyMessage(t *testing.T) {
 }
 
 func TestSeparateSoftEtherAccountCleanupCommands(t *testing.T) {
-	disconnect := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", softEtherAccountName}
-	delete := []string{"/CLIENT", "localhost", "/CMD", "AccountDelete", softEtherAccountName}
-	if strings.Join(disconnect, " ") == strings.Join(delete, " ") {
+	disconnectCmd := []string{"/CLIENT", "localhost", "/CMD", "AccountDisconnect", softEtherAccountName}
+	deleteCmd := []string{"/CLIENT", "localhost", "/CMD", "AccountDelete", softEtherAccountName}
+	if strings.Join(disconnectCmd, " ") == strings.Join(deleteCmd, " ") {
 		t.Fatal("disconnect and delete must be separate operations")
 	}
-	if disconnect[len(disconnect)-1] != softEtherAccountName || delete[len(delete)-1] != softEtherAccountName {
+	if disconnectCmd[len(disconnectCmd)-1] != softEtherAccountName || deleteCmd[len(deleteCmd)-1] != softEtherAccountName {
 		t.Fatal("cleanup changed the VeiloraVPN account name")
 	}
 }

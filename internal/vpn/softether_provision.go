@@ -1,13 +1,10 @@
 package vpn
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
 )
-
-type softEtherProvisionRunner func(context.Context, string, ...string) ([]byte, error)
 
 type SoftEtherOwnership struct {
 	Service string `json:"service"`
@@ -36,6 +33,7 @@ func SoftEtherNativeEndpoint(openVPNConfig string) (host string, port string, er
 	return "", "", fmt.Errorf("no OpenVPN remote host found")
 }
 
+//nolint:unparam // name is parameterized for test coverage
 func softEtherNicListed(output []byte, name string) bool {
 	for _, line := range strings.Split(strings.ToLower(string(output)), "\n") {
 		fields := strings.Fields(strings.Trim(line, "| \t"))

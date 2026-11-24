@@ -24,9 +24,11 @@ type SoftEtherEngine struct {
 }
 
 const (
-	softEtherAccountName = "VeiloraVPN"
-	softEtherAdapterName = "VPN"
-	softEtherNativePort  = "443"
+	softEtherServiceName  = "SEVPNCLIENTDEV"
+	softEtherServiceTitle = "Veilora VPN"
+	softEtherAccountName  = "VeiloraVPN"
+	softEtherAdapterName  = "VPN"
+	softEtherNativePort   = "443"
 )
 
 func NewSoftEtherEngine() *SoftEtherEngine {
@@ -104,11 +106,11 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 			}
 		}
 		if len(embeddedSoftEther()) > 0 {
-			if bundled, err := bundledSoftEtherBinary(); err == nil {
+			bundled, err := bundledSoftEtherBinary()
+			if err == nil {
 				return bundled
-			} else {
-				log.Printf("bundled SoftEther: %v", err)
 			}
+			log.Printf("bundled SoftEther: %v", err)
 		}
 		return ""
 	}
@@ -270,12 +272,13 @@ func (e *SoftEtherEngine) monitorConnection(statusCh chan<- Status, stopCh <-cha
 		case <-ticker.C:
 			out, err := hiddenCommand(e.cmdBinary(), "/CLIENT", "localhost", "/CMD",
 				"AccountStatusGet", softEtherAccountName).CombinedOutput()
-			if err != nil || vpnCmdOutputHasError(out) {
+			switch {
+			case err != nil || vpnCmdOutputHasError(out):
 				failureCount++
-			} else if softEtherSessionEstablished(out) {
+			case softEtherSessionEstablished(out):
 				failureCount = 0
 				continue
-			} else {
+			default:
 				failureCount++
 			}
 			if failureCount == 1 {
@@ -455,21 +458,4 @@ func softEtherSessionEstablished(out []byte) bool {
 	lower := strings.ToLower(string(out))
 	return strings.Contains(lower, "session established") ||
 		strings.Contains(lower, "connection completed")
-}
-
-// extractRemote parses `remote <host> <port>` from an OpenVPN config.
-func extractRemote(config string) (host, port string, err error) {
-	for _, line := range strings.Split(config, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "remote ") {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				return parts[1], parts[2], nil
-			}
-			if len(parts) == 2 {
-				return parts[1], "443", nil
-			}
-		}
-	}
-	return "", "", fmt.Errorf("no remote directive found")
 }

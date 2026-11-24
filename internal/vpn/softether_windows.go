@@ -10,11 +10,6 @@ import (
 	"time"
 )
 
-const (
-	softEtherServiceName  = "SEVPNCLIENTDEV"
-	softEtherServiceTitle = "Veilora VPN"
-)
-
 func runSoftEtherProvisionCommand(ctx context.Context, exe string, args ...string) ([]byte, error) {
 	return hiddenCommandContext(ctx, exe, args...).CombinedOutput()
 }

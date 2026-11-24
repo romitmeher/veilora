@@ -2,11 +2,22 @@
 param(
     [ValidateSet('amd64','arm64')][string]$Arch = 'amd64',
     [ValidateSet('openvpn','softether')][string]$Engine = 'openvpn',
-    [switch]$CheckPrerequisites
+    [switch]$CheckPrerequisites,
+    [switch]$Force
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Push-Location $root
+$targetZip = if ($Engine -eq 'openvpn') {
+    Join-Path $root "internal/vpn/payload/windows-$Arch.zip"
+} else {
+    Join-Path $root "internal/vpn/payload/windows-$Arch-softether.zip"
+}
+if (-not $Force -and (Test-Path -LiteralPath $targetZip) -and ((Get-Item -LiteralPath $targetZip).Length -gt 0)) {
+    Write-Output "VPN runtime payload for $Engine ($Arch) is already present at $targetZip. Skipping rebuild."
+    Pop-Location
+    return
+}
 if ($Engine -eq 'softether' -and $Arch -eq 'arm64') {
     throw 'The optional SoftEther source target currently supports AMD64. Its ARM64 hamcore host-tool build is not integrated.'
 }
@@ -69,8 +80,9 @@ try {
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake",
             "-DVCPKG_TARGET_TRIPLET=$nativeArch-windows-static",'-DBUILD_NUMBER=5190')
         Invoke-Checked $cmake @('--build',$build,'--config','Release','--target','vpnclient','vpncmd','vpndrvinst','hamcore-archive-build','--parallel','2')
+        $searchDirs = @($build, (Join-Path $source 'src/bin/hamcore'))
         foreach ($name in @('vpnclient.exe','vpncmd.exe','vpndrvinst.exe','hamcore.se2')) {
-            $file = Get-ChildItem -LiteralPath $build -Filter $name -Recurse | Select-Object -First 1
+            $file = Get-ChildItem -LiteralPath $searchDirs -Filter $name -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if (-not $file) { throw "SoftEther build did not produce $name" }
             Copy-Item -LiteralPath $file.FullName -Destination $stage
         }

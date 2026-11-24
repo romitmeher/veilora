@@ -4,12 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -98,150 +93,6 @@ func InstallEngineType(ctx context.Context, engine EngineType, progressCb func(E
 	return nil
 }
 
-func installWindowsEngine(ctx context.Context, progressCb func(EngineInstallProgress)) error {
-	// First, check if winget is available on Windows 10/11
-	if _, err := exec.LookPath("winget"); err == nil {
-		progressCb(EngineInstallProgress{
-			Stage:   "downloading",
-			Percent: 30,
-			Message: "Downloading OpenVPN through Windows Package Manager...",
-		})
-
-		cmd := hiddenCommandContext(ctx, "winget", "install",
-			"--id", "OpenVPNTechnologies.OpenVPN",
-			"-e",
-			"--silent",
-			"--accept-source-agreements",
-			"--accept-package-agreements",
-		)
-		out, err := cmd.CombinedOutput()
-		if err == nil {
-			progressCb(EngineInstallProgress{
-				Stage:   "ready",
-				Percent: 100,
-				Message: "VPN engine installed successfully!",
-			})
-			return nil
-		}
-		log.Printf("vpn installer: winget failed (%v): %s; falling back to direct download", err, string(out))
-	}
-
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	// Fallback: Direct download of OpenVPN community installer
-	progressCb(EngineInstallProgress{
-		Stage:   "downloading",
-		Percent: 25,
-		Message: "Downloading OpenVPN installer package...",
-	})
-
-	installerURL, err := windowsInstallerURL(runtime.GOARCH)
-	if err != nil {
-		return err
-	}
-	tmpDir, err := os.MkdirTemp("", "veilora-openvpn-*")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpDir)
-	tmpFile := filepath.Join(tmpDir, "openvpn-setup.msi")
-
-	req, err := http.NewRequestWithContext(ctx, "GET", installerURL, nil)
-	if err != nil {
-		return fmt.Errorf("create download request: %w", err)
-	}
-
-	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
-	if err != nil {
-		return fmt.Errorf("download openvpn installer: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download openvpn failed with status %d", resp.StatusCode)
-	}
-
-	out, err := os.Create(tmpFile)
-	if err != nil {
-		return fmt.Errorf("create temp installer file: %w", err)
-	}
-
-	totalSize := resp.ContentLength
-	const maxInstallerSize = 100 * 1024 * 1024
-	if totalSize > maxInstallerSize {
-		out.Close()
-		return errors.New("installer exceeds size limit")
-	}
-	var downloaded int64
-	buf := make([]byte, 32*1024)
-
-	for {
-		select {
-		case <-ctx.Done():
-			out.Close()
-			return ctx.Err()
-		default:
-		}
-
-		n, rErr := resp.Body.Read(buf)
-		if n > 0 {
-			if _, wErr := out.Write(buf[:n]); wErr != nil {
-				out.Close()
-				return fmt.Errorf("write installer file: %w", wErr)
-			}
-			downloaded += int64(n)
-			if downloaded > maxInstallerSize {
-				out.Close()
-				return errors.New("installer exceeds size limit")
-			}
-			if totalSize > 0 {
-				pct := 25 + int(float64(downloaded)/float64(totalSize)*50.0)
-				progressCb(EngineInstallProgress{
-					Stage:   "downloading",
-					Percent: pct,
-					Message: fmt.Sprintf("Downloading... (%d%%)", pct),
-				})
-			}
-		}
-		if rErr != nil {
-			if rErr == io.EOF {
-				break
-			}
-			out.Close()
-			return fmt.Errorf("download stream error: %w", rErr)
-		}
-	}
-	if err := out.Close(); err != nil {
-		return err
-	}
-	if downloaded == 0 || (totalSize >= 0 && downloaded != totalSize) {
-		return errors.New("incomplete installer download")
-	}
-	if err := verifyWindowsInstaller(ctx, tmpFile); err != nil {
-		return err
-	}
-
-	progressCb(EngineInstallProgress{
-		Stage:   "installing",
-		Percent: 80,
-		Message: "Configuring VPN network adapter...",
-	})
-
-	// Run MSI silent install
-	msiCmd := hiddenCommandContext(ctx, "msiexec.exe", "/i", tmpFile, "/qn", "/norestart")
-	if msiOut, err := msiCmd.CombinedOutput(); err != nil && !installerRebootRequired(err) {
-		return fmt.Errorf("run openvpn msi installer (%v): %s", err, string(msiOut))
-	}
-
-	progressCb(EngineInstallProgress{
-		Stage:   "ready",
-		Percent: 100,
-		Message: "VPN engine installed successfully!",
-	})
-	return nil
-}
-
 func installDarwinEngine(ctx context.Context, progressCb func(EngineInstallProgress)) error {
 	if _, err := exec.LookPath("brew"); err == nil {
 		progressCb(EngineInstallProgress{
@@ -290,9 +141,4 @@ func windowsInstallerURL(arch string) (string, error) {
 		return "", fmt.Errorf("unsupported Windows architecture: %s", arch)
 	}
 	return "https://swupdate.openvpn.org/community/releases/OpenVPN-2.7.9-I002-" + arch + ".msi", nil
-}
-
-func installerRebootRequired(err error) bool {
-	var exitErr *exec.ExitError
-	return errors.As(err, &exitErr) && exitErr.ExitCode() == 3010
 }

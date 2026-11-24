@@ -21,7 +21,3 @@ func hiddenCommandContext(ctx context.Context, name string, args ...string) *exe
 	prepareCmd(cmd)
 	return cmd
 }
-
-func verifyWindowsInstaller(_ context.Context, _ string) error {
-	return errors.New("windows installer verification requires Windows")
-}

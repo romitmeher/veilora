@@ -142,7 +142,7 @@ func (a *App) VPNProvisionSoftEther() (vpn.SoftEtherOwnership, error) {
 		if err := elevate.RelaunchElevated(); err != nil {
 			return vpn.SoftEtherOwnership{}, fmt.Errorf("request administrator approval: %w", err)
 		}
-		return vpn.SoftEtherOwnership{}, errors.New("Veilora elevation was requested; approve the Windows prompt and retry")
+		return vpn.SoftEtherOwnership{}, errors.New("veilora elevation was requested; approve the Windows prompt and retry")
 	}
 	return vpn.ProvisionBundledSoftEther(a.ctx)
 }

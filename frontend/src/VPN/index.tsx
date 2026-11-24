@@ -92,9 +92,7 @@ export function VPN() {
       let engines: EngineType[] = [];
       try {
         const availability = await VPNEngineAvailability();
-        engines = (availability ?? [])
-          .filter((item) => item.ready)
-          .map((item) => item.engine as EngineType);
+        engines = (availability ?? []).filter((item) => item.ready).map((item) => item.engine as EngineType);
         setEngineStatuses((prev) => {
           const next = { ...prev };
           for (const item of availability ?? []) {
@@ -178,11 +176,7 @@ export function VPN() {
     const saved = localStorage.getItem('veilora_vpn_autoconnect');
     if (saved === 'openvpn' && vpnState === 'disconnected') {
       VPNAvailableEngines().then((avail) => {
-        const preferred = avail?.includes('softether')
-          ? 'softether'
-          : avail?.includes('openvpn')
-            ? 'openvpn'
-            : null;
+        const preferred = avail?.includes('softether') ? 'softether' : avail?.includes('openvpn') ? 'openvpn' : null;
         if (preferred) {
           VPNConnectBest('', preferred, false, true).catch(() => {});
         }
@@ -246,8 +240,7 @@ export function VPN() {
     }
   };
 
-  const isConnecting =
-    vpnState === 'preparing' || vpnState === 'connecting' || vpnState === 'reconnecting';
+  const isConnecting = vpnState === 'preparing' || vpnState === 'connecting' || vpnState === 'reconnecting';
   const canAct = !isTransitioning;
   const statusClass = `vpn-status vpn-status--${vpnState}`;
 
@@ -298,11 +291,10 @@ export function VPN() {
                   Click <strong>Provision Veilora VPN</strong>; Veilora will request Windows administrator approval.
                 </li>
                 <li>
-                  Veilora uses <strong>SEVPNCLIENT</strong> when installed, otherwise <strong>SEVPNCLIENTDEV</strong>, and configures the <strong>VPN</strong> adapter for <strong>VeiloraVPN</strong>.
+                  Veilora uses <strong>SEVPNCLIENT</strong> when installed, otherwise <strong>SEVPNCLIENTDEV</strong>,
+                  and configures the <strong>VPN</strong> adapter for <strong>VeiloraVPN</strong>.
                 </li>
-                <li>
-                  Veilora verifies the service, virtual adapter, and native endpoint before reporting ready.
-                </li>
+                <li>Veilora verifies the service, virtual adapter, and native endpoint before reporting ready.</li>
                 <li>
                   When finished, click <strong>Check Again</strong> to verify detection.
                 </li>
@@ -401,8 +393,12 @@ export function VPN() {
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              {availableEngines.includes('openvpn') && <option value="openvpn">OpenVPN — {engineStatuses.openvpn}</option>}
-              {availableEngines.includes('softether') && <option value="softether">Veilora VPN — {engineStatuses.softether}</option>}
+              {availableEngines.includes('openvpn') && (
+                <option value="openvpn">OpenVPN — {engineStatuses.openvpn}</option>
+              )}
+              {availableEngines.includes('softether') && (
+                <option value="softether">Veilora VPN — {engineStatuses.softether}</option>
+              )}
             </HTMLSelect>
           </div>
 
