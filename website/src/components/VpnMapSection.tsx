@@ -108,8 +108,11 @@ export const VPN_COUNTRIES: VpnCountry[] = [
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 export const VpnMapSection: React.FC = () => {
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [activeCountry, setActiveCountry] = useState<VpnCountry>(INDIA_COUNTRY);
+  const [status, setStatus] = useState<ConnectionStatus>('connected');
+  const [activeCountry, setActiveCountry] = useState<VpnCountry>(() => {
+    const idx = Math.floor(Math.random() * VPN_COUNTRIES.length);
+    return VPN_COUNTRIES[idx] || VPN_COUNTRIES[0];
+  });
   const [lastIndex, setLastIndex] = useState<number>(-1);
   const [actionCount, setActionCount] = useState<number>(0);
   const [isDisconnecting, setIsDisconnecting] = useState<boolean>(false);
