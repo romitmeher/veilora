@@ -65,7 +65,7 @@ export const VpnFeatureSection: React.FC = () => {
       style={{
         width: '100%',
         maxWidth: '820px',
-        margin: '0 auto 120px',
+        margin: '0 auto 70px',
         padding: '0 20px',
         textAlign: 'center',
         boxSizing: 'border-box',
