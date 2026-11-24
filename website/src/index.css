@@ -115,50 +115,59 @@ button, input, select, textarea, a {
   transform: translateX(-320px) rotate(15deg);
 }
 
-/* Full-pill light sweep reflection (loops when hovered) */
+/* Full-pill specular light reflection (slowed down, returns back on mouse leave like .btn-shine) */
 .pill-shine {
   position: absolute;
   right: 0;
   top: 50%;
   margin-top: -64px;
   height: 128px;
-  width: 38px;
-  transform: translateX(64px) rotate(15deg);
+  width: 44px;
+  transform: translateX(70px) rotate(16deg);
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0.65) 30%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.65) 70%,
     rgba(255, 255, 255, 0) 100%
   );
   opacity: 0;
   pointer-events: none;
   z-index: 2;
+  transition: transform 1.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
 }
 
 .resource-pill:hover .pill-shine,
 .inline-morph-chip:hover .pill-shine {
-  animation: pill-shine-loop 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  transform: translateX(-280px) rotate(16deg);
+  opacity: 1;
 }
 
-@keyframes pill-shine-loop {
-  0% {
-    transform: translateX(64px) rotate(15deg);
-    opacity: 0;
-  }
-  8% {
-    opacity: 1;
+/* Ambient luminous pearlescent center glow when hovered */
+.pill-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 75%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.4s ease;
+}
+
+.resource-pill:hover .pill-glow,
+.inline-morph-chip:hover .pill-glow {
+  opacity: 1;
+  animation: pill-glow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pill-glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
   }
   50% {
-    transform: translateX(-260px) rotate(15deg);
     opacity: 1;
-  }
-  58% {
-    transform: translateX(-260px) rotate(15deg);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(64px) rotate(15deg);
-    opacity: 0;
   }
 }
 

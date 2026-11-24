@@ -73,15 +73,15 @@ const ResourcePill: React.FC<{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '8px',
-        backgroundColor: isHovered ? '#dadade' : '#E5E5EA',
+        backgroundColor: isHovered ? '#dedee3' : '#E5E5EA',
         borderRadius: '9999px',
         padding: '4px 14px 4px 4px',
         textDecoration: 'none',
         boxShadow: isHovered
-          ? '0 4px 14px rgba(0, 0, 0, 0.12)'
+          ? '0 4px 18px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.9) inset, 0 0 14px rgba(255, 255, 255, 0.45)'
           : '0 1px 3px rgba(0, 0, 0, 0.08)',
         transform: isHovered ? 'translateY(-1.5px)' : 'translateY(0)',
-        transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         cursor: 'pointer',
         userSelect: 'none',
         position: 'relative',
@@ -90,7 +90,10 @@ const ResourcePill: React.FC<{
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Full-Pill Light Sweep Specular Reflection (Loops when hovered, matching Button component) */}
+      {/* Ambient Luminous Center Glow (Pulsing while hovered) */}
+      <span className="pill-glow" aria-hidden="true" />
+
+      {/* Full-Pill Light Sweep Specular Reflection (Slowed down, returns back on mouse leave like Button component) */}
       <span className="pill-shine" aria-hidden="true" />
 
       {/* White Circular Icon Disc */}
@@ -103,11 +106,15 @@ const ResourcePill: React.FC<{
           height: '26px',
           borderRadius: '50%',
           backgroundColor: '#ffffff',
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          boxShadow: isHovered
+            ? '0 2px 6px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(255, 255, 255, 0.8)'
+            : '0 1px 2px rgba(0, 0, 0, 0.1)',
           color: '#0f172a',
           flexShrink: 0,
           position: 'relative',
           zIndex: 1,
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          transform: isHovered ? 'scale(1.04)' : 'scale(1)',
         }}
       >
         {link.icon}
@@ -116,13 +123,14 @@ const ResourcePill: React.FC<{
         style={{
           fontSize: '13.5px',
           fontWeight: 600,
-          color: '#1c1c1e',
+          color: isHovered ? '#000000' : '#1c1c1e',
           letterSpacing: '-0.01em',
           whiteSpace: 'nowrap',
           display: 'inline-flex',
           alignItems: 'center',
           position: 'relative',
           zIndex: 1,
+          transition: 'color 0.2s ease',
         }}
       >
         {link.label}
