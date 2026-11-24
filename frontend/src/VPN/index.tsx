@@ -393,12 +393,12 @@ export function VPN() {
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
-              {availableEngines.includes('openvpn') && (
-                <option value="openvpn">OpenVPN — {engineStatuses.openvpn}</option>
-              )}
-              {availableEngines.includes('softether') && (
-                <option value="softether">Veilora VPN — {engineStatuses.softether}</option>
-              )}
+              <option value="openvpn">
+                OpenVPN ({availableEngines.includes('openvpn') ? 'Ready' : engineStatuses.openvpn})
+              </option>
+              <option value="softether">
+                SoftEther ({availableEngines.includes('softether') ? 'Ready' : engineStatuses.softether})
+              </option>
             </HTMLSelect>
           </div>
 

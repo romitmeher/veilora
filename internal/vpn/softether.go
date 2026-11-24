@@ -39,13 +39,12 @@ func (e *SoftEtherEngine) Name() string { return string(EngineSoftEther) }
 
 // Available checks whether vpnclient and vpncmd are present on this system.
 func (e *SoftEtherEngine) Available() bool {
-	if len(embeddedVPN()) > 0 && len(embeddedSoftEther()) == 0 {
-		return false
-	}
 	if len(embeddedSoftEther()) > 0 {
-		if _, err := bundledSoftEtherRuntimeDir(); err != nil {
-			return false
-		}
+		_, err := bundledSoftEtherRuntimeDir()
+		return err == nil
+	}
+	if len(embeddedVPN()) > 0 {
+		return false
 	}
 	if runtime.GOOS == "windows" {
 		if e.FindClientBinary() == "" || e.FindCmdBinary() == "" {
@@ -67,6 +66,14 @@ func (e *SoftEtherEngine) Available() bool {
 
 // FindClientBinary searches for the vpnclient executable in known directories and PATH.
 func (e *SoftEtherEngine) FindClientBinary() string {
+	if len(embeddedSoftEther()) > 0 {
+		bundled, err := bundledSoftEtherBinary()
+		if err == nil {
+			return bundled
+		}
+		log.Printf("bundled SoftEther: %v", err)
+	}
+
 	if runtime.GOOS == "windows" {
 		candidates := []string{
 			"vpnclient_x64.exe",
@@ -105,13 +112,6 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 				return path
 			}
 		}
-		if len(embeddedSoftEther()) > 0 {
-			bundled, err := bundledSoftEtherBinary()
-			if err == nil {
-				return bundled
-			}
-			log.Printf("bundled SoftEther: %v", err)
-		}
 		return ""
 	}
 
@@ -120,9 +120,15 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 			return path
 		}
 	}
+	return ""
+}
+
+// FindCmdBinary searches for the vpncmd executable in known directories and PATH.
+func (e *SoftEtherEngine) FindCmdBinary() string {
 	if len(embeddedSoftEther()) > 0 {
-		if bundled, err := bundledSoftEtherBinary(); err == nil {
-			cmd := filepath.Join(filepath.Dir(bundled), "vpncmd.exe")
+		dir, err := bundledSoftEtherRuntimeDir()
+		if err == nil {
+			cmd := filepath.Join(dir, "vpncmd.exe")
 			if isExecutableFile(cmd) {
 				return cmd
 			}
@@ -130,11 +136,7 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 			log.Printf("bundled SoftEther: %v", err)
 		}
 	}
-	return ""
-}
 
-// FindCmdBinary searches for the vpncmd executable in known directories and PATH.
-func (e *SoftEtherEngine) FindCmdBinary() string {
 	if runtime.GOOS == "windows" {
 		candidates := []string{
 			"vpncmd_x64.exe",

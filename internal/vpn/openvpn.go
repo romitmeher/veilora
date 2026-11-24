@@ -39,9 +39,6 @@ func (e *OpenVPNEngine) Available() bool {
 	if len(embeddedVPN()) > 0 {
 		return true
 	}
-	if runtime.GOOS == "windows" {
-		return false
-	}
 	return e.FindBinary() != ""
 }
 

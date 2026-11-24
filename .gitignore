@@ -20,3 +20,4 @@ frontend/dist
 .agents/
 .claude/
 skills-lock.json
+third_party/softether_stable/
