@@ -116,22 +116,22 @@ export const OpenSourceSection: React.FC = () => {
         }}
       >
         <FlickeringGrid
-          className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_750px_360px_at_50%_50%,transparent_24%,rgba(0,0,0,0.65)_60%,transparent_100%)]"
+          className="absolute inset-0 z-0 [mask-image:radial-gradient(ellipse_920px_440px_at_50%_50%,transparent_26%,rgba(0,0,0,0.65)_60%,transparent_100%)]"
           squareSize={4}
           gridGap={6}
           color="#60A5FA"
           maxOpacity={0.45}
           flickerChance={0.1}
-          hoverRadius={75}
+          hoverRadius={85}
           style={{
             position: 'absolute',
             inset: 0,
             width: '100%',
             height: '100%',
             maskImage:
-              'radial-gradient(ellipse 750px 360px at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+              'radial-gradient(ellipse 920px 440px at 50% 50%, transparent 26%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
             WebkitMaskImage:
-              'radial-gradient(ellipse 750px 360px at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
+              'radial-gradient(ellipse 920px 440px at 50% 50%, transparent 26%, rgba(0, 0, 0, 0.65) 60%, transparent 100%)',
           }}
         />
 
@@ -148,14 +148,14 @@ export const OpenSourceSection: React.FC = () => {
           }}
         />
 
-        {/* Bottom Gradient Fade */}
+        {/* Bottom Gradient Fade: 140px smooth washout before fixed ProgressiveBlur */}
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: '100px',
+            height: '140px',
             background: 'linear-gradient(to top, #ffffff 25%, rgba(255, 255, 255, 0) 100%)',
             pointerEvents: 'none',
           }}
