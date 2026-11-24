@@ -1,6 +1,7 @@
 package vpn
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -351,6 +352,13 @@ func (e *SoftEtherEngine) runVpnClient() error {
 	start := hiddenCommand("sc.exe", "start", serviceName)
 	out, err = start.CombinedOutput()
 	if err != nil {
+		if (strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist")) && len(embeddedSoftEther()) > 0 {
+			log.Printf("softether: service not provisioned, auto-provisioning bundled SoftEther...")
+			if _, provErr := ProvisionBundledSoftEther(context.Background()); provErr != nil {
+				return fmt.Errorf("auto-provision SoftEther VPN: %w", provErr)
+			}
+			return e.waitForVpnCmd()
+		}
 		if strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist") {
 			return fmt.Errorf("SoftEther VPN service is not provisioned; use Provision Veilora VPN")
 		}
