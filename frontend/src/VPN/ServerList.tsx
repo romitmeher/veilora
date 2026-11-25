@@ -1,8 +1,6 @@
-import { Button, Spinner, HTMLSelect } from '@blueprintjs/core';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Button, Spinner } from '@blueprintjs/core';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { VPNGetServers, VPNRefreshServers } from 'wails/go/app/App';
 
 export interface VPNServer {
   hostName: string;
@@ -24,10 +22,11 @@ export interface VPNServer {
 }
 
 interface ServerListProps {
+  servers: VPNServer[];
+  loading: boolean;
+  loadError: boolean;
+  onRefresh: () => void;
   selectedHost: string;
-  selectedCountry: string;
-  countries: string[];
-  onCountryChange: (country: string) => void;
   onSelect: (server: VPNServer) => void;
   disabled: boolean;
 }
@@ -46,91 +45,38 @@ function formatUptime(milliseconds: number): string {
   return hours > 0 ? `${hours}h` : '<1h';
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(0)} MB`;
-  return `${bytes} B`;
+function pingClass(ping: number): string {
+  if (ping <= 0) return '';
+  if (ping < 60) return 'vpn-server-row__ping--good';
+  if (ping < 150) return 'vpn-server-row__ping--fair';
+  return 'vpn-server-row__ping--slow';
 }
 
 export function ServerList({
+  servers,
+  loading,
+  loadError,
+  onRefresh,
   selectedHost,
-  selectedCountry,
-  countries,
-  onCountryChange,
   onSelect,
   disabled,
 }: ServerListProps) {
   const { t } = useTranslation();
-  const [servers, setServers] = useState<VPNServer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
-  const requestId = useRef(0);
-  const invalidateRequests = useCallback(() => {
-    requestId.current++;
-  }, []);
 
-  const loadServers = useCallback(async (countryFilter: string, refresh = false) => {
-    const id = ++requestId.current;
-    setLoading(true);
-    setLoadError(false);
-    try {
-      if (refresh) await VPNRefreshServers();
-      const result = await VPNGetServers(countryFilter, true);
-      if (id === requestId.current) setServers(result ?? []);
-    } catch {
-      if (id === requestId.current) {
-        setServers([]);
-        setLoadError(true);
-      }
-    } finally {
-      if (id === requestId.current) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadServers(selectedCountry);
-    return invalidateRequests;
-  }, [loadServers, invalidateRequests, selectedCountry]);
-
-  const handleRefresh = () => {
-    loadServers(selectedCountry, true);
-  };
   const visibleServers = servers.filter((s) =>
-    `${s.hostName} ${s.countryLong} ${s.countryShort}`.toLowerCase().includes(query.trim().toLowerCase()),
+    `${s.hostName} ${s.countryLong} ${s.countryShort} ${s.ip}`.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
   return (
     <div className="vpn-servers">
-      <div className="bp6-tag bp6-large bp6-fill vpn-servers__header" style={{ borderRadius: 0 }}>
-        {t('vpn.servers.title')}
+      <div className="vpn-servers__header">
+        <span>{t('vpn.servers.title')}</span>
+        <span className="vpn-servers__count">
+          {loading ? 'Loading…' : `${visibleServers.length} available`}
+        </span>
       </div>
       <div className="vpn-servers__toolbar">
-        <HTMLSelect
-          aria-label={t('vpn.controls.country')}
-          value={selectedCountry}
-          onChange={(e) => {
-            onCountryChange(e.target.value);
-          }}
-          disabled={disabled || loading}
-        >
-          <option value="">{t('vpn.servers.allCountries')}</option>
-          {countries.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </HTMLSelect>
-        <Button
-          icon="refresh"
-          variant="minimal"
-          onClick={handleRefresh}
-          disabled={disabled || loading}
-          title={t('vpn.servers.refresh')}
-          aria-label={t('vpn.servers.refresh')}
-        />
-      </div>
-      <div className="vpn-servers__search">
         <input
           className="bp6-input bp6-fill"
           aria-label={t('vpn.feedback.search')}
@@ -138,6 +84,14 @@ export function ServerList({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={loading}
+        />
+        <Button
+          icon="refresh"
+          variant="outlined"
+          onClick={onRefresh}
+          disabled={disabled || loading}
+          title={t('vpn.servers.refresh')}
+          aria-label={t('vpn.servers.refresh')}
         />
       </div>
 
@@ -147,7 +101,7 @@ export function ServerList({
         ) : loadError ? (
           <div role="alert" className="vpn-servers__empty">
             <p>{t('vpn.feedback.serversError')}</p>
-            <Button onClick={handleRefresh} disabled={disabled}>
+            <Button onClick={onRefresh} disabled={disabled}>
               {t('vpn.feedback.retry')}
             </Button>
           </div>
@@ -176,14 +130,14 @@ export function ServerList({
                   {s.countryLong || s.countryShort} · {s.ip}
                 </small>
               </span>
-              <span className="vpn-server-row__country">{s.countryShort}</span>
-              <span className="vpn-server-row__ping">{s.ping > 0 ? `${s.ping}ms` : '—'}</span>
+              <span className="vpn-server-row__country">{s.countryShort || '—'}</span>
+              <span className={`vpn-server-row__ping ${pingClass(s.ping)}`}>
+                {s.ping > 0 ? `${s.ping} ms` : '—'}
+              </span>
               <span className="vpn-server-row__speed">{formatSpeed(s.speed)}</span>
               <span className="vpn-server-row__stats">
                 <span>{s.numVpnSessions} sessions</span>
-                <span>{s.totalUsers} users</span>
                 <span>{formatUptime(s.uptime)} uptime</span>
-                <span>{formatBytes(s.totalTraffic)} traffic</span>
               </span>
             </button>
           ))

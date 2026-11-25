@@ -478,13 +478,10 @@
   line-height: 18px;
 }
 #app .vpn-servers__toolbar {
-  padding: 14px 0 0;
-}
-#app .vpn-servers__search {
   padding: 12px 0;
 }
 #app .vpn-servers__list {
-  padding: 0;
+  padding: 0 0 4px;
   gap: 4px;
 }
 #app .vpn-server-row {
