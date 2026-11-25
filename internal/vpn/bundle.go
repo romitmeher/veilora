@@ -74,7 +74,8 @@ func bundledSoftEtherRuntimeDir() (string, error) {
 	return softEtherBundleState.dir, nil
 }
 
-// CleanupBundledSoftEtherRuntime releases only this process's extracted SoftEther files.
+// CleanupBundledSoftEtherRuntime releases only this process's temporary extracted SoftEther files.
+// Persistent service runtimes in ProgramData are never removed by process exit.
 func CleanupBundledSoftEtherRuntime() {
 	softEtherBundleState.Lock()
 	defer softEtherBundleState.Unlock()
@@ -84,41 +85,107 @@ func CleanupBundledSoftEtherRuntime() {
 	}
 }
 
+type bundleManifest struct {
+	Engine     string            `json:"engine"`
+	Arch       string            `json:"arch"`
+	Provenance string            `json:"provenance"`
+	Files      map[string]string `json:"files"`
+}
+
+func readAndValidateManifest(data []byte, arch, engine string, required []string) (*zip.Reader, bundleManifest, string, error) {
+	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, bundleManifest{}, "", fmt.Errorf("bundled %s archive: %w", engine, err)
+	}
+	manifestFile, err := r.Open("manifest.json")
+	if err != nil {
+		return nil, bundleManifest{}, "", fmt.Errorf("bundled %s manifest: %w", engine, err)
+	}
+	rawManifest, err := io.ReadAll(io.LimitReader(manifestFile, 1024*1024))
+	manifestFile.Close()
+	if err != nil {
+		return nil, bundleManifest{}, "", err
+	}
+	var manifest bundleManifest
+	if err := json.Unmarshal(rawManifest, &manifest); err != nil {
+		return nil, bundleManifest{}, "", err
+	}
+	if manifest.Arch != arch {
+		return nil, bundleManifest{}, "", fmt.Errorf("bundled %s architecture mismatch", engine)
+	}
+	if manifest.Engine != "" && manifest.Engine != engine {
+		return nil, bundleManifest{}, "", fmt.Errorf("bundled runtime engine mismatch: got %q, want %q", manifest.Engine, engine)
+	}
+	for _, name := range required {
+		if manifest.Files[name] == "" {
+			return nil, bundleManifest{}, "", fmt.Errorf("bundled %s missing %s", engine, name)
+		}
+	}
+	sum := sha256.Sum256(rawManifest)
+	return r, manifest, hex.EncodeToString(sum[:]), nil
+}
+
+func validatePersistentSoftEtherRuntime(targetDir, expectedManifestHash string) error {
+	if targetDir == "" || len(embeddedSoftEther()) == 0 {
+		return errors.New("persistent SoftEther runtime is not configured")
+	}
+	required := []string{"vpnclient.exe", "vpncmd.exe", "vpndrvinst.exe", "hamcore.se2"}
+	_, manifest, manifestHash, err := readAndValidateManifest(embeddedSoftEther(), runtime.GOARCH, "softether", required)
+	if err != nil {
+		return err
+	}
+	if expectedManifestHash != "" && manifestHash != expectedManifestHash {
+		return errors.New("persistent SoftEther runtime manifest hash mismatch")
+	}
+	for _, name := range required {
+		data, readErr := os.ReadFile(filepath.Join(targetDir, filepath.FromSlash(name)))
+		if readErr != nil {
+			return fmt.Errorf("persistent SoftEther runtime missing %s: %w", name, readErr)
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != manifest.Files[name] {
+			return fmt.Errorf("persistent SoftEther runtime integrity failure: %s", name)
+		}
+	}
+	return nil
+}
+
+func installPersistentSoftEtherRuntime(targetDir string) (string, error) {
+	if len(embeddedSoftEther()) == 0 {
+		return "", errors.New("no bundled SoftEther runtime")
+	}
+	required := []string{"vpnclient.exe", "vpncmd.exe", "vpndrvinst.exe", "hamcore.se2"}
+	_, _, manifestHash, err := readAndValidateManifest(embeddedSoftEther(), runtime.GOARCH, "softether", required)
+	if err == nil && validatePersistentSoftEtherRuntime(targetDir, manifestHash) == nil {
+		return manifestHash, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(targetDir), 0700); err != nil {
+		return "", err
+	}
+	stagingDir, err := extractNamedRuntime(embeddedSoftEther(), filepath.Dir(targetDir), runtime.GOARCH, "softether", required)
+	if err != nil {
+		return "", err
+	}
+	if removeErr := os.RemoveAll(targetDir); removeErr != nil {
+		_ = os.RemoveAll(stagingDir)
+		return "", fmt.Errorf("replace persistent SoftEther runtime: %w", removeErr)
+	}
+	if renameErr := os.Rename(stagingDir, targetDir); renameErr != nil {
+		_ = os.RemoveAll(stagingDir)
+		return "", fmt.Errorf("install persistent SoftEther runtime: %w", renameErr)
+	}
+	return manifestHash, nil
+}
+
 func extractRuntime(data []byte, parent, arch string) (result string, err error) {
 	return extractNamedRuntime(data, parent, arch, "openvpn",
 		[]string{"openvpn.exe", "tapctl.exe", "OemVista.inf", "tap0901.sys", "tap0901.cat", "vcruntime140.dll"})
 }
 
 func extractNamedRuntime(data []byte, parent, arch, engine string, required []string) (result string, err error) {
-	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		return "", fmt.Errorf("bundled %s archive: %w", engine, err)
-	}
-	manifestData, err := r.Open("manifest.json")
-	if err != nil {
-		return "", fmt.Errorf("bundled %s manifest: %w", engine, err)
-	}
-	var manifest struct {
-		Engine     string            `json:"engine"`
-		Arch       string            `json:"arch"`
-		Provenance string            `json:"provenance"`
-		Files      map[string]string `json:"files"`
-	}
-	err = json.NewDecoder(io.LimitReader(manifestData, 1024*1024)).Decode(&manifest)
-	manifestData.Close()
+	r, manifest, _, err := readAndValidateManifest(data, arch, engine, required)
 	if err != nil {
 		return "", err
-	}
-	if manifest.Arch != arch {
-		return "", fmt.Errorf("bundled %s architecture mismatch", engine)
-	}
-	if manifest.Engine != "" && manifest.Engine != engine {
-		return "", fmt.Errorf("bundled runtime engine mismatch: got %q, want %q", manifest.Engine, engine)
-	}
-	for _, name := range required {
-		if manifest.Files[name] == "" {
-			return "", fmt.Errorf("bundled %s missing %s", engine, name)
-		}
 	}
 	dir, err := os.MkdirTemp(parent, "veilora-"+engine+"-runtime-")
 	if err != nil {

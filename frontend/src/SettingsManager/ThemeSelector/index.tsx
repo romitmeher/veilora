@@ -1,4 +1,4 @@
-import { Radio, RadioGroup, FormGroup } from '@blueprintjs/core';
+import { Button, ButtonGroup } from '@blueprintjs/core';
 import { useTranslation } from 'react-i18next';
 
 import { ThemeType, useTheme } from '@/common/ThemeManager';
@@ -8,20 +8,31 @@ export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <FormGroup>
-      <RadioGroup
-        label={t('settings.theme.chooseTheme')}
-        onChange={(e: React.FormEvent<HTMLInputElement>) => {
-          const value = e.currentTarget.value as ThemeType;
-          setTheme(value);
-        }}
-        selectedValue={theme}
-        className="theme-selector__radio-group"
+    <ButtonGroup className="theme-segmented">
+      <Button
+        icon="desktop"
+        intent={theme === ThemeType.SYSTEM ? 'primary' : 'none'}
+        active={theme === ThemeType.SYSTEM}
+        onClick={() => setTheme(ThemeType.SYSTEM)}
       >
-        <Radio label={t('settings.theme.system') as string} value={ThemeType.SYSTEM} />
-        <Radio label={t('settings.theme.light') as string} value={ThemeType.LIGHT} />
-        <Radio label={t('settings.theme.dark') as string} value={ThemeType.DARK} />
-      </RadioGroup>
-    </FormGroup>
+        {t('settings.theme.system')}
+      </Button>
+      <Button
+        icon="flash"
+        intent={theme === ThemeType.LIGHT ? 'primary' : 'none'}
+        active={theme === ThemeType.LIGHT}
+        onClick={() => setTheme(ThemeType.LIGHT)}
+      >
+        {t('settings.theme.light')}
+      </Button>
+      <Button
+        icon="moon"
+        intent={theme === ThemeType.DARK ? 'primary' : 'none'}
+        active={theme === ThemeType.DARK}
+        onClick={() => setTheme(ThemeType.DARK)}
+      >
+        {t('settings.theme.dark')}
+      </Button>
+    </ButtonGroup>
   );
 }

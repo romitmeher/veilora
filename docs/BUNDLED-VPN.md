@@ -2,14 +2,25 @@
 
 Windows production builds compile the pinned OpenVPN v2.7.9 source and embed
 the resulting daemon, runtime DLLs, tapctl,
-and the signed TAP-Windows 9.27.0 driver. Users do not need an existing OpenVPN
-or SoftEther installation. SoftEther is an optional external engine.
+and the signed TAP-Windows 9.27.0 driver. On Windows AMD64, production builds
+also compile and embed the pinned SoftEther 5.2.5190 client/tool runtime with
+its WHQL-signed Neo6 adapter package. Users do not need a separately installed
+OpenVPN or SoftEther application.
 
-On connection, Veilora extracts its embedded runtime into a private temporary
-directory, stages the signed driver using Windows PnPUtil, and creates its own
-adapter using tapctl. It removes its adapter on disconnect. The shared signed
-driver remains in the Windows driver store. This requires administrator rights.
-No OpenVPN GUI, service, MSI installer, or SoftEther service is installed.
+For OpenVPN, on connection Veilora extracts its embedded runtime into a private
+temporary directory, stages the signed driver using Windows PnPUtil, and creates
+its own adapter using tapctl. It removes its adapter on disconnect. The shared
+signed driver remains in the Windows driver store. This requires administrator
+rights. No OpenVPN GUI, service, or MSI installer is installed.
+
+For SoftEther (AMD64), provisioning requires administrator rights and installs
+the verified runtime into a persistent, ACL-restricted directory under
+`%ProgramData%\Veilora\softether`, registers and starts the SoftEther client
+service (`SEVPNCLIENTDEV` / `SEVPNCLIENT`), and creates the `VPN` virtual
+adapter. Component ownership is tracked in `%ProgramData%\Veilora\softether-ownership.json`
+so Veilora rolls back failed provisioning and never modifies or removes
+pre-existing third-party SoftEther installations. The Windows uninstaller runs
+`--uninstall-vpn` to clean up only Veilora-owned SoftEther components.
 An internet connection is still required for server discovery and VPN use.
 WebView2 remains a Windows UI prerequisite; the Veilora installer includes its
 existing bootstrapper. Standalone here means no separately installed VPN client.

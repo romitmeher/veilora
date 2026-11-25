@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/irbis-sh/zen-desktop/internal/elevate"
 	"github.com/irbis-sh/zen-desktop/internal/vpn"
@@ -151,7 +152,11 @@ func (a *App) VPNProvisionSoftEther() (vpn.SoftEtherOwnership, error) {
 		if err := elevate.RelaunchElevated(); err != nil {
 			return vpn.SoftEtherOwnership{}, fmt.Errorf("request administrator approval: %w", err)
 		}
-		return vpn.SoftEtherOwnership{}, errors.New("veilora elevation was requested; approve the Windows prompt and retry")
+		go func() {
+			time.Sleep(250 * time.Millisecond)
+			runtime.Quit(a.ctx)
+		}()
+		return vpn.SoftEtherOwnership{}, errors.New("veilora elevation was requested; approve the Windows prompt to restart as Administrator")
 	}
 	return vpn.ProvisionBundledSoftEther(a.ctx)
 }

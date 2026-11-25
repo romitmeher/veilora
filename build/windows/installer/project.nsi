@@ -117,8 +117,9 @@ Section "uninstall"
 
     ExecWait 'Taskkill /F /IM "${PRODUCT_EXECUTABLE}" /T' ; Kill the running application if any
 
-    # Run the executable with --uninstall-ca flag before removing it
+    # Run the executable with --uninstall-ca and --uninstall-vpn flags before removing it
     ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" --uninstall-ca'
+    ExecWait '"$INSTDIR\${PRODUCT_EXECUTABLE}" --uninstall-vpn'
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 

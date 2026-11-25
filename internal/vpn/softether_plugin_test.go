@@ -2,6 +2,7 @@ package vpn
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -141,5 +142,61 @@ func TestOpenVPNReconnectStatus(t *testing.T) {
 	status, ok := parseManagementLine(">STATE:123,RECONNECTING,reconnection in progress")
 	if !ok || status.State != StateReconnecting || status.Message != "reconnecting: reconnection in progress" {
 		t.Fatalf("unexpected reconnect status: %+v, ok=%v", status, ok)
+	}
+}
+
+func TestSoftEtherOwnershipPersistenceAndServiceVerification(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "softether-ownership.json")
+	runtimeDir := filepath.Join(dir, "softether")
+	binPath := filepath.Join(runtimeDir, "vpnclient.exe")
+
+	want := SoftEtherOwnership{
+		Service:           "SEVPNCLIENTDEV",
+		ServiceOwned:      true,
+		ServiceBinaryPath: binPath,
+		Adapter:           "VPN",
+		AdapterOwned:      true,
+		Account:           "VeiloraVPN",
+		RuntimeDir:        runtimeDir,
+		ManifestHash:      "abc123",
+	}
+	if err := saveSoftEtherOwnership(path, want); err != nil {
+		t.Fatalf("saveSoftEtherOwnership: %v", err)
+	}
+	got, err := loadSoftEtherOwnership(path)
+	if err != nil {
+		t.Fatalf("loadSoftEtherOwnership: %v", err)
+	}
+	if got.Service != want.Service || !got.ServiceOwned || got.ManifestHash != want.ManifestHash {
+		t.Fatalf("loaded ownership mismatch: %+v", got)
+	}
+
+	matchingQC := "[SC] QueryServiceConfig SUCCESS\n\nSERVICE_NAME: SEVPNCLIENTDEV\n        BINARY_PATH_NAME   : \"" + binPath + "\" /service\n"
+	if !verifyOwnedService(got, []byte(matchingQC)) {
+		t.Fatal("verifyOwnedService rejected matching owned binary path")
+	}
+
+	thirdPartyQC := "[SC] QueryServiceConfig SUCCESS\n\nSERVICE_NAME: SEVPNCLIENT\n        BINARY_PATH_NAME   : \"C:\\Program Files\\SoftEther VPN Client\\vpnclient_x64.exe\" /service\n"
+	if verifyOwnedService(got, []byte(thirdPartyQC)) {
+		t.Fatal("verifyOwnedService falsely claimed ownership of third-party service")
+	}
+
+	got.ServiceOwned = false
+	if verifyOwnedService(got, []byte(matchingQC)) {
+		t.Fatal("verifyOwnedService claimed ownership when ServiceOwned=false")
+	}
+
+	if err := removeSoftEtherOwnership(path); err != nil {
+		t.Fatalf("removeSoftEtherOwnership: %v", err)
+	}
+	if err := removeSoftEtherOwnership(path); err != nil {
+		t.Fatalf("removeSoftEtherOwnership on missing file: %v", err)
+	}
+}
+
+func TestProbeSoftEtherEndpointRejectsInvalidPort(t *testing.T) {
+	if err := probeSoftEtherEndpoint(context.Background(), "127.0.0.1", "1194"); err == nil {
+		t.Fatal("expected non-443 port to be rejected")
 	}
 }

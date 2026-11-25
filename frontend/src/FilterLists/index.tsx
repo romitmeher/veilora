@@ -1,6 +1,16 @@
-import { Spinner, SpinnerSize, Switch, Button, MenuItem, Popover, Menu, Tag, Tooltip } from '@blueprintjs/core';
-import { Select } from '@blueprintjs/select';
-import { useState, useEffect } from 'react';
+import {
+  Spinner,
+  Switch,
+  Button,
+  MenuItem,
+  Popover,
+  Menu,
+  MenuDivider,
+  Tag,
+  Tooltip,
+  Icon,
+} from '@blueprintjs/core';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
@@ -28,99 +38,147 @@ export function FilterLists() {
     loading: true,
   });
 
-  const fetchLists = async () => {
-    const filterLists = await GetFilterLists();
-    setState({ ...state, filterLists, loading: false });
-  };
+  const [type, setType] = useState<FilterListType>(FilterListType.GENERAL);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    (() => {
-      fetchLists();
-    })();
+  const fetchLists = useCallback(async () => {
+    try {
+      const filterLists = await GetFilterLists();
+      setState({ filterLists: filterLists ?? [], loading: false });
+    } catch {
+      setState((prev) => ({ ...prev, loading: false }));
+    }
   }, []);
 
-  const [type, setType] = useState<FilterListType>(FilterListType.GENERAL);
+  useEffect(() => {
+    let active = true;
+    GetFilterLists()
+      .then((lists) => {
+        if (active) setState({ filterLists: lists ?? [], loading: false });
+      })
+      .catch(() => {
+        if (active) setState((prev) => ({ ...prev, loading: false }));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const categories = useMemo(() => [
+    { id: FilterListType.GENERAL, label: t('filterTypes.general') },
+    { id: FilterListType.REGIONAL, label: t('filterTypes.regional') },
+    { id: FilterListType.DIGITAL_WELLBEING, label: t('filterTypes.digitalWellbeing') },
+    { id: FilterListType.CUSTOM, label: t('filterTypes.custom') },
+  ], [t]);
+
+  const visibleLists = useMemo(() => {
+    let list = state.filterLists.filter((item) => item.type === type);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((item) =>
+        `${item.name} ${item.url}`.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [state.filterLists, type, searchQuery]);
 
   return (
-    <>
-      <div className="filter-lists__header">
-        <Select
-          items={Object.values(FilterListType)}
-          itemRenderer={(item) => (
-            <MenuItem
-              key={item}
-              text={
-                <>
-                  {t(`filterTypes.${item}`)}
-                  <span className="bp6-text-muted filter-lists__select-count">
-                    ({state.filterLists.filter((filterList) => filterList.type === item && filterList.enabled).length}/
-                    {state.filterLists.filter((filterList) => filterList.type === item).length})
-                  </span>
-                </>
-              }
-              onClick={() => {
-                setType(item);
-              }}
-              active={item === type}
+    <div className="filter-lists-view">
+      {/* 1. Category Switcher & Actions Toolbar */}
+      <div className="filter-lists-toolbar">
+        <div className="filter-lists-categories" role="tablist">
+          {categories.map((cat) => {
+            const count = state.filterLists.filter((item) => item.type === cat.id && item.enabled).length;
+            const total = state.filterLists.filter((item) => item.type === cat.id).length;
+            const isActive = type === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`filter-category-btn ${isActive ? 'is-active' : ''}`}
+                onClick={() => setType(cat.id)}
+              >
+                <span>{cat.label}</span>
+                <span className="bp6-text-muted" style={{ fontSize: '10px' }}>
+                  ({count}/{total})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="filter-lists-toolbar__actions">
+          <div className="filter-lists-search">
+            <Icon icon="search" size={12} className="filter-lists-search__icon" />
+            <input
+              placeholder="Search filters…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search filter lists"
             />
+          </div>
+
+          {type === FilterListType.DIGITAL_WELLBEING && (
+            <Button
+              variant="outlined"
+              icon="help"
+              onClick={() => BrowserOpenURL(NO_DOOMSCROLL_URL)}
+            >
+              About
+            </Button>
           )}
-          onItemSelect={(item) => {
-            setType(item);
-          }}
-          popoverProps={{ minimal: true }}
-          filterable={false}
-        >
-          <Button text={t(`filterTypes.${type}`)} endIcon="caret-down" />
-        </Select>
 
-        {type === FilterListType.DIGITAL_WELLBEING && (
-          <Button
-            icon="help"
-            onClick={() => {
-              BrowserOpenURL(NO_DOOMSCROLL_URL);
-            }}
-          >
-            {t('filterLists.whatIsThis')}
-          </Button>
-        )}
+          {type === FilterListType.CUSTOM && (
+            <Popover
+              content={
+                <Menu>
+                  <ExportFilterList />
+                  <ImportFilterList onAdd={fetchLists} />
+                </Menu>
+              }
+            >
+              <Button icon="more" variant="outlined" text="Manage" />
+            </Popover>
+          )}
+        </div>
+      </div>
 
-        {type === FilterListType.CUSTOM && (
-          <Popover
-            content={
-              <Menu>
-                <ExportFilterList />
-                <ImportFilterList onAdd={fetchLists} />
-              </Menu>
-            }
-          >
-            <Button icon="more" text={t('filterLists.more')} />
-          </Popover>
+      {/* 2. Compact List Container */}
+      <div className="filter-lists-container">
+        {state.loading ? (
+          <div className="filter-lists-empty">
+            <Spinner size={20} />
+            <span style={{ marginTop: '8px', display: 'block' }}>Loading filter subscriptions…</span>
+          </div>
+        ) : visibleLists.length === 0 ? (
+          <div className="filter-lists-empty">
+            {searchQuery ? 'No filter lists match your search.' : 'No filter lists in this category.'}
+          </div>
+        ) : (
+          visibleLists.map((filterList) => (
+            <FilterListCompactRow
+              key={filterList.url}
+              filterList={filterList}
+              showDelete={type === FilterListType.CUSTOM}
+              onRemoved={fetchLists}
+              onToggled={fetchLists}
+            />
+          ))
         )}
       </div>
 
-      {state.loading && <Spinner size={SpinnerSize.SMALL} className="filter-lists__spinner" />}
-
-      {state.filterLists
-        .filter((filterList) => filterList.type === type)
-        .map((filterList) => (
-          <FilterListItem
-            key={filterList.url}
-            filterList={filterList}
-            showDelete={type === FilterListType.CUSTOM}
-            onRemoved={fetchLists}
-            onToggled={fetchLists}
-          />
-        ))}
-
-      {type === FilterListType.CUSTOM && <CreateFilterList onAdd={fetchLists} />}
-    </>
+      {type === FilterListType.CUSTOM && (
+        <CreateFilterList onAdd={fetchLists} />
+      )}
+    </div>
   );
 }
 
-export function FilterListItem({
+export function FilterListCompactRow({
   filterList,
   showDelete,
-  showButtons = true,
   onRemoved,
   onToggled,
 }: {
@@ -135,13 +193,54 @@ export function FilterListItem({
   const [switchLoading, setSwitchLoading] = useState(false);
   const [switchChecked, setSwitchChecked] = useState(filterList.enabled);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(filterList.url);
+      AppToaster.show({ message: 'Filter list URL copied to clipboard', intent: 'success' });
+    } catch {
+      AppToaster.show({ message: 'Failed to copy URL', intent: 'danger' });
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      await RemoveFilterList(filterList.url);
+      AppToaster.show({ message: 'Filter list removed', intent: 'success' });
+      onRemoved?.();
+    } catch (err) {
+      AppToaster.show({
+        message: t('filterLists.deleteError', { error: String(err) }),
+        intent: 'danger',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
-    <div className="filter-lists__list">
-      <div className="filter-lists__list-header">
-        <h3 className="filter-lists__list-name">{filterList.name}</h3>
-        <Tooltip content={t('common.stopProxyToToggleFilter') as string} disabled={!isProxyRunning} placement="left">
+    <div className="filter-row">
+      <div className="filter-row__info">
+        <div className="filter-row__title-line">
+          <span className="filter-row__name">{filterList.name}</span>
+          {filterList.trusted && (
+            <Tag intent="success" minimal>
+              Trusted
+            </Tag>
+          )}
+        </div>
+        <span className="filter-row__url" title={filterList.url}>
+          {filterList.url}
+        </span>
+      </div>
+
+      <div className="filter-row__actions">
+        <Tooltip
+          content={t('common.stopProxyToToggleFilter') as string}
+          disabled={!isProxyRunning}
+          placement="left"
+        >
           <Switch
             checked={switchChecked}
             disabled={switchLoading || isProxyRunning}
@@ -158,89 +257,47 @@ export function FilterListItem({
                   message: t('filterLists.toggleError', { error: String(err) }),
                   intent: 'danger',
                 });
+              } finally {
+                setSwitchLoading(false);
+                onToggled?.();
               }
-              setSwitchLoading(false);
-              onToggled?.();
             }}
-            size="large"
-            className="filter-lists__list-switch"
           />
         </Tooltip>
+
+        <Popover
+          content={
+            <Menu>
+              <MenuItem icon="duplicate" text="Copy Link" onClick={copyUrl} />
+              <MenuItem
+                icon="share"
+                text="Open in Browser"
+                onClick={() => BrowserOpenURL(filterList.url)}
+              />
+              {showDelete && (
+                <>
+                  <MenuDivider />
+                  <MenuItem
+                    icon="trash"
+                    intent="danger"
+                    text="Delete List"
+                    disabled={deleteLoading || isProxyRunning}
+                    onClick={handleDelete}
+                  />
+                </>
+              )}
+            </Menu>
+          }
+          placement="bottom-end"
+        >
+          <button type="button" className="filter-row__menu-btn" aria-label="List options">
+            <Icon icon="more" size={14} />
+          </button>
+        </Popover>
       </div>
-      {filterList.trusted ? (
-        <Tag intent="success" className="filter-lists__list-trusted">
-          {t('filterLists.trusted')}
-        </Tag>
-      ) : null}
-
-      <div className="bp6-text-muted filter-lists__list-url">{filterList.url}</div>
-      {showButtons && (
-        <div className="filter-lists__list-buttons">
-          <Tooltip
-            content={t('filterLists.copied') as string}
-            isOpen={copied}
-            hoverOpenDelay={0}
-            hoverCloseDelay={0}
-            position="top"
-            className="filter-lists__list-button"
-          >
-            <Button
-              icon="duplicate"
-              intent="none"
-              className="filter-lists__list-button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(filterList.url);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                } catch (err) {
-                  console.error('Copying error', err);
-                }
-              }}
-            >
-              {t('filterLists.copy')}
-            </Button>
-          </Tooltip>
-
-          <Button
-            icon="globe-network"
-            intent="none"
-            className="filter-lists__list-button"
-            onClick={() => {
-              BrowserOpenURL(filterList.url);
-            }}
-          >
-            {t('filterLists.goTo')}
-          </Button>
-        </div>
-      )}
-      {showDelete && (
-        <Tooltip content={t('common.stopProxyToDeleteFilter') as string} disabled={!isProxyRunning} placement="right">
-          <Button
-            icon="trash"
-            intent="danger"
-            size="small"
-            className="filter-lists__list-delete"
-            disabled={isProxyRunning}
-            loading={deleteLoading}
-            onClick={async () => {
-              setDeleteLoading(true);
-              try {
-                await RemoveFilterList(filterList.url);
-              } catch (err) {
-                AppToaster.show({
-                  message: t('filterLists.removeError', { error: String(err) }),
-                  intent: 'danger',
-                });
-              }
-              setDeleteLoading(false);
-              onRemoved?.();
-            }}
-          >
-            {t('filterLists.delete')}
-          </Button>
-        </Tooltip>
-      )}
     </div>
   );
 }
+
+// Re-export alias for compatibility with onboarding screen
+export const FilterListItem = FilterListCompactRow;

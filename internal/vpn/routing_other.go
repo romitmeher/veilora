@@ -2,7 +2,7 @@
 
 package vpn
 
-func enableSoftEtherRouting() (string, error) {
+func enableSoftEtherRouting(string) (string, error) {
 	return "", nil
 }
 

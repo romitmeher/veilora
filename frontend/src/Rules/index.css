@@ -1,20 +1,117 @@
-.rules {
+/* Rules — Lightweight Code-like Custom Rules Editor */
+
+.rules-view {
   display: flex;
   flex-direction: column;
-  height: calc(100% - 8px);
-}
-
-.rules__help-button {
-  margin-bottom: 8px;
-}
-
-.rules__textarea {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-  height: 100% !important;
-}
-
-.rules__tooltip {
+  gap: 12px;
   height: 100%;
-  width: 100%;
+}
+
+.rules-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rules-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rules-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rules-save-state {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rules-save-state.is-saved {
+  color: var(--positive);
+}
+
+.rules-editor-frame {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  overflow: hidden;
+  min-height: 380px;
+  max-height: calc(100vh - 220px);
+  position: relative;
+}
+
+.rules-gutter {
+  width: 44px;
+  background: var(--rail);
+  border-right: 1px solid var(--line);
+  padding: 12px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rules-gutter-line {
+  height: 20px;
+}
+
+.rules-textarea {
+  flex: 1;
+  padding: 12px 14px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--ink);
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.rules-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rules-syntax-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.rules-syntax-hints {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+}
+
+.rules-syntax-hints code {
+  color: var(--accent);
+  background: var(--raised);
+  padding: 1px 4px;
+  border-radius: 2px;
 }

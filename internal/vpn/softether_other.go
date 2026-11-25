@@ -14,3 +14,7 @@ func ProvisionBundledSoftEther(context.Context) (SoftEtherOwnership, error) {
 func CleanupBundledSoftEther(context.Context) error {
 	return nil
 }
+
+func UninstallBundledSoftEther(context.Context) error {
+	return nil
+}

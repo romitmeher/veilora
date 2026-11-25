@@ -22,3 +22,4 @@ frontend/dist
 .claude/
 skills-lock.json
 third_party/softether_stable/
+graphify-out/

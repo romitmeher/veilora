@@ -14,14 +14,14 @@ import (
 
 // Inspect PE headers only: do not execute the runtime or install its driver.
 func TestEmbeddedRuntimeHasMatchingArchitecture(t *testing.T) {
-	for _, key := range []string{"PATH", "ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"} {
+	for _, key := range []string{"PATH", "ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA", "ProgramData"} {
 		t.Setenv(key, t.TempDir())
 	}
 	if !NewOpenVPNEngine().Available() {
 		t.Fatal("embedded engine requires external installation")
 	}
-	if NewSoftEtherEngine().Available() != (len(embeddedSoftEther()) > 0) {
-		t.Fatal("bundled SoftEther availability does not match the embedded payload")
+	if NewSoftEtherEngine().Available() {
+		t.Fatal("unprovisioned SoftEther engine should not report ready before Windows service provisioning")
 	}
 	dir, err := extractRuntime(embeddedVPN(), t.TempDir(), runtime.GOARCH)
 	if err != nil {

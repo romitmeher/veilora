@@ -11,8 +11,8 @@
 
 - `SoftEtherEngine` supports upstream `vpnclient.exe`/`vpncmd.exe` discovery and a separate bundled AMD64 payload.
 - Bundled builds no longer download or execute a third-party VPNGate setup wizard.
-- The existing lifecycle starts `SEVPNCLIENTDEV`, creates an account named `VeiloraVPN`, uses `NicName: VPN`, and applies route priority heuristically.
-- Clean service/adapter lifecycle, signed Neo6 installation, and live VPN connectivity still require Windows-native validation.
+- The existing lifecycle installs the persistent runtime to `%ProgramData%\Veilora\softether`, tracks ownership in `%ProgramData%\Veilora\softether-ownership.json`, probes TCP/TLS 443 before connecting, creates an account named `VeiloraVPN`, uses `NicName: VPN`, and applies route priority to the owned adapter.
+- Clean service/adapter lifecycle, signed Neo6 installation, and live VPN connectivity still require clean-Windows AMD64 VM validation.
 
 ## Safe packaging direction
 

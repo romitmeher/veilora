@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -32,6 +33,7 @@ func main() {
 	startOnDomReady := flag.Bool("start", false, "Start the service when DOM is ready")
 	startHidden := flag.Bool("hidden", false, "Start the application in hidden mode")
 	uninstallCA := flag.Bool("uninstall-ca", false, "Uninstall the CA and exit")
+	uninstallVPN := flag.Bool("uninstall-vpn", false, "Uninstall Veilora-owned VPN components and exit")
 	flag.Parse()
 
 	err := logger.SetupLogger()
@@ -57,6 +59,15 @@ func main() {
 		}
 
 		log.Println("CA uninstalled successfully")
+		return
+	}
+
+	if *uninstallVPN {
+		if err := vpn.UninstallBundledSoftEther(context.Background()); err != nil {
+			log.Printf("VPN uninstall cleanup failed: %v", err)
+			os.Exit(1)
+		}
+		log.Println("Veilora-owned VPN components uninstalled successfully")
 		return
 	}
 

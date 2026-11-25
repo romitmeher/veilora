@@ -3,7 +3,8 @@ param(
     [ValidateSet('amd64','arm64')][string]$Arch = 'amd64',
     [ValidateSet('openvpn','softether')][string]$Engine = 'openvpn',
     [switch]$CheckPrerequisites,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$AllowInstalledOpenVPN
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -14,28 +15,39 @@ $targetZip = if ($Engine -eq 'openvpn') {
     Join-Path $root "internal/vpn/payload/windows-$Arch-softether.zip"
 }
 if (-not $Force -and (Test-Path -LiteralPath $targetZip) -and ((Get-Item -LiteralPath $targetZip).Length -gt 0)) {
-    Write-Output "VPN runtime payload for $Engine ($Arch) is already present at $targetZip. Skipping rebuild."
-    Pop-Location
-    return
+    $checkArgs = @('scripts/prepare-vpn-runtime.py', '--check-cached', '--engine', $Engine, '--arch', $Arch)
+    if ($AllowInstalledOpenVPN -and $Engine -eq 'openvpn') {
+        $checkArgs += '--allow-installed-openvpn'
+    }
+    & python @checkArgs
+    if ($LASTEXITCODE -eq 0) {
+        Write-Output "Verified cached VPN runtime payload for $Engine ($Arch) at $targetZip. Skipping rebuild."
+        Pop-Location
+        return
+    }
+    Write-Output "Cached VPN runtime payload for $Engine ($Arch) is stale or invalid; rebuilding..."
 }
 if ($Engine -eq 'softether' -and $Arch -eq 'arm64') {
     throw 'The optional SoftEther source target currently supports AMD64. Its ARM64 hamcore host-tool build is not integrated.'
 }
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) {
-    if ($Engine -eq 'openvpn') {
+    if ($AllowInstalledOpenVPN -and $Engine -eq 'openvpn') {
         $installedOpenVPN = Join-Path ${env:ProgramFiles} 'OpenVPN/bin'
         if (Test-Path -LiteralPath (Join-Path $installedOpenVPN 'openvpn.exe')) {
+            $stage = Join-Path $root ('build/bin/runtime-' + $Engine + '-' + $Arch + '-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $stage -ErrorAction SilentlyContinue | Out-Null
             Copy-Item -LiteralPath (Join-Path $installedOpenVPN 'openvpn.exe') -Destination $stage
             Copy-Item -LiteralPath (Join-Path $installedOpenVPN 'tapctl.exe') -Destination $stage
             Get-ChildItem -LiteralPath $installedOpenVPN -Filter '*.dll' -File | Copy-Item -Destination $stage
             @{ engine='openvpn'; arch=$Arch; provenance='installed-local' } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'source-build.json') -Encoding UTF8
-            Invoke-Checked python @('scripts/prepare-vpn-runtime.py','--allow-installed-openvpn','--arch',$Arch,'--runtime-dir',$stage)
+            & python @('scripts/prepare-vpn-runtime.py','--allow-installed-openvpn','--arch',$Arch,'--runtime-dir',$stage)
+            if ($LASTEXITCODE -ne 0) { throw "prepare-vpn-runtime.py failed with exit code $LASTEXITCODE" }
+            Pop-Location
             return
         }
     }
-    throw 'Building upstream VPN sources requires Visual Studio 2022 C++ Build Tools. Nothing was installed. Use the Windows CI build or an existing native build environment.'
+    throw 'Building upstream VPN sources requires Visual Studio 2022 C++ Build Tools. Nothing was installed. Use the Windows CI build or an existing native build environment (or pass -AllowInstalledOpenVPN for local dev builds).'
 }
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $vs) { throw 'Visual Studio C++ tools were not found.' }

@@ -30,7 +30,13 @@ $items = @($vpn | Sort-Object -Unique ifIndex | ForEach-Object {
 if ($items.Count -eq 0) { throw 'SoftEther VPN adapter not found' }
 ConvertTo-Json -InputObject $items -Compress -Depth 3`
 
-func enableSoftEtherRouting() (string, error) {
+func enableSoftEtherRouting(adapterName string) (string, error) {
+	if adapterName == "" {
+		adapterName = softEtherAdapterName
+	}
+	if !safeSoftEtherHost.MatchString(adapterName) {
+		return "", fmt.Errorf("invalid SoftEther adapter name %q", adapterName)
+	}
 	out, err := hiddenCommand("powershell", "-NoProfile", "-NonInteractive", "-Command", snapshotRoutesScript).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("snapshot routes: %w (%s)", err, out)
@@ -48,8 +54,8 @@ func enableSoftEtherRouting() (string, error) {
 $vpn = @()
 for ($i = 0; $i -lt 20 -and $vpn.Count -ne 1; $i++) {
  $vpn = @(Get-NetAdapter -IncludeHidden | Where-Object {
-  $_.Status -eq 'Up' -and (
-   $_.InterfaceDescription -match 'VPN|VPN Client Adapter|SoftEther'
+  $_.Status -eq 'Up' -and $_.Name -eq '` + adapterName + `' -and (
+   $_.InterfaceDescription -match 'SoftEther|VPN Client Adapter'
   )
  })
  if ($vpn.Count -ne 1) { Start-Sleep -Milliseconds 250 }

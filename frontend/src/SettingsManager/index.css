@@ -1,98 +1,155 @@
-.settings-manager {
-  margin: 0.25rem 0 0.5rem 0;
-}
+/* Settings Manager — Clean Categorized Native Desktop Settings */
 
-.settings-manager__section-header {
-  border-radius: 0 !important;
-  font-weight: bold;
-}
-
-.settings-manager__section--app {
-  border: 1px solid #245ac7;
-  border-radius: var(--bp-surface-border-radius);
-  margin-bottom: 8px;
-}
-
-.settings-manager__section--links {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.settings-manager__section--advanced {
-  border: 1px solid #fbb360;
-  border-radius: var(--bp-surface-border-radius);
-  margin-bottom: 4px;
-}
-
-.settings-manager__ignored-hosts-input {
-  width: 100% !important;
-  max-height: 40vh;
-}
-
-.settings-manager__ignored-hosts-tooltip {
-  width: 100%;
-}
-
-.settings-manager__app-routing {
-  width: 100%;
-}
-
-.settings-manager__app-routing-list {
+.settings-view {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 16px;
 }
 
-.settings-manager__app-routing-warning {
-  margin-bottom: 8px;
-}
-
-.settings-manager__app-routing-app {
+/* Category Navigation Bar */
+.settings-tabs {
+  display: flex;
   align-items: center;
-  border: var(--bp-surface-border-width) solid var(--bp-surface-border-color-strong);
-  border-radius: var(--bp-surface-border-radius);
-  display: grid;
-  gap: 2px 8px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 6px 8px;
+  gap: 4px;
+  background: var(--raised);
+  padding: 3px;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--line);
+  width: fit-content;
 }
 
-.settings-manager__app-routing-app-name,
-.settings-manager__app-routing-app-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.settings-tab-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-xs, 3px);
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--fast) ease, color var(--fast) ease;
 }
 
-.settings-manager__app-routing-app-name {
+.settings-tab-btn.is-active {
+  background: var(--surface);
+  color: var(--ink);
   font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-.settings-manager__app-routing-app-path {
-  font-size: 0.75rem;
+.settings-tab-btn:hover:not(.is-active) {
+  color: var(--ink);
 }
 
-.settings-manager__app-routing-app .bp6-button {
-  grid-row: 1 / span 2;
-  grid-column: 2;
+/* Settings Category Card */
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.settings-manager__section-body {
-  padding: 10px 10px 0 10px;
+/* Consistent Horizontal Settings Row */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  gap: 20px;
 }
 
-.settings-manager__about {
-  margin-top: 16px;
-  text-align: center;
-  font-size: 0.8rem;
+.settings-row:last-child {
+  border-bottom: 0;
 }
 
-.settings-manager__about-changelog::before {
-  content: ' ';
+.settings-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 480px;
 }
 
-.settings-manager__about-github-button {
-  font-size: 0.8rem;
+.settings-row__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.settings-row__desc {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
+}
+
+.settings-row__control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Danger / Destructive Section */
+.settings-card--danger {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+}
+
+.settings-card__danger-header {
+  padding: 10px 18px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* About Brand Section */
+.settings-about {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-about__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-about__logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.settings-about__title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.settings-about__title p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settings-about__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.theme-segmented .bp6-button {
+  font-size: 11px;
+  padding: 4px 10px;
 }

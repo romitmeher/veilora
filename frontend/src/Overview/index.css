@@ -1,0 +1,150 @@
+/* Overview — Focused Native Privacy Overview */
+
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Dual Primary Feature Cards Grid */
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .overview-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overview-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 168px;
+}
+
+.overview-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.overview-card__title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overview-card__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--raised);
+  color: var(--secondary);
+  flex-shrink: 0;
+}
+
+.overview-card.is-active .overview-card__icon {
+  background: var(--selected-bg);
+  color: var(--positive);
+}
+
+.overview-card__title-group h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 18px;
+}
+
+.overview-card__body {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--secondary);
+}
+
+.overview-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.overview-card__detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.overview-card__detail-label {
+  color: var(--muted);
+}
+
+.overview-card__detail-value {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.overview-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.overview-card__links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Recent Activity Section */
+.overview-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.overview-activity__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.overview-activity__header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.overview-activity__paused {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 12px;
+  color: var(--muted);
+}

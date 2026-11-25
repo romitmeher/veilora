@@ -1,10 +1,12 @@
 """Headless packaging tests; fixture PE files are data and are never executed."""
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
 import struct
 import tempfile
 import unittest
+import zipfile
 
 spec = importlib.util.spec_from_file_location("vpn_packaging", Path(__file__).with_name("prepare-vpn-runtime.py"))
 packaging = importlib.util.module_from_spec(spec)
@@ -136,6 +138,38 @@ class PackagingTests(unittest.TestCase):
             (root / "vpnclient.exe").write_bytes(data)
             with self.assertRaisesRegex(RuntimeError, "architecture"):
                 packaging.collect_softether_runtime(root, "amd64", "fixture")
+
+    def test_validate_cached_bundle_rejects_stale_or_installed_local(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.zip"
+            payload = b"binary"
+            manifest = {
+                "engine": "openvpn",
+                "arch": "amd64",
+                "provenance": "source-built",
+                "commit": "commit-a",
+                "vcpkg_commit": "vcpkg-a",
+                "lock_sha256": "lock-a",
+                "files": {"openvpn.exe": hashlib.sha256(payload).hexdigest()},
+            }
+            with zipfile.ZipFile(bundle, "w") as z:
+                z.writestr("openvpn.exe", payload)
+                z.writestr("manifest.json", json.dumps(manifest))
+
+            ok, _ = packaging.validate_cached_bundle(bundle, "openvpn", "amd64", "commit-a", "vcpkg-a", "lock-a")
+            self.assertTrue(ok)
+
+            ok, reason = packaging.validate_cached_bundle(bundle, "openvpn", "amd64", "commit-b", "vcpkg-a", "lock-a")
+            self.assertFalse(ok)
+            self.assertIn("commit", reason)
+
+            manifest["provenance"] = "installed-local"
+            with zipfile.ZipFile(bundle, "w") as z:
+                z.writestr("openvpn.exe", payload)
+                z.writestr("manifest.json", json.dumps(manifest))
+            ok, reason = packaging.validate_cached_bundle(bundle, "openvpn", "amd64", "commit-a", "vcpkg-a", "lock-a")
+            self.assertFalse(ok)
+            self.assertIn("source-built", reason)
 
 
 if __name__ == "__main__":

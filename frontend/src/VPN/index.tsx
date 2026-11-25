@@ -1,6 +1,5 @@
-import { Button, HTMLSelect, Switch, Tag, InputGroup, ProgressBar, Icon } from '@blueprintjs/core';
+import { Button, Switch, InputGroup, ProgressBar, Icon, Collapse } from '@blueprintjs/core';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
 import { StatusText } from '@/components/StatusText';
@@ -11,7 +10,6 @@ import {
   VPNDisconnect,
   VPNAvailableEngines,
   VPNEngineAvailability,
-  VPNInstallEngine,
   VPNProvisionSoftEther,
   VPNGetDNSResolver,
   VPNSetDNSResolver,
@@ -41,25 +39,49 @@ function stateLabel(state: string): string {
     case 'disconnecting':
       return 'Disconnecting…';
     case 'error':
-      return 'Error';
+      return 'Connection Error';
     default:
       return 'Disconnected';
   }
 }
 
-export function VPN() {
-  const { t } = useTranslation();
-  const { vpnInfo, vpnState, isConnected, isTransitioning } = useVPNState();
+function formatDuration(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return [hrs, mins, secs].map((v) => String(v).padStart(2, '0')).join(':');
+}
 
-  // The bundled OpenVPN engine works without a separate client installation.
+function countryCodeToFlag(code: string): string {
+  if (!code || code.length !== 2) return '🌐';
+  const offset = 127397;
+  return String.fromCodePoint(...[...code.toUpperCase()].map((c) => c.charCodeAt(0) + offset));
+}
+
+export function VPN() {
+  const { vpnInfo, vpnState, isConnected, isTransitioning } = useVPNState();
+  const [connectedSeconds, setConnectedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isConnected) {
+      setConnectedSeconds(0);
+      return;
+    }
+    const start = Date.now();
+    const timer = window.setInterval(() => {
+      setConnectedSeconds(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isConnected]);
+
   const [engine, setEngine] = useState<EngineType>('openvpn');
   const [availableEngines, setAvailableEngines] = useState<EngineType[]>([]);
   const [engineStatuses, setEngineStatuses] = useState<Record<EngineType, string>>({
-    openvpn: 'Checking...',
-    softether: 'Checking...',
+    openvpn: 'Checking…',
+    softether: 'Checking…',
   });
   const [enginesLoading, setEnginesLoading] = useState(true);
-  const [enginesError, setEnginesError] = useState(false);
+
   const [country, setCountry] = useState('');
   const [countries, setCountries] = useState<string[]>([]);
   const [autoSelect, setAutoSelect] = useState(true);
@@ -68,33 +90,28 @@ export function VPN() {
   const [serversLoading, setServersLoading] = useState(false);
   const [serversError, setServersError] = useState(false);
   const serverRequestId = useRef(0);
-  const killSwitch = false;
+
   const [dnsProtect, setDnsProtect] = useState(true);
   const [dnsResolver, setDnsResolver] = useState('1.1.1.1');
   const [editingDns, setEditingDns] = useState(false);
   const [dnsDraft, setDnsDraft] = useState('');
   const [dnsSaving, setDnsSaving] = useState(false);
 
-  // Auto-connect on launch configuration for the bundled OpenVPN engine.
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   const [autoConnectEngine, setAutoConnectEngine] = useState<'openvpn' | 'off'>(() => {
     return (localStorage.getItem('veilora_vpn_autoconnect') as 'openvpn' | 'off') || 'off';
   });
-  const autoConnectAttempted = useRef(false);
 
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState<{
     stage: string;
     percent: number;
     message: string;
-  }>({
-    stage: '',
-    percent: 0,
-    message: '',
-  });
+  }>({ stage: '', percent: 0, message: '' });
 
   const loadEngines = useCallback(async () => {
     setEnginesLoading(true);
-    setEnginesError(false);
     try {
       let engines: EngineType[] = [];
       try {
@@ -116,16 +133,11 @@ export function VPN() {
         (value): value is EngineType => value === 'openvpn' || value === 'softether',
       );
       setAvailableEngines(supported);
-      // Prefer OpenVPN as the default engine since it works dynamically out of the box.
       if (supported.length > 0) {
-        setEngine((prev) => {
-          if (supported.includes(prev)) return prev;
-          return supported.includes('openvpn') ? 'openvpn' : supported[0];
-        });
+        setEngine((prev) => (supported.includes(prev) ? prev : supported[0]));
       }
     } catch {
       setAvailableEngines([]);
-      setEnginesError(true);
     } finally {
       setEnginesLoading(false);
     }
@@ -140,505 +152,341 @@ export function VPN() {
         loadEngines();
       } else if (data.stage === 'error') {
         setInstalling(false);
-        AppToaster.show({ message: data.message || 'Installation failed', intent: 'danger' });
+        AppToaster.show({ message: `Install failed: ${data.message}`, intent: 'danger' });
       }
     });
     return cancel;
   }, [loadEngines]);
 
-  const handleInstallEngine = async (targetEngine: EngineType = 'softether') => {
-    setInstalling(true);
-    const engineLabel = targetEngine === 'softether' ? 'SoftEther VPN Gate Plug-in' : 'OpenVPN';
-    setInstallProgress({ stage: 'starting', percent: 10, message: `Starting ${engineLabel} setup...` });
+  const loadCountries = useCallback(async () => {
     try {
-      if (targetEngine === 'softether') {
-        await VPNProvisionSoftEther();
-      } else {
-        await VPNInstallEngine(targetEngine);
+      const list = await VPNGetCountries();
+      setCountries(list ?? []);
+    } catch {
+      setCountries([]);
+    }
+  }, []);
+
+  const loadServers = useCallback(async (c: string, refresh = false) => {
+    const reqId = ++serverRequestId.current;
+    setServersLoading(true);
+    setServersError(false);
+    try {
+      if (refresh) {
+        await VPNRefreshServers();
       }
-      await loadEngines();
-    } catch (err) {
-      setInstalling(false);
+      const list = await VPNGetServers(c, false);
+      if (reqId === serverRequestId.current) {
+        setServers(list ?? []);
+      }
+    } catch {
+      if (reqId === serverRequestId.current) {
+        setServersError(true);
+      }
+    } finally {
+      if (reqId === serverRequestId.current) {
+        setServersLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEngines();
+    loadCountries();
+    VPNGetDNSResolver().then((val) => {
+      if (val) setDnsResolver(val);
+    });
+  }, [loadEngines, loadCountries]);
+
+  useEffect(() => {
+    loadServers(country);
+  }, [country, loadServers]);
+
+  const handleConnect = async () => {
+    try {
+      if (autoSelect || !selectedServer) {
+        await VPNConnectBest(country, engine, false, dnsProtect);
+      } else {
+        await VPNConnectToServer(selectedServer.ip, engine, false, dnsProtect);
+      }
+    } catch (err: unknown) {
       AppToaster.show({
-        message: `Install failed: ${err instanceof Error ? err.message : String(err)}`,
+        message: err instanceof Error ? err.message : String(err),
         intent: 'danger',
       });
     }
   };
 
-  const loadServers = useCallback(async (countryFilter: string, refresh = false) => {
-    const id = ++serverRequestId.current;
-    setServersLoading(true);
-    setServersError(false);
-    try {
-      if (refresh) await VPNRefreshServers();
-      const result = await VPNGetServers(countryFilter, true);
-      if (id === serverRequestId.current) {
-        setServers(result ?? []);
-      }
-    } catch {
-      if (id === serverRequestId.current) {
-        setServers([]);
-        setServersError(true);
-      }
-    } finally {
-      if (id === serverRequestId.current) setServersLoading(false);
-    }
-  }, []);
-
-  const invalidateServerRequests = useCallback(() => {
-    serverRequestId.current++;
-  }, []);
-
-  useEffect(() => {
-    loadServers(country);
-    return invalidateServerRequests;
-  }, [loadServers, invalidateServerRequests, country]);
-
-  useEffect(() => {
-    loadEngines();
-
-    VPNGetCountries()
-      .then((values: string[]) => setCountries((values ?? []).sort()))
-      .catch(() => setCountries([]));
-
-    VPNGetDNSResolver()
-      .then((r: string) => {
-        if (r) setDnsResolver(r);
-      })
-      .catch(() => {});
-
-    // Check autostart preference once on mount
-    if (!autoConnectAttempted.current) {
-      autoConnectAttempted.current = true;
-      const saved = localStorage.getItem('veilora_vpn_autoconnect');
-      if (saved === 'openvpn' && vpnState === 'disconnected') {
-        VPNAvailableEngines()
-          .then((avail) => {
-            if (avail?.includes('openvpn')) {
-              VPNConnectBest('', 'openvpn', false, true).catch(() => {});
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, [loadEngines]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleConnect = useCallback(async () => {
-    try {
-      if (!availableEngines.includes(engine)) {
-        AppToaster.show({
-          message: `${engine === 'softether' ? 'Veilora VPN' : 'OpenVPN'} runtime is not ready. No VPN connection was attempted.`,
-          intent: 'warning',
-        });
-        return;
-      }
-      if (autoSelect) {
-        await VPNConnectBest(country, engine, killSwitch, dnsProtect);
-      } else {
-        if (!selectedServer) {
-          AppToaster.show({ message: t('vpn.noServerSelected'), intent: 'warning' });
-          return;
-        }
-        await VPNConnectToServer(selectedServer.hostName, engine, killSwitch, dnsProtect);
-      }
-    } catch (err) {
-      AppToaster.show({ message: t('vpn.connectError', { error: err }), intent: 'danger' });
-    }
-  }, [availableEngines, engine, autoSelect, country, killSwitch, dnsProtect, selectedServer, t]);
-
-  const handleDisconnect = useCallback(async () => {
+  const handleDisconnect = async () => {
     try {
       await VPNDisconnect();
-    } catch (err) {
-      AppToaster.show({ message: t('vpn.disconnectError', { error: err }), intent: 'danger' });
+    } catch (err: unknown) {
+      AppToaster.show({
+        message: err instanceof Error ? err.message : String(err),
+        intent: 'danger',
+      });
     }
-  }, [t]);
-
-  const handleToggleAutoConnect = () => {
-    const target = 'openvpn';
-    const next = autoConnectEngine === target ? 'off' : target;
-    setAutoConnectEngine(next);
-    localStorage.setItem('veilora_vpn_autoconnect', next);
-    AppToaster.show({
-      message: next === 'off' ? 'Auto-connect on launch disabled' : 'Auto-connect on launch set to OpenVPN',
-      intent: 'primary',
-    });
   };
 
-  const handleDnsResolverSave = async () => {
-    setDnsSaving(true);
+  const handleProvisionSoftEther = async () => {
+    setInstalling(true);
+    setInstallProgress({ stage: 'provisioning', percent: 25, message: 'Creating SoftEther adapter…' });
     try {
-      await VPNSetDNSResolver(dnsDraft.trim());
-      setDnsResolver(await VPNGetDNSResolver());
-      setEditingDns(false);
-      AppToaster.show({ message: t('vpn.feedback.dnsSaved'), intent: 'success' });
-    } catch (error) {
-      AppToaster.show({ message: t('vpn.feedback.dnsError', { error }), intent: 'danger' });
+      await VPNProvisionSoftEther();
+      AppToaster.show({ message: 'SoftEther adapter configured successfully!', intent: 'success' });
+      await loadEngines();
+    } catch (err: unknown) {
+      AppToaster.show({
+        message: err instanceof Error ? err.message : String(err),
+        intent: 'danger',
+      });
     } finally {
-      setDnsSaving(false);
+      setInstalling(false);
     }
   };
 
   const isConnecting = vpnState === 'preparing' || vpnState === 'connecting' || vpnState === 'reconnecting';
-  const canAct = !isTransitioning;
-  const statusClass = `vpn-status vpn-status--${vpnState}`;
 
   return (
-    <div className="vpn">
-      {/* Engine setup & installer card */}
-      {!isConnected && (enginesLoading || enginesError || !availableEngines.includes(engine)) && (
-        <div className="vpn-engine-installer-card">
-          <div className="vpn-engine-installer-header">
-            <div className="vpn-engine-installer-icon">
-              <Icon icon="shield" size={24} intent="primary" />
-            </div>
-            <div className="vpn-engine-installer-title">
-              <h3>
-                {engine === 'softether' && !availableEngines.includes('softether')
-                  ? 'SoftEther VPN Engine Not Installed'
-                  : engine === 'openvpn' && !availableEngines.includes('openvpn')
-                    ? 'OpenVPN Engine Not Installed'
-                    : 'Secure Tunnel Engine Required'}
-              </h3>
-              <p>
-                {engine === 'softether' && !availableEngines.includes('softether')
-                  ? 'SoftEther is optional. Select OpenVPN to use the runtime included in standalone Windows builds.'
-                  : engine === 'openvpn' && !availableEngines.includes('openvpn')
-                    ? 'This build has no usable bundled OpenVPN runtime. Windows policy MSI 1625 blocks external OpenVPN installation.'
-                    : 'Veilora requires a tunneling engine (SoftEther VPN Gate client plug-in or OpenVPN) to encrypt and route your traffic.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Academic volunteer mirror download speed notice */}
-          <div className="vpn-engine-note">
-            <Icon icon="info-sign" size={14} />
-            <span>
-              VPN Gate is an academic volunteer network (University of Tsukuba). Mirror downloads (~65 MB) can be slow
-              due to bandwidth throttling on overseas volunteer nodes.
-            </span>
-          </div>
-
-          {/* Step-by-step setup guide for SoftEther */}
-          {engine === 'softether' && !installing && (
-            <div className="vpn-softether-guide">
-              <div className="vpn-softether-guide__title">
-                <Icon icon="help" size={14} /> Veilora VPN Setup
-              </div>
-              <ol className="vpn-softether-guide__steps">
-                <li>
-                  Click <strong>Provision Veilora VPN</strong>; Veilora will request Windows administrator approval.
-                </li>
-                <li>
-                  Veilora uses <strong>SEVPNCLIENT</strong> when installed, otherwise <strong>SEVPNCLIENTDEV</strong>,
-                  and configures the <strong>VPN</strong> adapter for <strong>VeiloraVPN</strong>.
-                </li>
-                <li>Veilora verifies the service, virtual adapter, and native endpoint before reporting ready.</li>
-                <li>
-                  When finished, click <strong>Check Again</strong> to verify detection.
-                </li>
-              </ol>
-            </div>
-          )}
-
-          {installing ? (
-            <div className="vpn-engine-installer-progress">
-              <div className="vpn-engine-progress-header">
-                <span>{installProgress.message || 'Installing engine...'}</span>
-                <span>{installProgress.percent}%</span>
-              </div>
-              <ProgressBar
-                value={installProgress.percent / 100}
-                intent="primary"
-                animate={installProgress.stage !== 'ready'}
-                stripes
-              />
-            </div>
-          ) : (
-            <div className="vpn-engine-installer-actions">
-              {engine === 'softether' && !availableEngines.includes('softether') ? (
-                <>
-                  <Button
-                    intent="primary"
-                    icon="download"
-                    size="large"
-                    onClick={() => handleInstallEngine('softether')}
-                    loading={enginesLoading}
-                  >
-                    Provision Veilora VPN
-                  </Button>
-                  {availableEngines.includes('openvpn') && (
-                    <Button intent="none" icon="shield" size="large" onClick={() => setEngine('openvpn')}>
-                      Use OpenVPN (Ready)
-                    </Button>
-                  )}
-                </>
-              ) : engine === 'openvpn' && !availableEngines.includes('openvpn') ? (
-                <>
-                  <Tag intent="danger" size="large" fill>
-                    OpenVPN runtime not bundled
-                  </Tag>
-                  {availableEngines.includes('softether') && (
-                    <Button intent="none" icon="download" size="large" onClick={() => setEngine('softether')}>
-                      Use SoftEther (Installed)
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Tag intent="none">Select an available engine</Tag>
-                </>
-              )}
-              <Button icon="refresh" variant="minimal" onClick={loadEngines}>
-                Check Again
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Status card with Fluid Functionalism pulse animation */}
-      <div className={statusClass}>
-        <div className="vpn-status__header">
-          <div className="vpn-status__left">
-            <div className="vpn-status__indicator" />
-            <span className="vpn-status__label" role="status">
+    <div className="vpn-container">
+      {/* 1. Primary Dedicated Connection Bar */}
+      <section
+        className={`vpn-bar ${
+          isConnected
+            ? 'is-connected'
+            : isConnecting
+              ? 'is-connecting'
+              : vpnState === 'error'
+                ? 'is-error'
+                : 'is-disconnected'
+        }`}
+        aria-label="VPN Connection Controls"
+      >
+        <div className="vpn-bar__left">
+          <div className="vpn-bar__indicator" />
+          <div className="vpn-bar__status-text">
+            <span className="vpn-bar__state">
               <StatusText>{stateLabel(vpnState)}</StatusText>
             </span>
-          </div>
-          <div className="vpn-status__right">
-            {isConnected && vpnInfo.serverHostName && (
-              <div className="vpn-status__meta">
-                <div>{vpnInfo.serverHostName}</div>
-                <div>
-                  {vpnInfo.countryLong} · {vpnInfo.engine?.toUpperCase()}
-                </div>
-              </div>
-            )}
-            <div className="vpn-status__actions">
-              <Button
-                intent={isConnected ? 'danger' : 'success'}
-                loading={isTransitioning && !isConnecting}
-                disabled={
-                  (isTransitioning && !isConnecting) ||
-                  (!isConnected && (enginesLoading || (!autoSelect && !selectedServer) || editingDns))
-                }
-                onClick={isConnected ? handleDisconnect : handleConnect}
-              >
-                {isConnected
-                  ? t('vpn.disconnect')
-                  : isConnecting
-                    ? 'Connecting…'
-                    : autoSelect
-                      ? t('vpn.connectBest')
-                      : selectedServer
-                        ? t('vpn.connectTo', { host: selectedServer.hostName })
-                        : t('vpn.connectBest')}
-              </Button>
-              {isConnecting && (
-                <Button
-                  intent="danger"
-                  variant="outlined"
-                  icon="cross"
-                  onClick={handleDisconnect}
-                  title="Cancel connection attempt"
-                >
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-        {vpnInfo.status?.message ? <div className="vpn-status__message">{vpnInfo.status.message}</div> : null}
-      </div>
-
-      {/* Controls */}
-      <div className="vpn-controls">
-        <Tag size="large" intent="primary" fill className="vpn-controls__header">
-          {t('vpn.controls.title')}
-        </Tag>
-        <div className="vpn-controls__body">
-          {/* Engine selection */}
-          <div className="vpn-controls__row">
-            <label htmlFor="vpn-engine">{t('vpn.controls.engine')}</label>
-            <HTMLSelect
-              id="vpn-engine"
-              value={engine}
-              onChange={(e) => setEngine(e.target.value as EngineType)}
-              disabled={!canAct || isConnected}
-              className="vpn-controls__select"
-            >
-              <option value="openvpn">
-                OpenVPN ({availableEngines.includes('openvpn') ? 'Ready' : engineStatuses.openvpn})
-              </option>
-              <option value="softether">
-                SoftEther ({availableEngines.includes('softether') ? 'Ready' : engineStatuses.softether})
-              </option>
-            </HTMLSelect>
-          </div>
-
-          {/* Country */}
-          <div className="vpn-controls__row">
-            <label htmlFor="vpn-country">{t('vpn.controls.country')}</label>
-            <HTMLSelect
-              id="vpn-country"
-              value={country}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setSelectedServer(null);
-              }}
-              disabled={!canAct || isConnected}
-              className="vpn-controls__select"
-            >
-              <option value="">Any country</option>
-              {countries.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </HTMLSelect>
-          </div>
-
-          {/* Server selection */}
-          <div className="vpn-controls__row">
-            <label htmlFor="vpn-server">Server</label>
-            <HTMLSelect
-              id="vpn-server"
-              value={autoSelect ? '' : (selectedServer?.hostName ?? '')}
-              onChange={(e) => {
-                const host = e.target.value;
-                if (!host) {
-                  setAutoSelect(true);
-                  setSelectedServer(null);
-                } else {
-                  const match = servers.find((s) => s.hostName === host) ?? null;
-                  setSelectedServer(match);
-                  setAutoSelect(false);
-                }
-              }}
-              disabled={!canAct || isConnected || serversLoading}
-              className="vpn-controls__select"
-            >
-              <option value="">Auto-select (Best server)</option>
-              {servers.slice(0, 80).map((s) => (
-                <option key={s.hostName} value={s.hostName}>
-                  {s.hostName} ({s.countryShort || s.countryLong}
-                  {s.ping > 0 ? ` · ${s.ping}ms` : ''})
-                </option>
-              ))}
-            </HTMLSelect>
-          </div>
-
-          {/* Auto-select toggle */}
-          <div className="vpn-controls__switch-row">
-            <label>{t('vpn.controls.autoSelect')}</label>
-            <Switch
-              aria-label={t('vpn.controls.autoSelect')}
-              checked={autoSelect}
-              onChange={(e) => setAutoSelect(e.currentTarget.checked)}
-              disabled={!canAct || isConnected}
-              inline
-            />
-          </div>
-
-          {/* Auto-connect on startup option for OpenVPN */}
-          <div className="vpn-controls__switch-row">
-            <label>Auto-connect via OpenVPN on launch</label>
-            <Switch
-              aria-label="Auto-connect via OpenVPN on launch"
-              checked={autoConnectEngine === 'openvpn'}
-              onChange={handleToggleAutoConnect}
-              disabled={!canAct || isConnected}
-              inline
-            />
-          </div>
-
-          {/* Kill switch */}
-          <div className="vpn-controls__switch-row">
-            <label>{t('vpn.controls.killSwitch')} — unavailable</label>
-            <Switch
-              aria-label={t('vpn.controls.killSwitch')}
-              checked={killSwitch}
-              disabled
-              title="Unavailable: tunnel-aware protection is not implemented"
-              inline
-            />
-          </div>
-
-          {/* DNS protection */}
-          <div className="vpn-controls__switch-row">
-            <label>{t('vpn.controls.dnsProtection')}</label>
-            <Switch
-              aria-label={t('vpn.controls.dnsProtection')}
-              checked={dnsProtect}
-              onChange={(e) => setDnsProtect(e.currentTarget.checked)}
-              disabled={!canAct || isConnected}
-              inline
-            />
-          </div>
-
-          {/* DNS resolver (visible when DNS protect is on) */}
-          {dnsProtect && (
-            <div className="vpn-controls__dns-resolver">
-              <span style={{ fontSize: '0.78rem', color: 'var(--bp-text-muted-color)' }}>
-                {t('vpn.controls.resolver')}:
-              </span>
-              {editingDns ? (
+            <span className="vpn-bar__target">
+              {isConnected ? (
                 <>
-                  <InputGroup
-                    aria-label={t('vpn.controls.resolver')}
-                    value={dnsDraft}
-                    disabled={dnsSaving}
-                    onChange={(e) => setDnsDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDnsResolverSave()}
-                    small
-                    style={{ maxWidth: 140 }}
-                    autoFocus
-                  />
-                  <Button size="small" intent="primary" loading={dnsSaving} onClick={handleDnsResolverSave}>
-                    {t('vpn.controls.save')}
-                  </Button>
-                  <Button size="small" disabled={dnsSaving} onClick={() => setEditingDns(false)}>
-                    {t('vpn.feedback.cancel')}
-                  </Button>
+                  <span>{countryCodeToFlag(vpnInfo.countryShort)}</span>
+                  <span>{vpnInfo.countryLong || vpnInfo.serverHostName}</span>
+                  <span>·</span>
+                  <span className="vpn-bar__timer">{formatDuration(connectedSeconds)}</span>
+                </>
+              ) : selectedServer && !autoSelect ? (
+                <>
+                  <span>{countryCodeToFlag(selectedServer.countryShort)}</span>
+                  <span>Target: {selectedServer.hostName}</span>
                 </>
               ) : (
-                <>
-                  <code style={{ fontSize: '0.78rem' }}>{dnsResolver}</code>
-                  <Button
-                    size="small"
-                    variant="minimal"
-                    icon="edit"
-                    aria-label={t('vpn.controls.resolver')}
-                    disabled={isConnected}
-                    onClick={() => {
-                      setDnsDraft(dnsResolver);
-                      setEditingDns(true);
-                    }}
-                  />
-                </>
+                'Target: Automatic (Recommended relay)'
               )}
-            </div>
+            </span>
+          </div>
+        </div>
+
+        <div className="vpn-bar__right">
+          {/* Fluid Functionalism Segmented Protocol Switcher */}
+          <div className="vpn-protocol-switch" role="group" aria-label="VPN Protocol">
+            <button
+              type="button"
+              className={`vpn-protocol-btn ${engine === 'openvpn' ? 'is-selected' : ''}`}
+              disabled={isTransitioning || isConnected}
+              onClick={() => setEngine('openvpn')}
+            >
+              OpenVPN
+            </button>
+            <button
+              type="button"
+              className={`vpn-protocol-btn ${engine === 'softether' ? 'is-selected' : ''}`}
+              disabled={isTransitioning || isConnected}
+              onClick={() => setEngine('softether')}
+            >
+              SoftEther
+            </button>
+          </div>
+
+          {/* Primary Action Button */}
+          <Button
+            intent={isConnected ? 'danger' : 'primary'}
+            loading={isTransitioning && !isConnecting}
+            disabled={(isTransitioning && !isConnecting) || (!isConnected && !availableEngines.includes(engine))}
+            className="vpn-bar__primary-btn"
+            onClick={isConnected ? handleDisconnect : handleConnect}
+          >
+            <StatusText>{isConnected ? 'Disconnect' : isConnecting ? 'Connecting…' : 'Connect'}</StatusText>
+          </Button>
+
+          {isConnecting && (
+            <Button intent="danger" variant="outlined" icon="cross" onClick={handleDisconnect} title="Cancel">
+              Cancel
+            </Button>
+          )}
+
+          {vpnState === 'error' && availableEngines.includes(engine) && (
+            <Button intent="primary" variant="outlined" icon="refresh" onClick={handleConnect}>
+              Retry
+            </Button>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Server list */}
-      {!isConnected && (
-        <ServerList
-          servers={servers}
-          loading={serversLoading}
-          loadError={serversError}
-          onRefresh={() => loadServers(country, true)}
-          selectedHost={autoSelect ? '' : (selectedServer?.hostName ?? '')}
-          onSelect={(server) => {
-            setSelectedServer(server);
-            setAutoSelect(false);
-          }}
-          disabled={!canAct || isConnected}
-        />
+      {/* 2. SoftEther Provisioning Alert (only shown when SoftEther needs setup) */}
+      {engine === 'softether' && !availableEngines.includes('softether') && !enginesLoading && (
+        <section className="vpn-provision-box" aria-label="Engine Setup Notice">
+          <div className="vpn-provision-box__info">
+            <strong>SoftEther Virtual Adapter Required</strong>
+            <span>{engineStatuses.softether || 'Configure native Neo6 adapter for SoftEther connections.'}</span>
+            {installing && (
+              <ProgressBar
+                intent="primary"
+                value={installProgress.percent / 100}
+                animate
+                style={{ marginTop: '6px' }}
+              />
+            )}
+          </div>
+          <Button
+            intent="primary"
+            icon="wrench"
+            loading={installing}
+            onClick={handleProvisionSoftEther}
+          >
+            Provision Adapter
+          </Button>
+        </section>
       )}
+
+      {/* 3. Server Browser & Table */}
+      <ServerList
+        servers={servers}
+        loading={serversLoading}
+        loadError={serversError}
+        onRefresh={() => loadServers(country, true)}
+        selectedHost={autoSelect ? '' : (selectedServer?.hostName ?? '')}
+        onSelect={(s) => {
+          setAutoSelect(false);
+          setSelectedServer(s);
+        }}
+        disabled={isTransitioning || isConnected}
+        countryFilter={country}
+        onCountryFilterChange={(c) => {
+          setCountry(c);
+          setSelectedServer(null);
+          setAutoSelect(true);
+        }}
+        countries={countries}
+      />
+
+      {/* 4. Collapsible Advanced VPN Settings */}
+      <section className="vpn-advanced" aria-label="Advanced Settings">
+        <button
+          type="button"
+          className="vpn-advanced__toggle"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          aria-expanded={showAdvanced}
+        >
+          <span>Advanced VPN Configuration</span>
+          <Icon icon={showAdvanced ? 'chevron-up' : 'chevron-down'} size={14} />
+        </button>
+
+        <Collapse isOpen={showAdvanced}>
+          <div className="vpn-advanced__content">
+            <div className="vpn-advanced__row">
+              <div>
+                <label htmlFor="vpn-autoselect-switch">Auto-select recommended relay</label>
+                <div><span>Connects to highest scoring node if no server is selected</span></div>
+              </div>
+              <Switch
+                id="vpn-autoselect-switch"
+                checked={autoSelect}
+                disabled={isTransitioning || isConnected}
+                onChange={(e) => {
+                  setAutoSelect(e.currentTarget.checked);
+                  if (e.currentTarget.checked) setSelectedServer(null);
+                }}
+              />
+            </div>
+
+            <div className="vpn-advanced__row">
+              <div>
+                <label htmlFor="vpn-autoconnect-switch">Auto-connect on launch</label>
+                <div><span>Automatically initiate VPN connection when Veilora starts</span></div>
+              </div>
+              <Switch
+                id="vpn-autoconnect-switch"
+                checked={autoConnectEngine === 'openvpn'}
+                onChange={(e) => {
+                  const val = e.currentTarget.checked ? 'openvpn' : 'off';
+                  setAutoConnectEngine(val);
+                  localStorage.setItem('veilora_vpn_autoconnect', val);
+                }}
+              />
+            </div>
+
+            <div className="vpn-advanced__row">
+              <div>
+                <label htmlFor="vpn-dns-protect-switch">DNS Leak Protection</label>
+                <div><span>Enforce local resolver overrides to prevent DNS leaks</span></div>
+              </div>
+              <Switch
+                id="vpn-dns-protect-switch"
+                checked={dnsProtect}
+                disabled={isTransitioning || isConnected}
+                onChange={(e) => setDnsProtect(e.currentTarget.checked)}
+              />
+            </div>
+
+            <div className="vpn-advanced__row">
+              <div>
+                <label htmlFor="vpn-dns-input">Custom DNS Resolver</label>
+                <div><span>Upstream server queried during VPN routing</span></div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <InputGroup
+                  id="vpn-dns-input"
+                  value={editingDns ? dnsDraft : dnsResolver}
+                  disabled={isTransitioning || isConnected || (!editingDns && dnsSaving)}
+                  onChange={(e) => setDnsDraft(e.target.value)}
+                  onFocus={() => {
+                    if (!editingDns) {
+                      setDnsDraft(dnsResolver);
+                      setEditingDns(true);
+                    }
+                  }}
+                  style={{ width: '130px' }}
+                />
+                {editingDns && (
+                  <Button
+                    intent="primary"
+                    loading={dnsSaving}
+                    onClick={async () => {
+                      setDnsSaving(true);
+                      try {
+                        await VPNSetDNSResolver(dnsDraft.trim());
+                        setDnsResolver(dnsDraft.trim());
+                        setEditingDns(false);
+                      } catch (err: unknown) {
+                        AppToaster.show({
+                          message: err instanceof Error ? err.message : String(err),
+                          intent: 'danger',
+                        });
+                      } finally {
+                        setDnsSaving(false);
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Collapse>
+      </section>
     </div>
   );
 }

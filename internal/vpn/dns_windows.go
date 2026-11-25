@@ -28,7 +28,9 @@ type dnsPlan struct {
 // NameServer stores explicitly configured servers; an empty value means automatic
 // DNS. Snapshot both families by adapter GUID so DHCP and secondary servers survive.
 const snapshotDNSScript = `$ErrorActionPreference = 'Stop'
-$items = @(Get-NetAdapter | Where-Object Status -eq 'Up' | ForEach-Object {
+$items = @(Get-NetAdapter | Where-Object {
+ $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch 'TAP-Windows|SoftEther|Wintun'
+} | ForEach-Object {
  $guid = ([guid]$_.InterfaceGuid).ToString('B')
  $v4 = Get-ItemProperty -LiteralPath ('HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\' + $guid)
  $v6Path = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters\Interfaces\' + $guid
@@ -106,7 +108,7 @@ func applySystemDNS(resolver, snapshot string) error {
 	if err != nil {
 		return err
 	}
-	return executeDNSPlans(plans)
+	return executeDNSPlans(plans, true)
 }
 
 func restoreSystemDNS(snapshot string) error {
@@ -114,23 +116,31 @@ func restoreSystemDNS(snapshot string) error {
 	if err != nil {
 		return err
 	}
-	return executeDNSPlans(plans)
+	return executeDNSPlans(plans, false)
 }
 
-func executeDNSPlans(plans []dnsPlan) error {
+func executeDNSPlans(plans []dnsPlan, overrideMode bool) error {
 	data, err := json.Marshal(plans)
 	if err != nil {
 		return err
 	}
+	overrideFlag := "$false"
+	if overrideMode {
+		overrideFlag = "$true"
+	}
 	// Only base64-encoded, validated data is interpolated. Every native exit status
 	// is checked, and restoration continues across adapters to report all failures.
 	script := `$ErrorActionPreference = 'Stop'
+$overrideMode = ` + overrideFlag + `
 $plans = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('` + base64.StdEncoding.EncodeToString(data) + `')))
 $failures = @()
 foreach ($plan in $plans) {
  try {
   $adapter = @(Get-NetAdapter -IncludeHidden | Where-Object { ([guid]$_.InterfaceGuid).ToString('B') -eq $plan.guid })
-  if ($adapter.Count -ne 1) { throw ('Adapter unavailable: ' + $plan.guid) }
+  if ($adapter.Count -ne 1) {
+   if (-not $overrideMode) { continue }
+   throw ('Adapter unavailable: ' + $plan.guid)
+  }
   $dnsName = 'name=' + $adapter[0].ifIndex
   $servers = @($plan.servers | Where-Object { $_ })
   if ($servers.Count -eq 0) {
@@ -146,6 +156,9 @@ foreach ($plan in $plans) {
      & "$env:SystemRoot\System32\netsh.exe" interface $plan.family add dnsservers $dnsName $dnsAddress $dnsIndex validate=no | Out-Null
     }
     if ($LASTEXITCODE -ne 0) { throw 'Failed to apply static DNS' }
+   }
+   if ($overrideMode -and $plan.family -eq 'ipv4') {
+    & "$env:SystemRoot\System32\netsh.exe" interface ipv6 delete dnsservers $dnsName all 2>$null | Out-Null
    }
   }
  } catch { $failures += $_.Exception.Message }

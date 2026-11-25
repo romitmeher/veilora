@@ -1,15 +1,25 @@
 package vpn
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type SoftEtherOwnership struct {
-	Service string `json:"service"`
-	Adapter string `json:"adapter"`
-	Account string `json:"account"`
+	Service           string `json:"service"`
+	ServiceOwned      bool   `json:"serviceOwned"`
+	ServiceBinaryPath string `json:"serviceBinaryPath,omitempty"`
+	Adapter           string `json:"adapter"`
+	AdapterOwned      bool   `json:"adapterOwned"`
+	Account           string `json:"account"`
+	RuntimeDir        string `json:"runtimeDir,omitempty"`
+	ManifestHash      string `json:"manifestHash,omitempty"`
+	UpdatedAt         string `json:"updatedAt,omitempty"`
 }
 
 var safeSoftEtherHost = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$`)
@@ -51,5 +61,32 @@ func validateSoftEtherEndpoint(host, port string) error {
 	if port != softEtherNativePort {
 		return fmt.Errorf("unsupported SoftEther endpoint port %q; native VPNGate support requires port 443", port)
 	}
+	return nil
+}
+
+// probeSoftEtherEndpoint verifies that the target server accepts TLS connections
+// on TCP 443 before attempting SoftEther provisioning or vpncmd connection.
+func probeSoftEtherEndpoint(ctx context.Context, host, port string) error {
+	if err := validateSoftEtherEndpoint(host, port); err != nil {
+		return err
+	}
+	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	conn, err := dialer.DialContext(dialCtx, "tcp", net.JoinHostPort(host, port))
+	if err != nil {
+		return fmt.Errorf("SoftEther SSL-VPN endpoint %s:%s is unreachable: %w", host, port, err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	// SoftEther native SSL-VPN serves TLS on TCP 443 (often with self-signed server certs).
+	tlsConn := tls.Client(conn, &tls.Config{
+		ServerName:         host,
+		InsecureSkipVerify: true, // #nosec G402 -- pre-flight reachability probe only; SoftEther vpncmd handles session auth.
+	})
+	if err := tlsConn.HandshakeContext(dialCtx); err != nil {
+		return fmt.Errorf("server %s:%s did not respond as a TLS/SSL-VPN endpoint: %w", host, port, err)
+	}
+	_ = tlsConn.Close()
 	return nil
 }

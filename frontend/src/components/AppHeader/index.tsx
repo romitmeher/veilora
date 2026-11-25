@@ -28,6 +28,7 @@ export function AppHeader() {
           icon="git-branch"
           variant="minimal"
           aria-label="Veilora on GitHub"
+          title="Veilora on GitHub"
           onClick={() => BrowserOpenURL('https://github.com/romitmeher/veilora')}
         />
       </div>

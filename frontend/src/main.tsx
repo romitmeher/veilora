@@ -6,6 +6,7 @@ import App from './App';
 import { ThemeProvider } from './common/ThemeManager';
 import { ProxyStateProvider } from './context/ProxyStateContext';
 import { VPNStateProvider } from './context/VPNStateContext';
+import { installDevWailsFixture } from './devWailsFixture';
 import ErrorBoundary from './ErrorBoundary';
 import { initI18n } from './i18n';
 import './styles/style.css';
@@ -31,6 +32,7 @@ html, body {
 })();
 
 async function bootstrap() {
+  installDevWailsFixture();
   await initI18n();
 
   const container = document.getElementById('root');

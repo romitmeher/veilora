@@ -17,11 +17,13 @@ import (
 
 // SoftEtherEngine wraps the SoftEther VPN client (vpnclient/vpncmd) if installed.
 type SoftEtherEngine struct {
-	mu      sync.Mutex
-	running bool
-	stopCh  chan struct{}
-	routeMu sync.Mutex
-	routes  string
+	mu         sync.Mutex
+	running    bool
+	stopCh     chan struct{}
+	doneCh     chan struct{}
+	cleanupErr error
+	routeMu    sync.Mutex
+	routes     string
 }
 
 const (
@@ -38,11 +40,29 @@ func NewSoftEtherEngine() *SoftEtherEngine {
 
 func (e *SoftEtherEngine) Name() string { return string(EngineSoftEther) }
 
-// Available checks whether vpnclient and vpncmd are present on this system.
+// Available checks whether the SoftEther engine is provisioned and ready.
+// Bundled builds require verified persistent runtime extraction, ownership,
+// and an installed Windows service rather than merely an embedded archive.
 func (e *SoftEtherEngine) Available() bool {
 	if len(embeddedSoftEther()) > 0 {
-		_, err := bundledSoftEtherRuntimeDir()
-		return err == nil
+		if runtime.GOOS != "windows" {
+			return false
+		}
+		own, err := loadSoftEtherOwnership(defaultSoftEtherOwnershipPath())
+		if err != nil || own.Service == "" || own.Adapter == "" {
+			return false
+		}
+		if err := validatePersistentSoftEtherRuntime(own.RuntimeDir, own.ManifestHash); err != nil {
+			return false
+		}
+		qcOut, qcErr := hiddenCommand("sc.exe", "qc", own.Service).CombinedOutput()
+		if qcErr != nil {
+			return false
+		}
+		if own.ServiceOwned && !verifyOwnedService(own, qcOut) {
+			return false
+		}
+		return true
 	}
 	if len(embeddedVPN()) > 0 {
 		return false
@@ -68,11 +88,18 @@ func (e *SoftEtherEngine) Available() bool {
 // FindClientBinary searches for the vpnclient executable in known directories and PATH.
 func (e *SoftEtherEngine) FindClientBinary() string {
 	if len(embeddedSoftEther()) > 0 {
+		if own, err := loadSoftEtherOwnership(defaultSoftEtherOwnershipPath()); err == nil && own.RuntimeDir != "" {
+			candidate := filepath.Join(own.RuntimeDir, "vpnclient.exe")
+			if isExecutableFile(candidate) {
+				return candidate
+			}
+		}
 		bundled, err := bundledSoftEtherBinary()
 		if err == nil {
 			return bundled
 		}
 		log.Printf("bundled SoftEther: %v", err)
+		return ""
 	}
 
 	if runtime.GOOS == "windows" {
@@ -127,6 +154,12 @@ func (e *SoftEtherEngine) FindClientBinary() string {
 // FindCmdBinary searches for the vpncmd executable in known directories and PATH.
 func (e *SoftEtherEngine) FindCmdBinary() string {
 	if len(embeddedSoftEther()) > 0 {
+		if own, err := loadSoftEtherOwnership(defaultSoftEtherOwnershipPath()); err == nil && own.RuntimeDir != "" {
+			candidate := filepath.Join(own.RuntimeDir, "vpncmd.exe")
+			if isExecutableFile(candidate) {
+				return candidate
+			}
+		}
 		dir, err := bundledSoftEtherRuntimeDir()
 		if err == nil {
 			cmd := filepath.Join(dir, "vpncmd.exe")
@@ -136,6 +169,7 @@ func (e *SoftEtherEngine) FindCmdBinary() string {
 		} else {
 			log.Printf("bundled SoftEther: %v", err)
 		}
+		return ""
 	}
 
 	if runtime.GOOS == "windows" {
@@ -218,47 +252,81 @@ func (e *SoftEtherEngine) Connect(ovpnConfig []byte, statusCh chan<- Status) err
 		return fmt.Errorf("softether: parse remote from config: %w", err)
 	}
 
-	e.stopCh = make(chan struct{})
+	stopCh := make(chan struct{})
+	doneCh := make(chan struct{})
+	e.stopCh = stopCh
+	e.doneCh = doneCh
+	e.cleanupErr = nil
 	e.running = true
 
 	go func() {
-		statusCh <- Status{State: StateConnecting, Message: "SoftEther connecting to " + host}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go func() {
+			<-stopCh
+			cancel()
+		}()
 
-		if err := e.runVpnClient(); err != nil {
-			statusCh <- Status{State: StateError, Message: err.Error()}
+		finish := func(err error) {
 			e.mu.Lock()
+			e.cleanupErr = err
 			e.running = false
 			e.mu.Unlock()
+			close(doneCh)
+		}
+
+		statusCh <- Status{State: StateConnecting, Message: "Probing SoftEther SSL-VPN endpoint " + host + ":" + port}
+		if err := probeSoftEtherEndpoint(ctx, host, port); err != nil {
+			if ctx.Err() != nil {
+				statusCh <- Status{State: StateDisconnected, Message: "SoftEther connection cancelled"}
+				finish(nil)
+				return
+			}
+			statusCh <- Status{State: StateError, Message: err.Error()}
+			finish(nil)
 			return
 		}
 
-		if err := e.runConnect(host, port); err != nil {
+		statusCh <- Status{State: StateConnecting, Message: "SoftEther connecting to " + host}
+		if err := e.runVpnClient(ctx); err != nil {
+			if ctx.Err() != nil {
+				statusCh <- Status{State: StateDisconnected, Message: "SoftEther connection cancelled"}
+				finish(nil)
+				return
+			}
+			statusCh <- Status{State: StateError, Message: err.Error()}
+			finish(nil)
+			return
+		}
+
+		if err := e.runConnect(ctx, host, port); err != nil {
+			cleanupErr := e.cleanup()
+			if ctx.Err() != nil {
+				statusCh <- Status{State: StateDisconnected, Message: "SoftEther connection cancelled"}
+				finish(cleanupErr)
+				return
+			}
 			cleanupStatus := Status{State: StateError, Message: fmt.Sprintf("vpncmd connect: %v", err)}
-			if cleanupErr := e.cleanup(); cleanupErr != nil {
+			if cleanupErr != nil {
 				cleanupStatus.Message += "; cleanup failed: " + cleanupErr.Error()
 			}
-			e.mu.Lock()
-			e.running = false
-			e.mu.Unlock()
 			statusCh <- cleanupStatus
+			finish(cleanupErr)
 			return
 		}
 
 		statusCh <- Status{State: StateConnected, Message: "SoftEther connected to " + host}
 
-		// Wait until disconnect is requested.
-		stopCh := e.stopCh
 		go e.monitorConnection(statusCh, stopCh)
 		<-stopCh
 		statusCh <- Status{State: StateDisconnecting, Message: "SoftEther disconnecting"}
-		if cleanupErr := e.cleanup(); cleanupErr != nil {
+		cleanupErr := e.cleanup()
+		if cleanupErr != nil {
 			statusCh <- Status{State: StateError, Message: "SoftEther cleanup incomplete: " + cleanupErr.Error()}
 		} else {
 			statusCh <- Status{State: StateDisconnected, Message: "SoftEther disconnected"}
 		}
-		e.mu.Lock()
-		e.running = false
-		e.mu.Unlock()
+		finish(cleanupErr)
 	}()
 
 	return nil
@@ -297,16 +365,29 @@ func (e *SoftEtherEngine) monitorConnection(statusCh chan<- Status, stopCh <-cha
 
 func (e *SoftEtherEngine) Disconnect() error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.running {
-		return nil
+		err := e.cleanupErr
+		e.mu.Unlock()
+		return err
 	}
 	if e.stopCh != nil {
 		close(e.stopCh)
 		e.stopCh = nil
 	}
-	return nil
+	doneCh := e.doneCh
+	e.mu.Unlock()
+
+	if doneCh != nil {
+		select {
+		case <-doneCh:
+		case <-time.After(20 * time.Second):
+			return errors.New("SoftEther disconnect timed out waiting for cleanup")
+		}
+	}
+	e.mu.Lock()
+	err := e.cleanupErr
+	e.mu.Unlock()
+	return err
 }
 
 func (e *SoftEtherEngine) cleanup() error {
@@ -336,67 +417,81 @@ func (e *SoftEtherEngine) cleanup() error {
 	return cleanupErr
 }
 
-func (e *SoftEtherEngine) runVpnClient() error {
+func (e *SoftEtherEngine) runVpnClient(ctx context.Context) error {
 	serviceName := "SEVPNCLIENT"
-	cmd := hiddenCommand("sc.exe", "query", serviceName)
+	if own, err := loadSoftEtherOwnership(defaultSoftEtherOwnershipPath()); err == nil && own.Service != "" {
+		serviceName = own.Service
+	}
+	cmd := hiddenCommandContext(ctx, "sc.exe", "query", serviceName)
 	out, err := cmd.CombinedOutput()
-	if err != nil {
+	if err != nil && serviceName != softEtherServiceName {
 		serviceName = softEtherServiceName
-		cmd = hiddenCommand("sc.exe", "query", serviceName)
+		cmd = hiddenCommandContext(ctx, "sc.exe", "query", serviceName)
 		out, err = cmd.CombinedOutput()
 	}
 	if err == nil && strings.Contains(strings.ToUpper(string(out)), "RUNNING") {
-		return e.waitForVpnCmd()
+		return e.waitForVpnCmd(ctx)
 	}
 
-	start := hiddenCommand("sc.exe", "start", serviceName)
+	start := hiddenCommandContext(ctx, "sc.exe", "start", serviceName)
 	out, err = start.CombinedOutput()
 	if err != nil {
 		if (strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist")) && len(embeddedSoftEther()) > 0 {
 			log.Printf("softether: service not provisioned, auto-provisioning bundled SoftEther...")
-			ownership, provErr := ProvisionBundledSoftEther(context.Background())
+			ownership, provErr := ProvisionBundledSoftEther(ctx)
 			if provErr != nil {
 				return fmt.Errorf("auto-provision SoftEther VPN: %w", provErr)
 			}
 			log.Printf("softether: auto-provisioned service %s", ownership.Service)
-			return e.waitForVpnCmd()
+			return e.waitForVpnCmd(ctx)
 		}
 		if strings.Contains(string(out), "1060") || strings.Contains(strings.ToLower(string(out)), "does not exist") {
 			return fmt.Errorf("SoftEther VPN service is not provisioned; use Provision Veilora VPN")
 		}
 		return fmt.Errorf("softether: start service: %w: %s", err, out)
 	}
-	return e.waitForVpnCmd()
+	return e.waitForVpnCmd(ctx)
 }
 
-func (e *SoftEtherEngine) waitForVpnCmd() error {
+func (e *SoftEtherEngine) waitForVpnCmd(ctx context.Context) error {
 	for i := 0; i < 10; i++ {
-		check := hiddenCommand(e.cmdBinary(), "/CLIENT", "localhost", "/CMD", "About")
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		check := hiddenCommandContext(ctx, e.cmdBinary(), "/CLIENT", "localhost", "/CMD", "About")
 		if out, err := check.CombinedOutput(); err == nil && len(out) > 0 {
 			return nil
 		}
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 	}
 	return fmt.Errorf("softether: VPN client service did not become ready")
 }
 
-func (e *SoftEtherEngine) runConnect(host, port string) error {
+func (e *SoftEtherEngine) runConnect(ctx context.Context, host, port string) error {
+	adapterName := softEtherAdapterName
+	if own, err := loadSoftEtherOwnership(defaultSoftEtherOwnershipPath()); err == nil && own.Adapter != "" {
+		adapterName = own.Adapter
+	}
 	cleanup := [][]string{
 		{"AccountDisconnect", softEtherAccountName},
 		{"AccountDelete", softEtherAccountName},
 	}
 	for _, command := range cleanup {
 		args := append([]string{"/CLIENT", "localhost", "/CMD"}, command...)
-		_ = hiddenCommand(e.cmdBinary(), args...).Run()
+		_ = hiddenCommandContext(ctx, e.cmdBinary(), args...).Run()
 	}
 
-	nicOut, nicErr := hiddenCommand(e.cmdBinary(), "/CLIENT", "localhost", "/CMD", "NicList").CombinedOutput()
+	nicOut, nicErr := hiddenCommandContext(ctx, e.cmdBinary(), "/CLIENT", "localhost", "/CMD", "NicList").CombinedOutput()
 	logVPNCmdOutput(nicOut)
 	if nicErr != nil || vpnCmdOutputHasError(nicOut) {
 		return errors.New("SoftEther virtual network adapter is unavailable")
 	}
-	if !strings.Contains(strings.ToLower(string(nicOut)), "vpn") {
-		return errors.New("SoftEther virtual network adapter VPN was not found")
+	if !softEtherNicListed(nicOut, adapterName) {
+		return fmt.Errorf("SoftEther virtual network adapter %s was not found", adapterName)
 	}
 
 	commands := [][]string{
@@ -405,8 +500,11 @@ func (e *SoftEtherEngine) runConnect(host, port string) error {
 		{"AccountConnect", softEtherAccountName},
 	}
 	for _, command := range commands {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		args := append([]string{"/CLIENT", "localhost", "/CMD"}, command...)
-		out, err := hiddenCommand(e.cmdBinary(), args...).CombinedOutput()
+		out, err := hiddenCommandContext(ctx, e.cmdBinary(), args...).CombinedOutput()
 		logVPNCmdOutput(out)
 		if err != nil {
 			return fmt.Errorf("SoftEther vpncmd %s failed: %w", command[0], err)
@@ -417,11 +515,14 @@ func (e *SoftEtherEngine) runConnect(host, port string) error {
 	}
 
 	for i := 0; i < 30; i++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		args := []string{"/CLIENT", "localhost", "/CMD", "AccountStatusGet", softEtherAccountName}
-		out, err := hiddenCommand(e.cmdBinary(), args...).CombinedOutput()
+		out, err := hiddenCommandContext(ctx, e.cmdBinary(), args...).CombinedOutput()
 		logVPNCmdOutput(out)
 		if err == nil && softEtherSessionEstablished(out) {
-			snapshot, routeErr := enableSoftEtherRouting()
+			snapshot, routeErr := enableSoftEtherRouting(adapterName)
 			if routeErr != nil {
 				return fmt.Errorf("SoftEther route setup failed: %w", routeErr)
 			}
@@ -433,7 +534,11 @@ func (e *SoftEtherEngine) runConnect(host, port string) error {
 		if vpnCmdOutputHasError(out) {
 			return errors.New("SoftEther account exists but the VPN session could not be established")
 		}
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 	}
 
 	return errors.New("SoftEther VPN session did not become established")

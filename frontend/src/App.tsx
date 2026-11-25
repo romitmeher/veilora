@@ -1,4 +1,4 @@
-import { Button, FocusStyleManager, Icon } from '@blueprintjs/core';
+import { FocusStyleManager } from '@blueprintjs/core';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,14 +12,12 @@ import { ThemeType, useTheme } from './common/ThemeManager';
 import { AppToaster } from './common/toaster';
 import { AppHeader } from './components/AppHeader';
 import { Navigation, type AppTab } from './components/Navigation';
-import { StartStopButton } from './components/StartStopButton';
-import { StatusText } from './components/StatusText';
 import { useProxyState } from './context/ProxyStateContext';
 import { useVPNState } from './context/VPNStateContext';
 import { FilterLists } from './FilterLists';
 import { Intro } from './Intro';
+import { Overview } from './Overview';
 import { useProxyHotkey } from './ProxyHotkey';
-import { RequestLog } from './RequestLog';
 import { Rules } from './Rules';
 import { SettingsManager } from './SettingsManager';
 import { VPN } from './VPN';
@@ -60,7 +58,7 @@ function App() {
   }, [t]);
 
   const { proxyState } = useProxyState();
-  const { vpnState, isConnected, vpnInfo } = useVPNState();
+  const { vpnInfo, isConnected, isTransitioning } = useVPNState();
   const [activeTab, setActiveTab] = useState<AppTab>('home');
   const [showIntro, setShowIntro] = useState(false);
 
@@ -69,6 +67,22 @@ function App() {
   }, []);
 
   useProxyHotkey(showIntro);
+
+  useEffect(() => {
+    if (showIntro) return;
+    const tabs: AppTab[] = ['home', 'vpn', 'filterLists', 'rules', 'settings'];
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        const idx = Number(e.key) - 1;
+        if (idx >= 0 && idx < tabs.length) {
+          e.preventDefault();
+          setActiveTab(tabs[idx]);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showIntro]);
 
   return (
     <div id="app" className={effectiveTheme === ThemeType.DARK ? 'bp6-dark' : ''}>
@@ -91,79 +105,31 @@ function App() {
               <h1>{activeTab === 'home' ? t('ui.overview') : t(`app.tabs.${activeTab}`)}</h1>
               <p>{t(`ui.descriptions.${activeTab}`)}</p>
             </header>
-            <div style={{ display: activeTab === 'home' ? 'block' : 'none' }}>
-              <section className="service-list" aria-label={t('ui.overview')}>
-                <div className="service-row">
-                  <span className="service-icon">
-                    <Icon icon="shield" size={19} />
-                  </span>
-                  <div className="service-description">
-                    <h2>{t('ui.adBlocking')}</h2>
-                    <p>{t('ui.filterDescription')}</p>
-                  </div>
-                  <span className={`service-state ${proxyState === 'on' ? 'is-active' : ''}`} role="status">
-                    <span className="status-dot" />
-                    <StatusText>{t(`ui.shortProxy.${proxyState}`)}</StatusText>
-                  </span>
-                  <Button
-                    variant="minimal"
-                    icon="settings"
-                    aria-label={t('ui.reviewFilters')}
-                    title={t('ui.reviewFilters')}
-                    onClick={() => setActiveTab('filterLists')}
-                  />
-                </div>
-                <div className="service-row">
-                  <span className="service-icon">
-                    <Icon icon="globe-network" size={19} />
-                  </span>
-                  <div className="service-description">
-                    <h2>{t('app.tabs.vpn')}</h2>
-                    <p>{isConnected ? vpnInfo.countryLong || t('ui.unknown') : t('ui.vpnDescription')}</p>
-                  </div>
-                  <span className={`service-state ${isConnected ? 'is-active' : ''}`} role="status">
-                    <span className="status-dot" />
-                    <StatusText>{t(`ui.vpn.${vpnState}`)}</StatusText>
-                  </span>
-                  <Button
-                    variant="minimal"
-                    icon="arrow-right"
-                    aria-label={t('ui.manageVPN')}
-                    title={t('ui.manageVPN')}
-                    onClick={() => setActiveTab('vpn')}
-                  />
-                </div>
-              </section>
-              <div className="activity-heading">
-                <h2>{t('ui.activity')}</h2>
-                <span>{t('ui.session')}</span>
-              </div>
-              {proxyState === 'off' ? (
-                <div className="activity-empty">
-                  <Icon icon="inbox" size={22} />
-                  <h3>{t('ui.waiting')}</h3>
-                  <p>{t('app.proxy.description')}</p>
-                  <Button variant="outlined" icon="filter" onClick={() => setActiveTab('filterLists')}>
-                    {t('ui.reviewFilters')}
-                  </Button>
-                </div>
-              ) : (
-                <RequestLog />
-              )}
-            </div>
+            {activeTab === 'home' && <Overview onNavigate={setActiveTab} />}
             {activeTab === 'filterLists' && <FilterLists />}
             {activeTab === 'rules' && <Rules />}
             {activeTab === 'vpn' && <VPN />}
             {activeTab === 'settings' && <SettingsManager />}
           </main>
-          <footer className="protection-footer">
-            <div className="protection-footer__status">
-              <span className={`status-dot ${proxyState === 'on' ? 'is-active' : ''}`} />
-              <div>
-                <StatusText>{t(`ui.proxy.${proxyState}`)}</StatusText>
-              </div>
+          <footer className="status-footer">
+            <div className="status-footer__left">
+              <span className="status-footer__item">
+                <span className={`status-footer__dot ${proxyState === 'on' ? 'is-active' : ''}`} />
+                <span>Ad Shield: {proxyState === 'on' ? 'Active' : 'Paused'}</span>
+              </span>
+              <span className="status-footer__item">
+                <span
+                  className={`status-footer__dot ${isConnected ? 'is-active' : ''}`}
+                  style={{ backgroundColor: isTransitioning ? 'var(--warning)' : undefined }}
+                />
+                <span>
+                  VPN: {isConnected ? vpnInfo.countryLong || 'Connected' : isTransitioning ? 'Connecting…' : 'Disconnected'}
+                </span>
+              </span>
             </div>
-            <StartStopButton />
+            <div className="status-footer__right">
+              <span>Ctrl+1..5 tabs</span>
+            </div>
           </footer>
         </>
       )}

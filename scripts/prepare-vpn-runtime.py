@@ -116,19 +116,75 @@ def collect_softether_runtime(runtime_dir, arch, commit):
     return contents
 
 
+def validate_cached_bundle(target_zip, engine, arch, commit, vcpkg_commit, lock_sha256, allow_installed=False):
+    if not Path(target_zip).is_file():
+        return False, "bundle does not exist"
+    try:
+        with zipfile.ZipFile(target_zip, "r") as archive:
+            manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+            if manifest.get("engine", "openvpn") != engine:
+                return False, f"engine mismatch: {manifest.get('engine')}"
+            if manifest.get("arch") != arch:
+                return False, f"arch mismatch: {manifest.get('arch')}"
+            provenance = manifest.get("provenance", "")
+            if not allow_installed:
+                if provenance != "source-built":
+                    return False, f"provenance {provenance!r} is not source-built"
+                if manifest.get("commit") != commit:
+                    return False, "source commit changed"
+                if manifest.get("vcpkg_commit") != vcpkg_commit:
+                    return False, "vcpkg commit changed"
+                if manifest.get("lock_sha256") != lock_sha256:
+                    return False, "vpn-runtime.lock.json changed"
+            files = manifest.get("files") or {}
+            if not files:
+                return False, "manifest has no files"
+            for name, expected_hash in files.items():
+                data = archive.read(name)
+                if hashlib.sha256(data).hexdigest() != expected_hash:
+                    return False, f"hash mismatch for {name}"
+    except Exception as exc:
+        return False, str(exc)
+    return True, "ok"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", choices=["openvpn", "softether"], default="openvpn")
     parser.add_argument("--allow-installed-openvpn", action="store_true",
-                        help="Package an existing verified OpenVPN installation on policy-blocked machines")
+                        help="Package an existing verified OpenVPN installation on policy-blocked dev machines")
+    parser.add_argument("--check-cached", action="store_true",
+                        help="Validate cached runtime bundle against current commits, lockfile, and manifest")
     parser.add_argument("--arch", choices=["amd64", "arm64"], default="amd64")
-    parser.add_argument("--runtime-dir", type=Path, required=True,
+    parser.add_argument("--runtime-dir", type=Path, required=False,
                         help="Source-built binaries staged by build-vpn-source.ps1")
     args = parser.parse_args()
-    lock = json.loads((ROOT / "scripts/vpn-runtime.lock.json").read_text(encoding="utf-8"))
+    lock_path = ROOT / "scripts/vpn-runtime.lock.json"
+    lock_bytes = lock_path.read_bytes()
+    lock_sha256 = hashlib.sha256(lock_bytes).hexdigest()
+    lock = json.loads(lock_bytes.decode("utf-8"))
     engine_dir = "openvpn" if args.engine == "openvpn" else "softether"
     source = ROOT / "third_party" / engine_dir
     commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+    vcpkg_source = ROOT / "third_party/vcpkg"
+    vcpkg_commit = subprocess.check_output(["git", "-C", str(vcpkg_source), "rev-parse", "HEAD"], text=True).strip()
+
+    if args.check_cached:
+        target = ROOT / "internal/vpn/payload" / (
+            f"windows-{args.arch}.zip" if args.engine == "openvpn" else f"windows-{args.arch}-softether.zip"
+        )
+        ok, reason = validate_cached_bundle(
+            target, args.engine, args.arch, commit, vcpkg_commit, lock_sha256,
+            allow_installed=args.allow_installed_openvpn,
+        )
+        if not ok:
+            print(f"Cached {args.engine} ({args.arch}) bundle invalid: {reason}")
+            raise SystemExit(1)
+        print(f"Cached {args.engine} ({args.arch}) bundle is valid.")
+        return
+
+    if args.runtime_dir is None:
+        parser.error("--runtime-dir is required unless --check-cached is specified")
 
     if args.allow_installed_openvpn:
         if args.engine != "openvpn":
@@ -152,9 +208,12 @@ def main():
         contents["manifest.json"] = json.dumps({
             "engine": "softether",
             "arch": args.arch,
+            "provenance": "source-built",
             "version": "5.2.5190",
             "source": "https://github.com/SoftEtherVPN/SoftEtherVPN",
             "commit": commit,
+            "vcpkg_commit": vcpkg_commit,
+            "lock_sha256": lock_sha256,
             "files": {n: hashlib.sha256(v).hexdigest() for n, v in contents.items()},
         }, indent=2).encode()
         target = ROOT / "internal/vpn/payload" / f"windows-{args.arch}-softether.zip"
@@ -214,9 +273,17 @@ def main():
     if not any(n.startswith("licenses/openvpn-COPYING") for n in contents):
         raise RuntimeError("Upstream OpenVPN license is missing")
     contents["licenses/VEILORA-THIRD-PARTY.md"] = (ROOT / "docs/BUNDLED-VPN.md").read_bytes()
-    contents["manifest.json"] = json.dumps({"arch": args.arch, "version": VERSION,
-        "source": "https://github.com/OpenVPN/openvpn", "commit": commit,
-        "files": {n: hashlib.sha256(v).hexdigest() for n, v in contents.items()}}, indent=2).encode()
+    contents["manifest.json"] = json.dumps({
+        "engine": "openvpn",
+        "arch": args.arch,
+        "provenance": "source-built",
+        "version": VERSION,
+        "source": "https://github.com/OpenVPN/openvpn",
+        "commit": commit,
+        "vcpkg_commit": vcpkg_commit,
+        "lock_sha256": lock_sha256,
+        "files": {n: hashlib.sha256(v).hexdigest() for n, v in contents.items()},
+    }, indent=2).encode()
     target = ROOT / "internal/vpn/payload" / f"windows-{args.arch}.zip"
     target.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
