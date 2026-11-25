@@ -79,6 +79,7 @@ export function VPN() {
   const [autoConnectEngine, setAutoConnectEngine] = useState<'openvpn' | 'off'>(() => {
     return (localStorage.getItem('veilora_vpn_autoconnect') as 'openvpn' | 'off') || 'off';
   });
+  const autoConnectAttempted = useRef(false);
 
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState<{
@@ -143,7 +144,7 @@ export function VPN() {
       }
     });
     return cancel;
-  }, [loadEngines, vpnState]);
+  }, [loadEngines]);
 
   const handleInstallEngine = async (targetEngine: EngineType = 'softether') => {
     setInstalling(true);
@@ -207,17 +208,21 @@ export function VPN() {
       })
       .catch(() => {});
 
-    // Check autostart preference on app launch
-    const saved = localStorage.getItem('veilora_vpn_autoconnect');
-    if (saved === 'openvpn' && vpnState === 'disconnected') {
-      VPNAvailableEngines().then((avail) => {
-        const preferred = avail?.includes('softether') ? 'softether' : avail?.includes('openvpn') ? 'openvpn' : null;
-        if (preferred) {
-          VPNConnectBest('', preferred, false, true).catch(() => {});
-        }
-      });
+    // Check autostart preference once on mount
+    if (!autoConnectAttempted.current) {
+      autoConnectAttempted.current = true;
+      const saved = localStorage.getItem('veilora_vpn_autoconnect');
+      if (saved === 'openvpn' && vpnState === 'disconnected') {
+        VPNAvailableEngines()
+          .then((avail) => {
+            if (avail?.includes('openvpn')) {
+              VPNConnectBest('', 'openvpn', false, true).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [loadEngines, vpnState]);
+  }, [loadEngines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleConnect = useCallback(async () => {
     try {
@@ -634,44 +639,6 @@ export function VPN() {
           disabled={!canAct || isConnected}
         />
       )}
-
-      {/* Connect / Disconnect / Cancel button group */}
-      <div className="vpn-connect-group">
-        <Button
-          fill
-          size="large"
-          intent={isConnected ? 'danger' : 'success'}
-          className="vpn-connect-btn"
-          loading={isTransitioning && !isConnecting}
-          disabled={
-            (isTransitioning && !isConnecting) ||
-            (!isConnected && (enginesLoading || (!autoSelect && !selectedServer) || editingDns))
-          }
-          onClick={isConnected ? handleDisconnect : handleConnect}
-        >
-          {isConnected
-            ? t('vpn.disconnect')
-            : isConnecting
-              ? 'Connecting…'
-              : autoSelect
-                ? t('vpn.connectBest')
-                : selectedServer
-                  ? t('vpn.connectTo', { host: selectedServer.hostName })
-                  : t('vpn.connectBest')}
-        </Button>
-        {isConnecting && (
-          <Button
-            size="large"
-            intent="danger"
-            icon="cross"
-            className="vpn-cancel-btn"
-            onClick={handleDisconnect}
-            title="Cancel connection attempt"
-          >
-            Cancel
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

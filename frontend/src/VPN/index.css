@@ -14,7 +14,9 @@
 .vpn-status--connected {
   --vpn-status-color: #0f9960;
 }
+.vpn-status--preparing,
 .vpn-status--connecting,
+.vpn-status--reconnecting,
 .vpn-status--disconnecting {
   --vpn-status-color: #d9822b;
 }
@@ -68,7 +70,9 @@
   box-shadow: 0 0 0 3px rgba(15, 153, 96, 0.25);
 }
 
+.vpn-status--preparing .vpn-status__indicator,
 .vpn-status--connecting .vpn-status__indicator,
+.vpn-status--reconnecting .vpn-status__indicator,
 .vpn-status--disconnecting .vpn-status__indicator {
   animation: vpn-spring-pulse 1.3s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
@@ -179,8 +183,9 @@
 
 /* Server list */
 .vpn-servers {
-  border: 1px solid #8f99a8;
+  border: 1px solid var(--bp-surface-border-color, #8f99a8);
   border-radius: var(--bp-surface-border-radius);
+  padding: 10px 12px;
   margin-bottom: 10px;
 }
 
@@ -308,24 +313,6 @@
   min-width: 56px;
   text-align: right;
   white-space: nowrap;
-}
-
-/* Connect button group */
-.vpn-connect-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.vpn-connect-btn {
-  flex: 1;
-  border-radius: 0 !important;
-}
-
-.vpn-cancel-btn {
-  border-radius: 0 !important;
-  flex-shrink: 0;
-  font-weight: 600;
 }
 
 /* In-app engine installer setup card (Game launcher style) */

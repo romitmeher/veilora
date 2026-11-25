@@ -72,9 +72,7 @@ export function ServerList({
     <div className="vpn-servers">
       <div className="vpn-servers__header">
         <span>{t('vpn.servers.title')}</span>
-        <span className="vpn-servers__count">
-          {loading ? 'Loading…' : `${visibleServers.length} available`}
-        </span>
+        <span className="vpn-servers__count">{loading ? 'Loading…' : `${visibleServers.length} available`}</span>
       </div>
       <div className="vpn-servers__toolbar">
         <input
@@ -131,9 +129,7 @@ export function ServerList({
                 </small>
               </span>
               <span className="vpn-server-row__country">{s.countryShort || '—'}</span>
-              <span className={`vpn-server-row__ping ${pingClass(s.ping)}`}>
-                {s.ping > 0 ? `${s.ping} ms` : '—'}
-              </span>
+              <span className={`vpn-server-row__ping ${pingClass(s.ping)}`}>{s.ping > 0 ? `${s.ping} ms` : '—'}</span>
               <span className="vpn-server-row__speed">{formatSpeed(s.speed)}</span>
               <span className="vpn-server-row__stats">
                 <span>{s.numVpnSessions} sessions</span>
