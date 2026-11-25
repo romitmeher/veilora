@@ -1,8 +1,6 @@
 import { Button, Spinner, HTMLSelect } from '@blueprintjs/core';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { VPNGetServers, VPNRefreshServers } from 'wails/go/app/App';
 
 export interface VPNServer {
   hostName: string;
@@ -24,6 +22,10 @@ export interface VPNServer {
 }
 
 interface ServerListProps {
+  servers: VPNServer[];
+  loading: boolean;
+  loadError: boolean;
+  onRefresh: () => void;
   selectedHost: string;
   selectedCountry: string;
   countries: string[];
@@ -53,6 +55,10 @@ function formatBytes(bytes: number): string {
 }
 
 export function ServerList({
+  servers,
+  loading,
+  loadError,
+  onRefresh,
   selectedHost,
   selectedCountry,
   countries,
@@ -61,41 +67,8 @@ export function ServerList({
   disabled,
 }: ServerListProps) {
   const { t } = useTranslation();
-  const [servers, setServers] = useState<VPNServer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
-  const requestId = useRef(0);
-  const invalidateRequests = useCallback(() => {
-    requestId.current++;
-  }, []);
 
-  const loadServers = useCallback(async (countryFilter: string, refresh = false) => {
-    const id = ++requestId.current;
-    setLoading(true);
-    setLoadError(false);
-    try {
-      if (refresh) await VPNRefreshServers();
-      const result = await VPNGetServers(countryFilter, true);
-      if (id === requestId.current) setServers(result ?? []);
-    } catch {
-      if (id === requestId.current) {
-        setServers([]);
-        setLoadError(true);
-      }
-    } finally {
-      if (id === requestId.current) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadServers(selectedCountry);
-    return invalidateRequests;
-  }, [loadServers, invalidateRequests, selectedCountry]);
-
-  const handleRefresh = () => {
-    loadServers(selectedCountry, true);
-  };
   const visibleServers = servers.filter((s) =>
     `${s.hostName} ${s.countryLong} ${s.countryShort}`.toLowerCase().includes(query.trim().toLowerCase()),
   );
@@ -124,7 +97,7 @@ export function ServerList({
         <Button
           icon="refresh"
           variant="minimal"
-          onClick={handleRefresh}
+          onClick={onRefresh}
           disabled={disabled || loading}
           title={t('vpn.servers.refresh')}
           aria-label={t('vpn.servers.refresh')}
@@ -147,7 +120,7 @@ export function ServerList({
         ) : loadError ? (
           <div role="alert" className="vpn-servers__empty">
             <p>{t('vpn.feedback.serversError')}</p>
-            <Button onClick={handleRefresh} disabled={disabled}>
+            <Button onClick={onRefresh} disabled={disabled}>
               {t('vpn.feedback.retry')}
             </Button>
           </div>

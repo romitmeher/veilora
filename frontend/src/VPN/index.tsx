@@ -1,5 +1,5 @@
 import { Button, HTMLSelect, Switch, Tag, InputGroup, ProgressBar, Icon } from '@blueprintjs/core';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
@@ -16,6 +16,8 @@ import {
   VPNGetDNSResolver,
   VPNSetDNSResolver,
   VPNGetCountries,
+  VPNGetServers,
+  VPNRefreshServers,
 } from 'wails/go/app/App';
 import { EventsOn } from 'wails/runtime/runtime';
 
@@ -62,6 +64,10 @@ export function VPN() {
   const [countries, setCountries] = useState<string[]>([]);
   const [autoSelect, setAutoSelect] = useState(true);
   const [selectedServer, setSelectedServer] = useState<VPNServer | null>(null);
+  const [servers, setServers] = useState<VPNServer[]>([]);
+  const [serversLoading, setServersLoading] = useState(false);
+  const [serversError, setServersError] = useState(false);
+  const serverRequestId = useRef(0);
   const killSwitch = false;
   const [dnsProtect, setDnsProtect] = useState(true);
   const [dnsResolver, setDnsResolver] = useState('1.1.1.1');
@@ -158,6 +164,35 @@ export function VPN() {
       });
     }
   };
+
+  const loadServers = useCallback(async (countryFilter: string, refresh = false) => {
+    const id = ++serverRequestId.current;
+    setServersLoading(true);
+    setServersError(false);
+    try {
+      if (refresh) await VPNRefreshServers();
+      const result = await VPNGetServers(countryFilter, true);
+      if (id === serverRequestId.current) {
+        setServers(result ?? []);
+      }
+    } catch {
+      if (id === serverRequestId.current) {
+        setServers([]);
+        setServersError(true);
+      }
+    } finally {
+      if (id === serverRequestId.current) setServersLoading(false);
+    }
+  }, []);
+
+  const invalidateServerRequests = useCallback(() => {
+    serverRequestId.current++;
+  }, []);
+
+  useEffect(() => {
+    loadServers(country);
+    return invalidateServerRequests;
+  }, [loadServers, invalidateServerRequests, country]);
 
   useEffect(() => {
     loadEngines();
@@ -408,7 +443,10 @@ export function VPN() {
             <HTMLSelect
               id="vpn-country"
               value={country}
-              onChange={(e) => setCountry(e.target.value)}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setSelectedServer(null);
+              }}
               disabled={!canAct || isConnected}
               className="vpn-controls__select"
             >
@@ -416,6 +454,36 @@ export function VPN() {
               {countries.map((code) => (
                 <option key={code} value={code}>
                   {code}
+                </option>
+              ))}
+            </HTMLSelect>
+          </div>
+
+          {/* Server selection */}
+          <div className="vpn-controls__row">
+            <label htmlFor="vpn-server">Server</label>
+            <HTMLSelect
+              id="vpn-server"
+              value={autoSelect ? '' : (selectedServer?.hostName ?? '')}
+              onChange={(e) => {
+                const host = e.target.value;
+                if (!host) {
+                  setAutoSelect(true);
+                  setSelectedServer(null);
+                } else {
+                  const match = servers.find((s) => s.hostName === host) ?? null;
+                  setSelectedServer(match);
+                  setAutoSelect(false);
+                }
+              }}
+              disabled={!canAct || isConnected || serversLoading}
+              className="vpn-controls__select"
+            >
+              <option value="">Auto-select (Best server)</option>
+              {servers.slice(0, 80).map((s) => (
+                <option key={s.hostName} value={s.hostName}>
+                  {s.hostName} ({s.countryShort || s.countryLong}
+                  {s.ping > 0 ? ` · ${s.ping}ms` : ''})
                 </option>
               ))}
             </HTMLSelect>
@@ -515,17 +583,24 @@ export function VPN() {
         </div>
       </div>
 
-      {/* Manual server list */}
-      {!autoSelect && !isConnected && (
+      {/* Server list */}
+      {!isConnected && (
         <ServerList
-          selectedHost={selectedServer?.hostName ?? ''}
+          servers={servers}
+          loading={serversLoading}
+          loadError={serversError}
+          onRefresh={() => loadServers(country, true)}
+          selectedHost={autoSelect ? '' : (selectedServer?.hostName ?? '')}
           selectedCountry={country}
           countries={countries}
           onCountryChange={(code) => {
             setCountry(code);
             setSelectedServer(null);
           }}
-          onSelect={setSelectedServer}
+          onSelect={(server) => {
+            setSelectedServer(server);
+            setAutoSelect(false);
+          }}
           disabled={!canAct || isConnected}
         />
       )}
