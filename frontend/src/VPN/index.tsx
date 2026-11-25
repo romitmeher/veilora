@@ -396,18 +396,54 @@ export function VPN() {
       {/* Status card with Fluid Functionalism pulse animation */}
       <div className={statusClass}>
         <div className="vpn-status__header">
-          <div className="vpn-status__indicator" />
-          <span className="vpn-status__label" role="status">
-            <StatusText>{stateLabel(vpnState)}</StatusText>
-          </span>
-          {isConnected && vpnInfo.serverHostName && (
-            <div className="vpn-status__meta">
-              <div>{vpnInfo.serverHostName}</div>
-              <div>
-                {vpnInfo.countryLong} · {vpnInfo.engine?.toUpperCase()}
+          <div className="vpn-status__left">
+            <div className="vpn-status__indicator" />
+            <span className="vpn-status__label" role="status">
+              <StatusText>{stateLabel(vpnState)}</StatusText>
+            </span>
+          </div>
+          <div className="vpn-status__right">
+            {isConnected && vpnInfo.serverHostName && (
+              <div className="vpn-status__meta">
+                <div>{vpnInfo.serverHostName}</div>
+                <div>
+                  {vpnInfo.countryLong} · {vpnInfo.engine?.toUpperCase()}
+                </div>
               </div>
+            )}
+            <div className="vpn-status__actions">
+              <Button
+                intent={isConnected ? 'danger' : 'success'}
+                loading={isTransitioning && !isConnecting}
+                disabled={
+                  (isTransitioning && !isConnecting) ||
+                  (!isConnected && (enginesLoading || (!autoSelect && !selectedServer) || editingDns))
+                }
+                onClick={isConnected ? handleDisconnect : handleConnect}
+              >
+                {isConnected
+                  ? t('vpn.disconnect')
+                  : isConnecting
+                    ? 'Connecting…'
+                    : autoSelect
+                      ? t('vpn.connectBest')
+                      : selectedServer
+                        ? t('vpn.connectTo', { host: selectedServer.hostName })
+                        : t('vpn.connectBest')}
+              </Button>
+              {isConnecting && (
+                <Button
+                  intent="danger"
+                  variant="outlined"
+                  icon="cross"
+                  onClick={handleDisconnect}
+                  title="Cancel connection attempt"
+                >
+                  Cancel
+                </Button>
+              )}
             </div>
-          )}
+          </div>
         </div>
         {vpnInfo.status?.message ? <div className="vpn-status__message">{vpnInfo.status.message}</div> : null}
       </div>
@@ -591,12 +627,6 @@ export function VPN() {
           loadError={serversError}
           onRefresh={() => loadServers(country, true)}
           selectedHost={autoSelect ? '' : (selectedServer?.hostName ?? '')}
-          selectedCountry={country}
-          countries={countries}
-          onCountryChange={(code) => {
-            setCountry(code);
-            setSelectedServer(null);
-          }}
           onSelect={(server) => {
             setSelectedServer(server);
             setAutoSelect(false);
