@@ -3,6 +3,7 @@ interface FluidSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  pending?: boolean;
   className?: string;
   'aria-label'?: string;
 }
@@ -12,6 +13,7 @@ export function FluidSwitch({
   checked,
   onChange,
   disabled = false,
+  pending = false,
   className = '',
   'aria-label': ariaLabel,
 }: FluidSwitchProps) {
@@ -23,7 +25,7 @@ export function FluidSwitch({
       aria-checked={checked}
       aria-label={ariaLabel}
       disabled={disabled}
-      className={`fluid-switch ${checked ? 'is-checked' : ''} ${className}`}
+      className={`fluid-switch ${checked ? 'is-checked' : ''} ${pending ? 'is-pending' : ''} ${className}`}
       onClick={() => {
         if (!disabled) onChange(!checked);
       }}

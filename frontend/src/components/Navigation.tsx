@@ -2,9 +2,6 @@ import { Icon, type IconName } from '@blueprintjs/core';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useProxyState } from '@/context/ProxyStateContext';
-import { useVPNState } from '@/context/VPNStateContext';
-
 export type AppTab = 'home' | 'vpn' | 'filterLists' | 'rules' | 'settings';
 
 export const SIDEBAR_MIN_WIDTH = 160;
@@ -43,8 +40,6 @@ export function Navigation({
   onResizingChange,
 }: NavigationProps) {
   const { t } = useTranslation();
-  const { proxyState } = useProxyState();
-  const { isConnected, isTransitioning } = useVPNState();
 
   const [hovered, setHovered] = useState<number | null>(null);
   const [lastHovered, setLastHovered] = useState<number>(0);
@@ -57,7 +52,6 @@ export function Navigation({
   const tooltipTimer = useRef<number | null>(null);
   const lastClosedAt = useRef<number>(0);
   const selected = Math.max(0, items.findIndex((item) => item.id === active));
-  const isProxyActive = proxyState === 'on';
 
   const clearTooltipTimer = useCallback(() => {
     if (tooltipTimer.current !== null) {
@@ -215,28 +209,6 @@ export function Navigation({
               </span>
             </button>
           ))}
-        </div>
-
-        <div className="sidebar-status">
-          <div
-            className="sidebar-status__item"
-            title={`Ad Shield: ${isProxyActive ? 'Active' : 'Paused'}`}
-          >
-            <span className="sidebar-status__label">Ad Shield</span>
-            <span className={`sidebar-status__dot ${isProxyActive ? 'is-active' : ''}`} />
-          </div>
-          <div
-            className="sidebar-status__item"
-            title={`VPN Tunnel: ${isConnected ? 'Connected' : isTransitioning ? 'Connecting' : 'Disconnected'}`}
-          >
-            <span className="sidebar-status__label">VPN Tunnel</span>
-            <span
-              className={`sidebar-status__dot ${isConnected ? 'is-active' : ''}`}
-              style={{
-                backgroundColor: isTransitioning ? 'var(--warning)' : undefined,
-              }}
-            />
-          </div>
         </div>
       </div>
 

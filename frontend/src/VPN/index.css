@@ -282,8 +282,9 @@
 
 .vpn-table-header {
   display: grid;
-  grid-template-columns: 150px minmax(170px, 1fr) 70px 90px 70px 60px;
-  padding: 7px 14px;
+  grid-template-columns: 145px minmax(140px, 1fr) 120px 68px 86px 68px 56px;
+  gap: 8px;
+  padding: 7px 20px;
   background: var(--rail);
   border-bottom: 0;
   font-size: 11px;
@@ -310,7 +311,8 @@
 
 .vpn-tr {
   display: grid;
-  grid-template-columns: 150px minmax(170px, 1fr) 70px 90px 70px 60px;
+  grid-template-columns: 145px minmax(140px, 1fr) 120px 68px 86px 68px 56px;
+  gap: 8px;
   align-items: center;
   padding: 8px 14px;
   border: 0;
@@ -377,10 +379,14 @@
   white-space: nowrap;
 }
 
-.vpn-td__ip {
+.vpn-td--ip {
   font-size: 11px;
   color: var(--muted);
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vpn-td--ping {
@@ -420,6 +426,59 @@
 
 .vpn-table__state--error {
   color: var(--danger);
+}
+
+.vpn-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vpn-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vpn-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: var(--raised);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background var(--fast) ease,
+    transform var(--fast) var(--spring);
+}
+
+.vpn-pagination__btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.vpn-pagination__btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.vpn-pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.vpn-pagination__page {
+  padding: 0 4px;
+  color: var(--secondary);
+  font-weight: 500;
 }
 
 /* 4. Collapsible Advanced Settings Section */

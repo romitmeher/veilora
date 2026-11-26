@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
 import { FluidSwitch } from '@/components/FluidSwitch';
-import { OfficialFlag } from '@/components/OfficialFlag';
+import { OfficialFlag, parseRegionalTitle } from '@/components/OfficialFlag';
 import { useProxyState } from '@/context/ProxyStateContext';
 import { GetFilterLists, RemoveFilterList, ToggleFilterList } from 'wails/go/config/Config';
 import { config } from 'wails/go/models';
@@ -193,13 +193,6 @@ export function FilterLists() {
       )}
     </div>
   );
-}
-
-function parseRegionalTitle(name: string): { codes: string[]; title: string } {
-  const match = name.match(/^((?:[\u{1F1E6}-\u{1F1FF}]{2}[A-Z]{2}\s*)+):\s*(.+)$/u);
-  if (!match) return { codes: [], title: name };
-  const codes = Array.from(match[1].matchAll(/[A-Z]{2}/g), (m) => m[0]);
-  return { codes, title: match[2] };
 }
 
 export function FilterListCompactRow({

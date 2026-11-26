@@ -46,12 +46,17 @@ export function installDevWailsFixture(): void {
     }
   };
 
-  let devCustomRules = (() => {
+  let devRules: string[] = (() => {
     try {
-      return window.localStorage.getItem(RULES_STORAGE_KEY) ?? '';
+      const saved = window.localStorage.getItem(RULES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch {
-      return '';
+      // ignore storage errors
     }
+    return [];
   })();
 
   const sampleServers = [
@@ -111,10 +116,23 @@ export function installDevWailsFixture(): void {
     },
   ];
 
+  const listeners = new Map<string, Set<(data: unknown) => void>>();
+  const emitEvent = (name: string, data: unknown) => {
+    listeners.get(name)?.forEach((cb) => cb(data));
+  };
+
   w.runtime = {
-    EventsOnMultiple: () => () => {},
-    EventsOff: () => {},
-    EventsEmit: () => {},
+    EventsOnMultiple: (name: string, cb: (data: unknown) => void) => {
+      if (!listeners.has(name)) listeners.set(name, new Set());
+      listeners.get(name)!.add(cb);
+      return () => {
+        listeners.get(name)?.delete(cb);
+      };
+    },
+    EventsOff: (name: string) => {
+      listeners.delete(name);
+    },
+    EventsEmit: emitEvent,
     BrowserOpenURL: (url: string) => window.open(url, '_blank', 'noopener,noreferrer'),
   };
 
@@ -149,11 +167,11 @@ export function installDevWailsFixture(): void {
             saveFilterLists();
           }
         },
-        GetCustomRules: async () => devCustomRules,
-        SetCustomRules: async (rules: string) => {
-          devCustomRules = rules;
+        GetRules: async () => [...devRules],
+        SetRules: async (rules: string[]) => {
+          devRules = Array.isArray(rules) ? [...rules] : [];
           try {
-            window.localStorage.setItem(RULES_STORAGE_KEY, rules);
+            window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(devRules));
           } catch {
             // ignore storage errors
           }
@@ -173,8 +191,14 @@ export function installDevWailsFixture(): void {
     },
     app: {
       App: {
-        StartProxy: async () => {},
-        StopProxy: async () => {},
+        StartProxy: async () => {
+          emitEvent('proxy:action', { kind: 'starting' });
+          window.setTimeout(() => emitEvent('proxy:action', { kind: 'started' }), 150);
+        },
+        StopProxy: async () => {
+          emitEvent('proxy:action', { kind: 'stopping' });
+          window.setTimeout(() => emitEvent('proxy:action', { kind: 'stopped' }), 150);
+        },
         RestartApplication: async () => {},
         GetVersion: async () => 'v1.0.0-dev-preview',
         VPNGetStatus: async () => ({

@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import { VPNGetStatus } from 'wails/go/app/App';
 import { vpn } from 'wails/go/models';
@@ -12,6 +12,9 @@ export type VPNState =
   | 'connected'
   | 'disconnecting'
   | 'error';
+
+export type PendingVPNAction = 'connecting' | 'disconnecting' | null;
+export type VPNEngine = 'openvpn' | 'softether';
 
 export interface VPNStatus {
   state: VPNState;
@@ -43,8 +46,13 @@ const defaultInfo: VPNConnectionInfo = {
 interface VPNStateContextType {
   vpnInfo: VPNConnectionInfo;
   vpnState: VPNState;
+  engine: VPNEngine;
+  setEngine: (engine: VPNEngine) => void;
   isConnected: boolean;
   isTransitioning: boolean;
+  pendingAction: PendingVPNAction;
+  setPendingAction: (action: PendingVPNAction) => void;
+  connectedSeconds: number;
   refreshStatus: () => void;
 }
 
@@ -67,6 +75,10 @@ function normalizeInfo(info: vpn.ConnectionInfo): VPNConnectionInfo {
 
 export function VPNStateProvider({ children }: { children: ReactNode }) {
   const [vpnInfo, setVpnInfo] = useState<VPNConnectionInfo>(defaultInfo);
+  const [engine, setEngine] = useState<VPNEngine>('openvpn');
+  const [pendingAction, setPendingAction] = useState<PendingVPNAction>(null);
+  const [connectedSeconds, setConnectedSeconds] = useState(0);
+  const connectedSinceRef = useRef<number | null>(null);
 
   const refreshStatus = useCallback(() => {
     VPNGetStatus()
@@ -79,28 +91,63 @@ export function VPNStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshStatus();
     const cancel = EventsOn('vpn:statusChanged', (info: vpn.ConnectionInfo) => {
-      if (info) setVpnInfo(normalizeInfo(info));
+      if (info) {
+        setVpnInfo(normalizeInfo(info));
+        setPendingAction(null);
+      }
     });
     return cancel;
   }, [refreshStatus]);
 
-  const vpnState = vpnInfo.status?.state ?? 'disconnected';
-  const isConnected = vpnState === 'connected';
+  const rawVpnState = vpnInfo.status?.state ?? 'disconnected';
+  const vpnState: VPNState =
+    pendingAction && (rawVpnState === 'disconnected' || rawVpnState === 'connected' || rawVpnState === 'error')
+      ? pendingAction
+      : rawVpnState;
+  const isConnected = rawVpnState === 'connected' && pendingAction !== 'disconnecting';
   const isTransitioning =
-    vpnState === 'preparing' ||
-    vpnState === 'connecting' ||
-    vpnState === 'reconnecting' ||
-    vpnState === 'disconnecting';
+    pendingAction !== null ||
+    rawVpnState === 'preparing' ||
+    rawVpnState === 'connecting' ||
+    rawVpnState === 'reconnecting' ||
+    rawVpnState === 'disconnecting';
+
+  useEffect(() => {
+    if (rawVpnState !== 'connected') {
+      connectedSinceRef.current = null;
+      setConnectedSeconds(0);
+      return;
+    }
+
+    if (connectedSinceRef.current === null) {
+      connectedSinceRef.current = Date.now();
+    }
+
+    const updateElapsed = () => {
+      if (connectedSinceRef.current !== null) {
+        setConnectedSeconds(Math.floor((Date.now() - connectedSinceRef.current) / 1000));
+      }
+    };
+
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [rawVpnState]);
 
   const value = useMemo(
     () => ({
       vpnInfo,
       vpnState,
+      engine,
+      setEngine,
       isConnected,
       isTransitioning,
+      pendingAction,
+      setPendingAction,
+      connectedSeconds,
       refreshStatus,
     }),
-    [vpnInfo, vpnState, isConnected, isTransitioning, refreshStatus],
+    [vpnInfo, vpnState, engine, isConnected, isTransitioning, pendingAction, connectedSeconds, refreshStatus],
   );
 
   return <VPNStateContext.Provider value={value}>{children}</VPNStateContext.Provider>;
@@ -112,8 +159,13 @@ export function useVPNState() {
     return {
       vpnInfo: defaultInfo,
       vpnState: 'disconnected' as VPNState,
+      engine: 'openvpn' as VPNEngine,
+      setEngine: () => {},
       isConnected: false,
       isTransitioning: false,
+      pendingAction: null as PendingVPNAction,
+      setPendingAction: () => {},
+      connectedSeconds: 0,
       refreshStatus: () => {},
     };
   }

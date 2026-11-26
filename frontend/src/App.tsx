@@ -244,9 +244,6 @@ function App() {
                 </span>
               </span>
             </div>
-            <div className="status-footer__right">
-              <span>Ctrl+1..5 tabs · [ sidebar</span>
-            </div>
           </footer>
         </>
       )}

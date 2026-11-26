@@ -1,10 +1,11 @@
 import { Icon } from '@blueprintjs/core';
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export interface FluidSelectOption {
   value: string;
   label: string;
+  icon?: ReactNode;
 }
 
 interface FluidSelectProps {
@@ -12,6 +13,8 @@ interface FluidSelectProps {
   options: FluidSelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  searchable?: boolean;
+  searchPlaceholder?: string;
   className?: string;
   'aria-label'?: string;
 }
@@ -24,10 +27,13 @@ export function FluidSelect({
   options,
   onChange,
   disabled = false,
+  searchable = false,
+  searchPlaceholder = 'Search…',
   className = '',
   'aria-label': ariaLabel,
 }: FluidSelectProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [coords, setCoords] = useState<{ top: number; left: number; minWidth: number; flip: boolean }>({
     top: 0,
     left: 0,
@@ -40,46 +46,66 @@ export function FluidSelect({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const selectedIdx = Math.max(
+  const selectedOption = options.find((opt) => opt.value === value) ?? options[0];
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable) return options;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(
+      (opt) => opt.label.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q),
+    );
+  }, [options, searchable, searchQuery]);
+
+  const filteredSelectedIdx = Math.max(
     0,
-    options.findIndex((opt) => opt.value === value),
+    filteredOptions.findIndex((opt) => opt.value === value),
   );
-  const selectedOption = options[selectedIdx] ?? options[0];
 
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const estimatedHeight = Math.min(280, options.length * ROW_HEIGHT + POPUP_PADDING * 2);
+    const extraSearch = searchable ? 38 : 0;
+    const estimatedHeight = Math.min(300, options.length * ROW_HEIGHT + POPUP_PADDING * 2 + extraSearch);
     const spaceBelow = window.innerHeight - rect.bottom - 8;
     const flip = spaceBelow < estimatedHeight && rect.top > spaceBelow;
     setCoords({
       top: flip ? rect.top - 4 : rect.bottom + 4,
       left: rect.left,
-      minWidth: Math.max(rect.width, 140),
+      minWidth: Math.max(rect.width, searchable ? 210 : 140),
       flip,
     });
-  }, [options.length]);
+  }, [options.length, searchable]);
 
   const openMenu = useCallback(() => {
     if (disabled) return;
+    setSearchQuery('');
     updatePosition();
     setHoveredIdx(null);
     setCanSlideHover(false);
-    setLastHoveredIdx(selectedIdx);
+    setLastHoveredIdx(Math.max(0, options.findIndex((opt) => opt.value === value)));
     setOpen(true);
-  }, [disabled, selectedIdx, updatePosition]);
+    if (searchable) {
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [disabled, options, searchable, updatePosition, value]);
+
+  useEffect(() => {
+    rowRefs.current = [];
+    setHoveredIdx(filteredOptions.length > 0 && searchQuery ? 0 : null);
+    setLastHoveredIdx(0);
+    setCanSlideHover(false);
+  }, [searchQuery, filteredOptions.length]);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
-      if (
-        triggerRef.current?.contains(target) ||
-        menuRef.current?.contains(target)
-      ) {
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
         return;
       }
       setOpen(false);
@@ -88,28 +114,30 @@ export function FluidSelect({
       if (e.key === 'Escape') {
         setOpen(false);
         triggerRef.current?.focus();
-      } else if (e.key === 'ArrowDown') {
+      } else if (e.key === 'ArrowDown' && filteredOptions.length > 0) {
         e.preventDefault();
         setHoveredIdx((prev) => {
-          const next = prev === null ? selectedIdx : (prev + 1) % options.length;
+          const next = prev === null ? filteredSelectedIdx : (prev + 1) % filteredOptions.length;
           setCanSlideHover(prev !== null);
           setLastHoveredIdx(next);
           return next;
         });
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowUp' && filteredOptions.length > 0) {
         e.preventDefault();
         setHoveredIdx((prev) => {
-          const next = prev === null ? selectedIdx : (prev - 1 + options.length) % options.length;
+          const next =
+            prev === null ? filteredSelectedIdx : (prev - 1 + filteredOptions.length) % filteredOptions.length;
           setCanSlideHover(prev !== null);
           setLastHoveredIdx(next);
           return next;
         });
       } else if (e.key === 'Enter' && hoveredIdx !== null) {
-        e.preventDefault();
-        const opt = options[hoveredIdx];
+        const opt = filteredOptions[hoveredIdx];
         if (opt) {
+          e.preventDefault();
           onChange(opt.value);
           setOpen(false);
+          triggerRef.current?.focus();
         }
       }
     };
@@ -121,7 +149,7 @@ export function FluidSelect({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [open, hoveredIdx, selectedIdx, options, onChange, updatePosition]);
+  }, [open, hoveredIdx, filteredSelectedIdx, filteredOptions, onChange, updatePosition]);
 
   const handleListPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     let bestIdx: number | null = null;
@@ -154,7 +182,10 @@ export function FluidSelect({
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openMenu())}
       >
-        <span className="fluid-select__label">{selectedOption?.label ?? ''}</span>
+        <span className="fluid-select__label" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+          {selectedOption?.icon}
+          <span>{selectedOption?.label ?? ''}</span>
+        </span>
         <Icon icon="chevron-down" size={12} className="fluid-select__chevron" />
       </button>
 
@@ -171,6 +202,34 @@ export function FluidSelect({
               minWidth: `${coords.minWidth}px`,
             }}
           >
+            {searchable && (
+              <div className="fluid-select__search">
+                <Icon icon="search" size={12} className="fluid-select__search-icon" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="fluid-select__search-input"
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="fluid-select__search-clear"
+                    onClick={() => {
+                      setSearchQuery('');
+                      searchInputRef.current?.focus();
+                    }}
+                    aria-label="Clear filter"
+                  >
+                    <Icon icon="cross" size={11} />
+                  </button>
+                )}
+              </div>
+            )}
+
             <div
               className="fluid-select__list"
               style={
@@ -184,45 +243,57 @@ export function FluidSelect({
                 setCanSlideHover(false);
               }}
             >
-              <span
-                className={`fluid-select__hover ${hoveredIdx !== null ? 'is-visible' : ''} ${canSlideHover ? 'can-slide' : ''}`}
-                aria-hidden="true"
-              />
-              {options.map((opt, idx) => {
-                const isSelected = opt.value === value;
-                return (
-                  <button
-                    key={opt.value}
-                    ref={(el) => {
-                      rowRefs.current[idx] = el;
-                    }}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    className={`fluid-select__option ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => {
-                      onChange(opt.value);
-                      setOpen(false);
-                      triggerRef.current?.focus();
-                    }}
-                  >
-                    <span className="fluid-select__check" aria-hidden="true">
-                      {isSelected && (
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                          <path
-                            d="M3.5 8.5L6.5 11.5L12.5 4.5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="fluid-select__option-label">{opt.label}</span>
-                  </button>
-                );
-              })}
+              {filteredOptions.length === 0 ? (
+                <div className="fluid-select__empty">No matches</div>
+              ) : (
+                <>
+                  <span
+                    className={`fluid-select__hover ${hoveredIdx !== null ? 'is-visible' : ''} ${canSlideHover ? 'can-slide' : ''}`}
+                    aria-hidden="true"
+                  />
+                  {filteredOptions.map((opt, idx) => {
+                    const isSelected = opt.value === value;
+                    return (
+                      <button
+                        key={opt.value}
+                        ref={(el) => {
+                          rowRefs.current[idx] = el;
+                        }}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        className={`fluid-select__option ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          onChange(opt.value);
+                          setOpen(false);
+                          triggerRef.current?.focus();
+                        }}
+                      >
+                        <span className="fluid-select__check" aria-hidden="true">
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                              <path
+                                d="M3.5 8.5L6.5 11.5L12.5 4.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        <span
+                          className="fluid-select__option-label"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                        >
+                          {opt.icon}
+                          <span>{opt.label}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </div>,
           document.body,

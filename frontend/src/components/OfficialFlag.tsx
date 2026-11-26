@@ -1,5 +1,35 @@
 import { useState } from 'react';
 
+const regionNames =
+  typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function'
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null;
+
+export function getCountryDisplayName(
+  code: string,
+  nameMap?: ReadonlyMap<string, string>,
+): string {
+  const upper = code?.trim().toUpperCase();
+  if (!upper) return '';
+  const fromMap = nameMap?.get(upper);
+  if (fromMap) return fromMap;
+  if (upper.length === 2 && regionNames) {
+    try {
+      return regionNames.of(upper) || upper;
+    } catch {
+      return upper;
+    }
+  }
+  return upper;
+}
+
+export function parseRegionalTitle(name: string): { codes: string[]; title: string } {
+  const match = name.match(/^((?:[\u{1F1E6}-\u{1F1FF}]{2}[A-Z]{2}\s*)+):\s*(.+)$/u);
+  if (!match) return { codes: [], title: name };
+  const codes = Array.from(match[1].matchAll(/[A-Z]{2}/g), (m) => m[0]);
+  return { codes, title: match[2] };
+}
+
 export function emojiFlag(code: string): string {
   if (!code || code.length !== 2) return '🌐';
   const upper = code.toUpperCase();

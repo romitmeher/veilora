@@ -1,70 +1,20 @@
-import { CardList, Card, Tag, Collapse, Intent, CompoundTag, HTMLTable, Button } from '@blueprintjs/core';
-import { useEffect, useState, useMemo } from 'react';
+import { Collapse, Icon } from '@blueprintjs/core';
+import NumberFlow from '@number-flow/react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FluidSelect } from '@/components/FluidSelect';
-
+import { FilterAction, FilterActionKind, useProxyState } from '@/context/ProxyStateContext';
 import { getCurrentLocale } from '@/i18n';
-import { EventsOn } from 'wails/runtime';
 import './index.css';
 
-interface Rule {
-  filterName: string;
-  rawRule: string;
-}
-
-interface Process {
-  id: number;
-  name: string;
-  diskPath: string;
-}
-
-enum FilterActionKind {
-  Block = 'block',
-  Redirect = 'redirect',
-  Modify = 'modify',
-}
-
-interface FilterAction {
-  id: string;
-  kind: FilterActionKind;
-  method: string;
-  url: string;
-  to: string;
-  referer: string;
-  rules: Rule[];
-  process: Process;
-  createdAt: Date;
-}
-
-const MAX_LOGS = 500;
+const MAX_LOGS = 200;
 
 export function RequestLog() {
   const { t } = useTranslation();
-  const [logs, setLogs] = useState<FilterAction[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
+  const { logs, isLogsPaused: isPaused, setIsLogsPaused: setIsPaused, clearLogs } = useProxyState();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
-
-  useEffect(() => {
-    const cancel = EventsOn('filter:action', (action: Omit<FilterAction, 'id' | 'createdAt'>) => {
-      if (isPaused) return;
-      setLogs((prev) =>
-        [
-          {
-            ...action,
-            id: id(),
-            createdAt: new Date(),
-          },
-          ...prev,
-        ].slice(0, MAX_LOGS),
-      );
-    });
-
-    return () => {
-      cancel();
-    };
-  }, [isPaused]);
 
   const totalPages = Math.max(1, Math.ceil(logs.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -79,36 +29,40 @@ export function RequestLog() {
 
   return (
     <div className="request-log">
-      {/* Memory management toolbar: buffer gauge, pause stream, clear log, page size */}
       <div className="request-log__toolbar">
         <div className="request-log__toolbar-left">
-          <span>
-            {logs.length} logged {logs.length >= MAX_LOGS ? '(buffer full)' : ''}
-          </span>
-          <Button
-            size="small"
-            variant="minimal"
-            icon={isPaused ? 'play' : 'pause'}
-            intent={isPaused ? 'warning' : 'none'}
+          <div className="request-log__status-pill">
+            <span className={`request-log__status-dot ${isPaused ? 'request-log__status-dot--paused' : ''}`} />
+            <span>
+              <NumberFlow value={logs.length} trend={1} /> logged{logs.length >= MAX_LOGS ? ' (buffer full)' : ''}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className={`request-log__btn ${isPaused ? 'request-log__btn--paused' : ''}`}
             onClick={() => setIsPaused(!isPaused)}
             title={isPaused ? 'Resume live stream' : 'Pause live stream'}
           >
-            {isPaused ? 'Resume' : 'Pause'}
-          </Button>
-          <Button
-            size="small"
-            variant="minimal"
-            icon="trash"
+            <Icon icon={isPaused ? 'play' : 'pause'} size={12} />
+            <span>{isPaused ? 'Resume' : 'Pause'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="request-log__btn"
             disabled={logs.length === 0}
             onClick={() => {
-              setLogs([]);
+              clearLogs();
               setPage(1);
             }}
             title="Clear all logged events from memory"
           >
-            Clear
-          </Button>
+            <Icon icon="trash" size={12} />
+            <span>Clear</span>
+          </button>
         </div>
+
         <div className="request-log__toolbar-right">
           <FluidSelect
             aria-label="Items per page"
@@ -127,41 +81,47 @@ export function RequestLog() {
       </div>
 
       {logs.length === 0 ? (
-        <p className="request-log__empty">{t('requestLog.emptyState')}</p>
+        <div className="request-log__empty">
+          <Icon icon="pulse" size={20} className="request-log__empty-icon" />
+          <span>{t('requestLog.emptyState')}</span>
+        </div>
       ) : (
         <>
-          <CardList compact>
+          <div className="request-log__list">
             {displayedLogs.map((log) => (
-              <RequestLogCard log={log} key={log.id} />
+              <RequestLogRow log={log} key={log.id} />
             ))}
-          </CardList>
+          </div>
 
-          {/* Pagination Navigation */}
           {totalPages > 1 && (
             <div className="request-log__pagination">
-              <div className="request-log__pagination-info">
-                Showing {startIdx}–{endIdx} of {logs.length}
-              </div>
+              <span>
+                Showing {startIdx}-{endIdx} of {logs.length}
+              </span>
               <div className="request-log__pagination-controls">
-                <Button
-                  size="small"
-                  variant="minimal"
-                  icon="chevron-left"
+                <button
+                  type="button"
+                  className="request-log__btn request-log__btn--icon"
                   disabled={currentPage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   title="Previous page"
-                />
+                  aria-label="Previous page"
+                >
+                  <Icon icon="chevron-left" size={14} />
+                </button>
                 <span className="request-log__pagination-page">
                   Page {currentPage} of {totalPages}
                 </span>
-                <Button
-                  size="small"
-                  variant="minimal"
-                  icon="chevron-right"
+                <button
+                  type="button"
+                  className="request-log__btn request-log__btn--icon"
                   disabled={currentPage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   title="Next page"
-                />
+                  aria-label="Next page"
+                >
+                  <Icon icon="chevron-right" size={14} />
+                </button>
               </div>
             </div>
           )}
@@ -171,133 +131,130 @@ export function RequestLog() {
   );
 }
 
-function RequestLogCard({ log }: { log: FilterAction }) {
+function getKindClass(kind: FilterActionKind): string {
+  switch (kind) {
+    case FilterActionKind.Block:
+      return 'request-log__kind--danger';
+    case FilterActionKind.Modify:
+    case FilterActionKind.Redirect:
+      return 'request-log__kind--warning';
+    default:
+      return 'request-log__kind--neutral';
+  }
+}
+
+function RequestLogRow({ log }: { log: FilterAction }) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   const { hostname } = new URL(log.url, 'http://foo');
-
-  let tagIntent: Intent;
-  switch (log.kind) {
-    case FilterActionKind.Block:
-      tagIntent = Intent.DANGER;
-      break;
-    case FilterActionKind.Modify:
-      tagIntent = Intent.WARNING;
-      break;
-    case FilterActionKind.Redirect:
-      tagIntent = Intent.WARNING;
-      break;
-    default:
-      tagIntent = Intent.NONE;
-  }
-
   const hasProcessId = log.process.id > 0;
   const hasProcessPath = Boolean(log.process.diskPath);
 
   return (
-    <>
-      <Card key={log.id} className="request-log__card" interactive onClick={() => setIsOpen(!isOpen)}>
-        <div className="request-log__card__summary">
-          <Tag minimal intent={tagIntent}>
+    <div className="request-log__item">
+      <button
+        type="button"
+        className={`request-log__row ${isOpen ? 'request-log__row--open' : ''}`}
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+      >
+        <div className="request-log__row-main">
+          <span className={`request-log__kind ${getKindClass(log.kind)}`}>{log.kind}</span>
+          <span className="request-log__hostname" title={hostname}>
             {hostname}
-          </Tag>
-          <Tag minimal className="request-log__card__process-tag" title={log.process.name}>
-            {log.process.name}
-          </Tag>
+          </span>
+          {log.process.name && (
+            <span className="request-log__process" title={log.process.name}>
+              {log.process.name}
+            </span>
+          )}
         </div>
-        <div className="bp6-text-muted">
-          {log.createdAt.toLocaleTimeString(getCurrentLocale(), { timeStyle: 'short' })}
+        <div className="request-log__row-meta">
+          <span className="request-log__time">
+            {log.createdAt.toLocaleTimeString(getCurrentLocale(), { timeStyle: 'short' })}
+          </span>
+          <Icon
+            icon="chevron-right"
+            size={12}
+            className={`request-log__chevron ${isOpen ? 'request-log__chevron--open' : ''}`}
+          />
         </div>
-      </Card>
+      </button>
 
       <Collapse isOpen={isOpen}>
-        <Card className="request-log__card__details" compact>
-          <div className="request-log__card__details__section">
-            <div className="request-log__card__details__section-header">
-              <div className="request-log__card__details__section-title">{t('requestLog.request')}</div>
+        <div className="request-log__details">
+          <div className="request-log__section">
+            <div className="request-log__section-header">
+              <span className="request-log__section-title">{t('requestLog.request')}</span>
             </div>
-            <div className="request-log__card__details__group">
-              <div className="request-log__card__details__field request-log__card__details__field--tag">
-                <div className="request-log__card__details__value">
-                  <CompoundTag leftContent={t('requestLog.method')} minimal>
-                    {log.method}
-                  </CompoundTag>
-                </div>
+            <div className="request-log__meta-row">
+              <div className="request-log__kv-chip">
+                <span className="request-log__kv-chip-key">{t('requestLog.method')}</span>
+                <span className="request-log__kv-chip-val">{log.method}</span>
               </div>
-              <div className="request-log__card__details__field request-log__card__details__field--text">
-                <div className="request-log__card__details__label">{t('requestLog.url')}:</div>
-                <div className="request-log__card__details__value">{log.url}</div>
+            </div>
+            <div className="request-log__field">
+              <span className="request-log__field-label">{t('requestLog.url')}</span>
+              <span className="request-log__field-value">{log.url}</span>
+            </div>
+            {log.kind === FilterActionKind.Redirect && (
+              <div className="request-log__field">
+                <span className="request-log__field-label">{t('requestLog.redirectedTo')}</span>
+                <span className="request-log__field-value">{log.to}</span>
               </div>
-              {log.kind === FilterActionKind.Redirect && (
-                <div className="request-log__card__details__field request-log__card__details__field--text">
-                  <div className="request-log__card__details__label">{t('requestLog.redirectedTo')}:</div>
-                  <div className="request-log__card__details__value">{log.to}</div>
+            )}
+            {log.referer && (
+              <div className="request-log__field">
+                <span className="request-log__field-label">{t('requestLog.referer')}</span>
+                <span className="request-log__field-value">{log.referer}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="request-log__section">
+            <div className="request-log__section-header">
+              <span className="request-log__section-title">{t('requestLog.process')}</span>
+            </div>
+            <div className="request-log__meta-row">
+              {hasProcessId && (
+                <div className="request-log__kv-chip">
+                  <span className="request-log__kv-chip-key">PID</span>
+                  <span className="request-log__kv-chip-val">{log.process.id}</span>
                 </div>
               )}
-              {log.referer && (
-                <div className="request-log__card__details__field request-log__card__details__field--text">
-                  <div className="request-log__card__details__label">{t('requestLog.referer')}:</div>
-                  <div className="request-log__card__details__value">{log.referer}</div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="request-log__card__details__section">
-            <div className="request-log__card__details__section-header">
-              <div className="request-log__card__details__section-title">{t('requestLog.process')}</div>
-            </div>
-            <div className="request-log__card__details__group">
-              <div className="request-log__card__details__field request-log__card__details__field--tag request-log__card__details__field--process-summary">
-                <div className="request-log__card__details__value">
-                  {hasProcessId && (
-                    <CompoundTag leftContent="PID" minimal>
-                      {log.process.id}
-                    </CompoundTag>
-                  )}
-                  <CompoundTag
-                    leftContent={t('requestLog.processName')}
-                    minimal
-                    className="request-log__card__details__process-name-tag"
-                    title={log.process.name}
-                  >
-                    {log.process.name}
-                  </CompoundTag>
-                </div>
+              <div className="request-log__kv-chip" title={log.process.name}>
+                <span className="request-log__kv-chip-key">{t('requestLog.processName')}</span>
+                <span className="request-log__kv-chip-val">{log.process.name}</span>
               </div>
-              {hasProcessPath && (
-                <div className="request-log__card__details__field request-log__card__details__field--text">
-                  <div className="request-log__card__details__label">{t('requestLog.processPath')}:</div>
-                  <div className="request-log__card__details__value">{log.process.diskPath}</div>
+            </div>
+            {hasProcessPath && (
+              <div className="request-log__field">
+                <span className="request-log__field-label">{t('requestLog.processPath')}</span>
+                <span className="request-log__field-value">{log.process.diskPath}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="request-log__section">
+            <div className="request-log__section-header">
+              <span className="request-log__section-title">{t('requestLog.rules')}</span>
+              <span className="request-log__count-badge">
+                <NumberFlow value={log.rules.length} />
+              </span>
+            </div>
+            <div className="request-log__rules">
+              {log.rules.map((rule) => (
+                <div className="request-log__rule-row" key={`${rule.filterName}-${rule.rawRule}`}>
+                  <span className="request-log__rule-filter">{rule.filterName}</span>
+                  <code className="request-log__rule-raw">{rule.rawRule}</code>
                 </div>
-              )}
+              ))}
             </div>
           </div>
-          <div className="request-log__card__details__section">
-            <div className="request-log__card__details__section-header">
-              <div className="request-log__card__details__section-title">{t('requestLog.rules')}</div>
-              <Tag minimal>{log.rules.length}</Tag>
-            </div>
-            <HTMLTable bordered compact striped className="request-log__card__details__rules">
-              <thead>
-                <tr>
-                  <th>{t('requestLog.filterName')}</th>
-                  <th>{t('requestLog.rule')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {log.rules.map((rule) => (
-                  <tr key={rule.rawRule}>
-                    <td>{rule.filterName}</td>
-                    <td>{rule.rawRule}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </HTMLTable>
-          </div>
-        </Card>
+        </div>
       </Collapse>
-    </>
+    </div>
   );
 }
 
