@@ -1,10 +1,63 @@
 // Explicitly isolated development-only fixture for browser UI inspection outside the Wails runtime.
 // Tree-shaken out of production builds (`import.meta.env.DEV` is false in `vite build`).
 
+import defaultConfig from '../../internal/config/default-config.json';
+
+interface DevFilterList {
+  url: string;
+  name: string;
+  enabled: boolean;
+  type: string;
+  trusted?: boolean;
+}
+
 export function installDevWailsFixture(): void {
   if (!import.meta.env.DEV || typeof window === 'undefined') return;
   const w = window as unknown as Record<string, unknown>;
   if (w.go) return;
+
+  const FILTER_STORAGE_KEY = 'veilora_dev_filter_lists';
+  const RULES_STORAGE_KEY = 'veilora_dev_custom_rules';
+
+  const loadFilterLists = (): DevFilterList[] => {
+    try {
+      const saved = window.localStorage.getItem(FILTER_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: DevFilterList) => ({
+            ...item,
+            name: item.name?.replace(/^Zen - /, 'Veilora - ') ?? item.name,
+          }));
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return defaultConfig.filter.filterLists.map((item) => ({ ...item }));
+  };
+
+  let devFilterLists: DevFilterList[] = loadFilterLists();
+  const saveFilterLists = () => {
+    try {
+      window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(devFilterLists));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  let devRules: string[] = (() => {
+    try {
+      const saved = window.localStorage.getItem(RULES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return [];
+  })();
 
   const sampleServers = [
     {
@@ -63,10 +116,23 @@ export function installDevWailsFixture(): void {
     },
   ];
 
+  const listeners = new Map<string, Set<(data: unknown) => void>>();
+  const emitEvent = (name: string, data: unknown) => {
+    listeners.get(name)?.forEach((cb) => cb(data));
+  };
+
   w.runtime = {
-    EventsOnMultiple: () => () => {},
-    EventsOff: () => {},
-    EventsEmit: () => {},
+    EventsOnMultiple: (name: string, cb: (data: unknown) => void) => {
+      if (!listeners.has(name)) listeners.set(name, new Set());
+      listeners.get(name)!.add(cb);
+      return () => {
+        listeners.get(name)?.delete(cb);
+      };
+    },
+    EventsOff: (name: string) => {
+      listeners.delete(name);
+    },
+    EventsEmit: emitEvent,
     BrowserOpenURL: (url: string) => window.open(url, '_blank', 'noopener,noreferrer'),
   };
 
@@ -84,12 +150,32 @@ export function installDevWailsFixture(): void {
         SetAssetPort: async () => {},
         GetIgnoredHosts: async () => [],
         SetIgnoredHosts: async () => {},
-        GetFilterLists: async () => [],
-        ToggleFilterList: async () => {},
-        RemoveFilterList: async () => {},
-        AddFilterList: async () => {},
-        GetCustomRules: async () => '',
-        SetCustomRules: async () => {},
+        GetFilterLists: async () => devFilterLists.map((item) => ({ ...item })),
+        ToggleFilterList: async (url: string, enabled: boolean) => {
+          devFilterLists = devFilterLists.map((item) =>
+            item.url === url ? { ...item, enabled } : item,
+          );
+          saveFilterLists();
+        },
+        RemoveFilterList: async (url: string) => {
+          devFilterLists = devFilterLists.filter((item) => item.url !== url);
+          saveFilterLists();
+        },
+        AddFilterList: async (list: DevFilterList) => {
+          if (!devFilterLists.some((item) => item.url === list.url)) {
+            devFilterLists = [...devFilterLists, { ...list }];
+            saveFilterLists();
+          }
+        },
+        GetRules: async () => [...devRules],
+        SetRules: async (rules: string[]) => {
+          devRules = Array.isArray(rules) ? [...rules] : [];
+          try {
+            window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(devRules));
+          } catch {
+            // ignore storage errors
+          }
+        },
         GetAutoupdate: async () => true,
         SetAutoupdate: async () => {},
         GetRoutingMode: async () => 'all',
@@ -105,8 +191,14 @@ export function installDevWailsFixture(): void {
     },
     app: {
       App: {
-        StartProxy: async () => {},
-        StopProxy: async () => {},
+        StartProxy: async () => {
+          emitEvent('proxy:action', { kind: 'starting' });
+          window.setTimeout(() => emitEvent('proxy:action', { kind: 'started' }), 150);
+        },
+        StopProxy: async () => {
+          emitEvent('proxy:action', { kind: 'stopping' });
+          window.setTimeout(() => emitEvent('proxy:action', { kind: 'stopped' }), 150);
+        },
         RestartApplication: async () => {},
         GetVersion: async () => 'v1.0.0-dev-preview',
         VPNGetStatus: async () => ({

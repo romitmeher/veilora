@@ -211,7 +211,9 @@ export function SettingsManager() {
               <div>
                 <BrowserLink href={CHANGELOG_URL}>View Release Notes & Changelog</BrowserLink>
               </div>
-              <div style={{ marginTop: '4px' }}>Forked from Zen · © 2026 Veilora Contributors</div>
+              <div style={{ marginTop: '4px' }}>
+                <BrowserLink href={GITHUB_URL}>Veilora on GitHub</BrowserLink> · © 2026 Veilora Contributors
+              </div>
             </div>
 
             <div className="settings-about__actions">

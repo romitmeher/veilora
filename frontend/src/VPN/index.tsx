@@ -1,7 +1,11 @@
-import { Button, Switch, InputGroup, ProgressBar, Icon, Collapse } from '@blueprintjs/core';
+import { Button, InputGroup, ProgressBar, Icon, Collapse } from '@blueprintjs/core';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { AppToaster } from '@/common/toaster';
+import { FluidCopyButton } from '@/components/FluidCopyButton';
+import { FluidSwitch } from '@/components/FluidSwitch';
+import { OfficialFlag } from '@/components/OfficialFlag';
+import { SessionTimer } from '@/components/SessionTimer';
 import { StatusText } from '@/components/StatusText';
 import { useVPNState } from '@/context/VPNStateContext';
 import {
@@ -45,36 +49,10 @@ function stateLabel(state: string): string {
   }
 }
 
-function formatDuration(seconds: number): string {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  return [hrs, mins, secs].map((v) => String(v).padStart(2, '0')).join(':');
-}
-
-function countryCodeToFlag(code: string): string {
-  if (!code || code.length !== 2) return '🌐';
-  const offset = 127397;
-  return String.fromCodePoint(...[...code.toUpperCase()].map((c) => c.charCodeAt(0) + offset));
-}
-
 export function VPN() {
-  const { vpnInfo, vpnState, isConnected, isTransitioning } = useVPNState();
-  const [connectedSeconds, setConnectedSeconds] = useState(0);
+  const { vpnInfo, vpnState, engine, setEngine, isConnected, isTransitioning, setPendingAction, connectedSeconds } =
+    useVPNState();
 
-  useEffect(() => {
-    if (!isConnected) {
-      setConnectedSeconds(0);
-      return;
-    }
-    const start = Date.now();
-    const timer = window.setInterval(() => {
-      setConnectedSeconds(Math.floor((Date.now() - start) / 1000));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isConnected]);
-
-  const [engine, setEngine] = useState<EngineType>('openvpn');
   const [availableEngines, setAvailableEngines] = useState<EngineType[]>([]);
   const [engineStatuses, setEngineStatuses] = useState<Record<EngineType, string>>({
     openvpn: 'Checking…',
@@ -133,9 +111,6 @@ export function VPN() {
         (value): value is EngineType => value === 'openvpn' || value === 'softether',
       );
       setAvailableEngines(supported);
-      if (supported.length > 0) {
-        setEngine((prev) => (supported.includes(prev) ? prev : supported[0]));
-      }
     } catch {
       setAvailableEngines([]);
     } finally {
@@ -203,6 +178,7 @@ export function VPN() {
   }, [country, loadServers]);
 
   const handleConnect = async () => {
+    setPendingAction('connecting');
     try {
       if (autoSelect || !selectedServer) {
         await VPNConnectBest(country, engine, false, dnsProtect);
@@ -210,6 +186,7 @@ export function VPN() {
         await VPNConnectToServer(selectedServer.ip, engine, false, dnsProtect);
       }
     } catch (err: unknown) {
+      setPendingAction(null);
       AppToaster.show({
         message: err instanceof Error ? err.message : String(err),
         intent: 'danger',
@@ -218,9 +195,11 @@ export function VPN() {
   };
 
   const handleDisconnect = async () => {
+    setPendingAction('disconnecting');
     try {
       await VPNDisconnect();
     } catch (err: unknown) {
+      setPendingAction(null);
       AppToaster.show({
         message: err instanceof Error ? err.message : String(err),
         intent: 'danger',
@@ -271,14 +250,23 @@ export function VPN() {
             <span className="vpn-bar__target">
               {isConnected ? (
                 <>
-                  <span>{countryCodeToFlag(vpnInfo.countryShort)}</span>
+                  <OfficialFlag code={vpnInfo.countryShort} title={vpnInfo.countryLong} />
                   <span>{vpnInfo.countryLong || vpnInfo.serverHostName}</span>
+                  {vpnInfo.serverIP && (
+                    <>
+                      <span>·</span>
+                      <span className="vpn-bar__ip">{vpnInfo.serverIP}</span>
+                      <FluidCopyButton value={vpnInfo.serverIP} label="Copy relay IP" />
+                    </>
+                  )}
                   <span>·</span>
-                  <span className="vpn-bar__timer">{formatDuration(connectedSeconds)}</span>
+                  <span className="vpn-bar__timer">
+                    <SessionTimer seconds={connectedSeconds} />
+                  </span>
                 </>
               ) : selectedServer && !autoSelect ? (
                 <>
-                  <span>{countryCodeToFlag(selectedServer.countryShort)}</span>
+                  <OfficialFlag code={selectedServer.countryShort} title={selectedServer.countryLong} />
                   <span>Target: {selectedServer.hostName}</span>
                 </>
               ) : (
@@ -400,13 +388,13 @@ export function VPN() {
                 <label htmlFor="vpn-autoselect-switch">Auto-select recommended relay</label>
                 <div><span>Connects to highest scoring node if no server is selected</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-autoselect-switch"
                 checked={autoSelect}
                 disabled={isTransitioning || isConnected}
-                onChange={(e) => {
-                  setAutoSelect(e.currentTarget.checked);
-                  if (e.currentTarget.checked) setSelectedServer(null);
+                onChange={(checked) => {
+                  setAutoSelect(checked);
+                  if (checked) setSelectedServer(null);
                 }}
               />
             </div>
@@ -416,11 +404,11 @@ export function VPN() {
                 <label htmlFor="vpn-autoconnect-switch">Auto-connect on launch</label>
                 <div><span>Automatically initiate VPN connection when Veilora starts</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-autoconnect-switch"
                 checked={autoConnectEngine === 'openvpn'}
-                onChange={(e) => {
-                  const val = e.currentTarget.checked ? 'openvpn' : 'off';
+                onChange={(checked) => {
+                  const val = checked ? 'openvpn' : 'off';
                   setAutoConnectEngine(val);
                   localStorage.setItem('veilora_vpn_autoconnect', val);
                 }}
@@ -432,11 +420,11 @@ export function VPN() {
                 <label htmlFor="vpn-dns-protect-switch">DNS Leak Protection</label>
                 <div><span>Enforce local resolver overrides to prevent DNS leaks</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-dns-protect-switch"
                 checked={dnsProtect}
                 disabled={isTransitioning || isConnected}
-                onChange={(e) => setDnsProtect(e.currentTarget.checked)}
+                onChange={(checked) => setDnsProtect(checked)}
               />
             </div>
 

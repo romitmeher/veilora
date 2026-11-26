@@ -4,7 +4,7 @@ import { BrowserOpenURL } from 'wails/runtime/runtime';
 
 import './index.css';
 
-const LINK = 'https://opencollective.com/zen-privacy';
+const LINK = 'https://github.com/romitmeher/veilora';
 
 export function DonateButton() {
   return (
@@ -13,7 +13,7 @@ export function DonateButton() {
       variant="outlined"
       onClick={() => BrowserOpenURL(LINK)}
     >
-      Support upstream Zen
+      Support Veilora
     </Button>
   );
 }

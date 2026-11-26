@@ -1,7 +1,7 @@
 .heading {
   margin: 0;
   padding: 0 18px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
   background: var(--rail);
   display: flex;
   justify-content: space-between;

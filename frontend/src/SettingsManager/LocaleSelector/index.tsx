@@ -1,8 +1,8 @@
-import { Button, FormGroup, MenuItem } from '@blueprintjs/core';
-import { ItemRenderer, Select } from '@blueprintjs/select';
+import { FormGroup } from '@blueprintjs/core';
 import { useTranslation } from 'react-i18next';
 
-import { changeLocale, getCurrentLocale, LOCALE_LABELS, LocaleItem } from '@/i18n';
+import { FluidSelect } from '@/components/FluidSelect';
+import { changeLocale, getCurrentLocale, LOCALE_LABELS, type LocaleItem } from '@/i18n';
 
 interface LocaleSelectorProps {
   showLabel?: boolean;
@@ -11,37 +11,18 @@ interface LocaleSelectorProps {
 
 export function LocaleSelector({ showLabel = true, showHelper = true }: LocaleSelectorProps = {}) {
   const { t } = useTranslation();
-
-  const handleLocaleChange = async (item: LocaleItem) => {
-    changeLocale(item.value);
-  };
-
-  const renderItem: ItemRenderer<LocaleItem> = (item, { handleClick, handleFocus, modifiers }) => {
-    return (
-      <MenuItem
-        active={modifiers.active}
-        key={item.value}
-        onClick={handleClick}
-        onFocus={handleFocus}
-        roleStructure="listoption"
-        text={item.label}
-      />
-    );
-  };
-
-  const currentLocale = LOCALE_LABELS.find((item) => item.value === getCurrentLocale()) || LOCALE_LABELS[0];
+  const current = getCurrentLocale();
 
   const selectComponent = (
-    <Select<LocaleItem>
-      items={LOCALE_LABELS}
-      activeItem={currentLocale}
-      onItemSelect={handleLocaleChange}
-      itemRenderer={renderItem}
-      filterable={false}
-      popoverProps={{ minimal: true }}
-    >
-      <Button icon="translate" text={currentLocale.label} endIcon="caret-down" />
-    </Select>
+    <FluidSelect
+      aria-label={t('settings.language.label')}
+      value={current}
+      onChange={(val) => changeLocale(val as LocaleItem['value'])}
+      options={LOCALE_LABELS.map((item) => ({
+        value: item.value,
+        label: item.label,
+      }))}
+    />
   );
 
   if (!showLabel && !showHelper) {

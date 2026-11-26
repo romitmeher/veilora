@@ -10,24 +10,31 @@
 .settings-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  height: var(--control-height, 32px);
+  gap: 2px;
   background: var(--raised);
   padding: 3px;
-  border-radius: var(--radius-sm, 4px);
-  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 6px);
+  border: 0;
   width: fit-content;
+  flex-shrink: 0;
 }
 
 .settings-tab-btn {
-  padding: 5px 12px;
-  border-radius: var(--radius-xs, 3px);
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm, 4px);
   border: 0;
   background: transparent;
   color: var(--secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--fast) ease, color var(--fast) ease;
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) var(--spring);
+}
+
+.settings-tab-btn:active {
+  transform: scale(0.97);
 }
 
 .settings-tab-btn.is-active {
@@ -44,8 +51,11 @@
 /* Settings Category Card */
 .settings-card {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -56,9 +66,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-  gap: 20px;
+  min-height: 56px;
+  padding: 12px 18px;
+  border-bottom: 0;
+  gap: 24px;
 }
 
 .settings-row:last-child {
@@ -69,6 +80,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
   max-width: 480px;
 }
 
@@ -91,15 +104,107 @@
   justify-content: flex-end;
 }
 
+/* Suppress duplicate FormGroup labels/helpers when rendered inside SettingsManager rows */
+.settings-row__control .bp6-form-group {
+  margin: 0;
+  width: 100%;
+}
+
+.settings-row__control .bp6-form-group > .bp6-label,
+.settings-row__control .bp6-form-group .bp6-form-helper-text {
+  display: none;
+}
+
+.settings-row__control .bp6-form-content {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-row__control .bp6-numeric-input {
+  display: inline-flex;
+  align-items: center;
+  width: 132px;
+  max-width: 100%;
+  border-radius: var(--radius-md, 6px);
+  overflow: hidden;
+  background: var(--raised);
+}
+
+.settings-row__control .bp6-numeric-input .bp6-input-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row__control .bp6-numeric-input .bp6-input {
+  width: 100%;
+  min-width: 0;
+  border-radius: 0 !important;
+}
+
+.settings-row__control .bp6-numeric-input .bp6-button-group.bp6-vertical {
+  flex: 0 0 24px;
+  width: 24px;
+}
+
+.settings-row__control .settings-manager__ignored-hosts-tooltip,
+.settings-row__control .settings-manager__ignored-hosts-input {
+  width: 100%;
+}
+
+/* Segmented Theme Selector (matches Fluid Functionalism tabs) */
+.theme-segmented {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-height, 32px);
+  padding: 3px;
+  gap: 2px;
+  background: var(--raised);
+  border-radius: var(--radius-md, 6px);
+}
+
+.theme-segmented__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: var(--secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) var(--spring);
+}
+
+.theme-segmented__btn:hover:not(.is-active) {
+  color: var(--ink);
+}
+
+.theme-segmented__btn:active {
+  transform: scale(0.97);
+}
+
+.theme-segmented__btn.is-active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
 /* Danger / Destructive Section */
 .settings-card--danger {
-  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 .settings-card__danger-header {
   padding: 10px 18px;
   background: color-mix(in srgb, var(--danger) 8%, var(--surface));
-  border-bottom: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
+  border-bottom: 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--danger);
@@ -145,8 +250,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  border-top: 0;
 }
 
 .theme-segmented .bp6-button {

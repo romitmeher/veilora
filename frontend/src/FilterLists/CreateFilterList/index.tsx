@@ -1,9 +1,10 @@
-import { Button, Classes, FormGroup, InputGroup, Switch, Tooltip } from '@blueprintjs/core';
+import { Button, Classes, FormGroup, InputGroup, Tooltip } from '@blueprintjs/core';
 import { InfoSign } from '@blueprintjs/icons';
 import { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
+import { FluidSwitch } from '@/components/FluidSwitch';
 import { useProxyState } from '@/context/ProxyStateContext';
 import { FilterListType } from '@/FilterLists/types';
 import { AddFilterList } from 'wails/go/config/Config';
@@ -54,13 +55,10 @@ export function CreateFilterList({ onAdd }: { onAdd: () => void }) {
         }
         labelFor="trusted"
       >
-        <Switch
+        <FluidSwitch
           id="trusted"
-          large
           checked={trusted}
-          onClick={(e) => {
-            setTrusted(e.currentTarget.checked);
-          }}
+          onChange={setTrusted}
         />
       </FormGroup>
 

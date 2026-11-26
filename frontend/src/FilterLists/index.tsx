@@ -1,6 +1,5 @@
 import {
   Spinner,
-  Switch,
   Button,
   MenuItem,
   Popover,
@@ -14,6 +13,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppToaster } from '@/common/toaster';
+import { FluidSwitch } from '@/components/FluidSwitch';
+import { OfficialFlag, parseRegionalTitle } from '@/components/OfficialFlag';
 import { useProxyState } from '@/context/ProxyStateContext';
 import { GetFilterLists, RemoveFilterList, ToggleFilterList } from 'wails/go/config/Config';
 import { config } from 'wails/go/models';
@@ -66,21 +67,25 @@ export function FilterLists() {
 
   const categories = useMemo(() => [
     { id: FilterListType.GENERAL, label: t('filterTypes.general') },
+    { id: FilterListType.ADS, label: t('filterTypes.ads') },
+    { id: FilterListType.PRIVACY, label: t('filterTypes.privacy') },
+    { id: FilterListType.MALWARE, label: t('filterTypes.malware') },
     { id: FilterListType.REGIONAL, label: t('filterTypes.regional') },
     { id: FilterListType.DIGITAL_WELLBEING, label: t('filterTypes.digitalWellbeing') },
     { id: FilterListType.CUSTOM, label: t('filterTypes.custom') },
   ], [t]);
 
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const isSearching = trimmedQuery.length > 0;
+
   const visibleLists = useMemo(() => {
-    let list = state.filterLists.filter((item) => item.type === type);
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter((item) =>
-        `${item.name} ${item.url}`.toLowerCase().includes(q),
+    if (isSearching) {
+      return state.filterLists.filter((item) =>
+        `${item.name} ${item.url} ${item.type}`.toLowerCase().includes(trimmedQuery),
       );
     }
-    return list;
-  }, [state.filterLists, type, searchQuery]);
+    return state.filterLists.filter((item) => item.type === type);
+  }, [state.filterLists, type, trimmedQuery, isSearching]);
 
   return (
     <div className="filter-lists-view">
@@ -90,7 +95,7 @@ export function FilterLists() {
           {categories.map((cat) => {
             const count = state.filterLists.filter((item) => item.type === cat.id && item.enabled).length;
             const total = state.filterLists.filter((item) => item.type === cat.id).length;
-            const isActive = type === cat.id;
+            const isActive = !isSearching && type === cat.id;
             return (
               <button
                 key={cat.id}
@@ -98,7 +103,10 @@ export function FilterLists() {
                 role="tab"
                 aria-selected={isActive}
                 className={`filter-category-btn ${isActive ? 'is-active' : ''}`}
-                onClick={() => setType(cat.id)}
+                onClick={() => {
+                  if (isSearching) setSearchQuery('');
+                  setType(cat.id);
+                }}
               >
                 <span>{cat.label}</span>
                 <span className="bp6-text-muted" style={{ fontSize: '10px' }}>
@@ -113,11 +121,21 @@ export function FilterLists() {
           <div className="filter-lists-search">
             <Icon icon="search" size={12} className="filter-lists-search__icon" />
             <input
-              placeholder="Search filters…"
+              placeholder="Search all filters…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search filter lists"
+              aria-label="Search all filter lists"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                className="filter-lists-search__clear"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+              >
+                <Icon icon="cross" size={12} />
+              </button>
+            )}
           </div>
 
           {type === FilterListType.DIGITAL_WELLBEING && (
@@ -161,7 +179,8 @@ export function FilterLists() {
             <FilterListCompactRow
               key={filterList.url}
               filterList={filterList}
-              showDelete={type === FilterListType.CUSTOM}
+              showCategoryBadge={isSearching}
+              showDelete={filterList.type === FilterListType.CUSTOM}
               onRemoved={fetchLists}
               onToggled={fetchLists}
             />
@@ -178,11 +197,13 @@ export function FilterLists() {
 
 export function FilterListCompactRow({
   filterList,
+  showCategoryBadge,
   showDelete,
   onRemoved,
   onToggled,
 }: {
   filterList: config.FilterList;
+  showCategoryBadge?: boolean;
   showDelete?: boolean;
   showButtons?: boolean;
   onRemoved?: () => void;
@@ -219,11 +240,25 @@ export function FilterListCompactRow({
     }
   };
 
+  const { codes, title } = useMemo(() => parseRegionalTitle(filterList.name), [filterList.name]);
+
   return (
     <div className="filter-row">
       <div className="filter-row__info">
         <div className="filter-row__title-line">
-          <span className="filter-row__name">{filterList.name}</span>
+          {codes.length > 0 && (
+            <span className="filter-row__flags">
+              {codes.map((c) => (
+                <OfficialFlag key={c} code={c} />
+              ))}
+            </span>
+          )}
+          <span className="filter-row__name">{title}</span>
+          {showCategoryBadge && (
+            <span className={`filter-row__category-badge filter-row__category-badge--${filterList.type}`}>
+              {t(`filterTypes.${filterList.type}`)}
+            </span>
+          )}
           {filterList.trusted && (
             <Tag intent="success" minimal>
               Trusted
@@ -241,13 +276,13 @@ export function FilterListCompactRow({
           disabled={!isProxyRunning}
           placement="left"
         >
-          <Switch
+          <FluidSwitch
             checked={switchChecked}
             disabled={switchLoading || isProxyRunning}
-            onChange={async (e) => {
+            aria-label={filterList.name}
+            onChange={async (checked) => {
               setSwitchLoading(true);
               const initial = switchChecked;
-              const { checked } = e.currentTarget;
               setSwitchChecked(checked);
               try {
                 await ToggleFilterList(filterList.url, checked);

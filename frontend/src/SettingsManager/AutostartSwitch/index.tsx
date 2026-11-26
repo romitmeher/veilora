@@ -1,6 +1,8 @@
-import { Switch, FormGroup } from '@blueprintjs/core';
+import { FormGroup } from '@blueprintjs/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { FluidSwitch } from '@/components/FluidSwitch';
 
 import { AppToaster } from '@/common/toaster';
 import { IsEnabled, Enable, Disable } from 'wails/go/autostart/Manager';
@@ -51,12 +53,11 @@ export function AutostartSwitch() {
 
   return (
     <FormGroup label={t('autoStartSwitch.label')} labelFor="autostart" helperText={t('autoStartSwitch.description')}>
-      <Switch
+      <FluidSwitch
         id="autostart"
         checked={state.enabled}
-        large
         disabled={state.loading}
-        onClick={() => {
+        onChange={() => {
           if (state.enabled) {
             disable();
           } else {
