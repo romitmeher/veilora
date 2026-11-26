@@ -131,9 +131,11 @@ export namespace vpn {
 	    engine: string;
 	    ready: boolean;
 	    message: string;
+	
 	    static createFrom(source: any = {}) {
 	        return new EngineAvailability(source);
 	    }
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.engine = source["engine"];
@@ -143,16 +145,30 @@ export namespace vpn {
 	}
 	export class SoftEtherOwnership {
 	    service: string;
+	    serviceOwned: boolean;
+	    serviceBinaryPath?: string;
 	    adapter: string;
+	    adapterOwned: boolean;
 	    account: string;
+	    runtimeDir?: string;
+	    manifestHash?: string;
+	    updatedAt?: string;
+	
 	    static createFrom(source: any = {}) {
 	        return new SoftEtherOwnership(source);
 	    }
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.service = source["service"];
+	        this.serviceOwned = source["serviceOwned"];
+	        this.serviceBinaryPath = source["serviceBinaryPath"];
 	        this.adapter = source["adapter"];
+	        this.adapterOwned = source["adapterOwned"];
 	        this.account = source["account"];
+	        this.runtimeDir = source["runtimeDir"];
+	        this.manifestHash = source["manifestHash"];
+	        this.updatedAt = source["updatedAt"];
 	    }
 	}
 

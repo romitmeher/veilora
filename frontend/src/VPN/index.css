@@ -9,8 +9,11 @@
 /* 1. Primary Connection Control Header */
 .vpn-bar {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
   padding: 14px 18px;
   display: flex;
   align-items: center;
@@ -95,23 +98,29 @@
 .vpn-protocol-switch {
   display: flex;
   align-items: center;
-  padding: 2px;
+  height: var(--control-height, 32px);
+  padding: 3px;
   background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm, 4px);
+  border: 0;
+  border-radius: var(--radius-md, 6px);
   gap: 2px;
 }
 
 .vpn-protocol-btn {
-  padding: 4px 10px;
-  font-size: 11px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 500;
-  border-radius: var(--radius-xs, 3px);
+  border-radius: var(--radius-sm, 4px);
   border: 0;
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
-  transition: background var(--fast) ease, color var(--fast) ease;
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) var(--spring);
+}
+
+.vpn-protocol-btn:active {
+  transform: scale(0.97);
 }
 
 .vpn-protocol-btn.is-selected {
@@ -132,9 +141,11 @@
 /* 2. SoftEther Engine Provisioning Alert */
 .vpn-provision-box {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -160,8 +171,11 @@
 /* 3. Server Browser & Table */
 .vpn-browser {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -172,8 +186,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: var(--canvas);
-  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  border-bottom: 0;
   flex-wrap: wrap;
 }
 
@@ -190,21 +204,38 @@
   transform: translateY(-50%);
   color: var(--muted);
   pointer-events: none;
+  transition: color var(--fast) ease;
+}
+
+.vpn-browser__search:hover .vpn-browser__search-icon,
+.vpn-browser__search:focus-within .vpn-browser__search-icon {
+  color: var(--ink);
 }
 
 .vpn-browser__input {
   width: 100%;
-  height: 30px;
-  padding: 0 28px 0 28px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm, 4px);
+  height: var(--control-height, 32px);
+  padding: 0 28px;
+  background: var(--raised);
+  border: 0;
+  box-shadow: inset 0 0 0 1px transparent;
+  border-radius: var(--radius-md, 6px);
   color: var(--ink);
   font-size: 12px;
+  transition: background var(--fast) ease, box-shadow var(--fast) ease;
+}
+
+.vpn-browser__input::placeholder {
+  color: var(--muted);
+}
+
+.vpn-browser__input:hover {
+  background: var(--hover);
 }
 
 .vpn-browser__input:focus {
-  border-color: var(--focus);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
   outline: none;
 }
 
@@ -221,7 +252,7 @@
 }
 
 .vpn-browser__select {
-  height: 30px;
+  height: var(--control-height, 32px);
 }
 
 .vpn-browser__select--sort {
@@ -251,10 +282,10 @@
 
 .vpn-table-header {
   display: grid;
-  grid-template-columns: 80px minmax(180px, 1fr) 75px 95px 75px 65px;
+  grid-template-columns: 150px minmax(170px, 1fr) 70px 90px 70px 60px;
   padding: 7px 14px;
   background: var(--rail);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -279,11 +310,13 @@
 
 .vpn-tr {
   display: grid;
-  grid-template-columns: 80px minmax(180px, 1fr) 75px 95px 75px 65px;
+  grid-template-columns: 150px minmax(170px, 1fr) 70px 90px 70px 60px;
   align-items: center;
   padding: 8px 14px;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--radius-sm, 4px);
+  margin: 1px 6px;
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -299,23 +332,36 @@
 
 .vpn-tr--selected {
   background: var(--selected-bg) !important;
-  border-left: 3px solid var(--accent);
 }
 
 .vpn-td--country {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
   font-weight: 500;
 }
 
-.vpn-td__flag {
-  font-size: 14px;
+.vpn-td__flag-img {
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-.vpn-td__code {
-  font-size: 11px;
-  color: var(--secondary);
+.vpn-td__flag-fallback {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.vpn-td__country-name {
+  font-size: 12px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vpn-td--name {
@@ -379,8 +425,11 @@
 /* 4. Collapsible Advanced Settings Section */
 .vpn-advanced {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
   overflow: hidden;
 }
 
@@ -389,17 +438,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 14px;
-  background: var(--canvas);
+  padding: 10px 14px;
+  background: var(--surface);
   border: 0;
   color: var(--secondary);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
+  transition: background var(--fast) ease, color var(--fast) ease;
 }
 
 .vpn-advanced__toggle:hover {
+  background: var(--hover);
   color: var(--ink);
 }
 
@@ -408,7 +459,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-top: 1px solid var(--line);
+  border-top: 0;
   background: var(--surface);
 }
 

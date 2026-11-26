@@ -74,11 +74,28 @@ func (m *Manager) Quit() {
 	quit()
 }
 
+func (m *Manager) updateTrayTooltipLocked() {
+	switch {
+	case m.proxyActive && m.vpnActive:
+		setTooltip(m.appName + " — Ad Shield & VPN Active")
+	case m.proxyActive:
+		setTooltip(m.appName + " — Ad Shield Active")
+	case m.vpnActive:
+		setTooltip(m.appName + " — VPN Connected")
+	default:
+		setTooltip(m.appName + " — Paused")
+	}
+}
+
 // OnProxyStarted should be called when the proxy gets started.
 func (m *Manager) OnProxyStarted() {
 	m.proxyStateMu.Lock()
-	defer m.proxyStateMu.Unlock()
 	m.proxyActive = true
+	m.proxyStateMu.Unlock()
+
+	m.vpnStateMu.Lock()
+	m.updateTrayTooltipLocked()
+	m.vpnStateMu.Unlock()
 
 	if m.startStopMenuItem == nil {
 		// Sanity check.
@@ -86,15 +103,19 @@ func (m *Manager) OnProxyStarted() {
 		return
 	}
 
-	m.startStopMenuItem.SetTitle("Stop")
-	m.startStopMenuItem.SetTooltip("Stop")
+	m.startStopMenuItem.SetTitle("Pause Ad Shield")
+	m.startStopMenuItem.SetTooltip("Pause Ad Shield")
 }
 
 // OnProxyStopped should be called when the proxy gets stopped.
 func (m *Manager) OnProxyStopped() {
 	m.proxyStateMu.Lock()
-	defer m.proxyStateMu.Unlock()
 	m.proxyActive = false
+	m.proxyStateMu.Unlock()
+
+	m.vpnStateMu.Lock()
+	m.updateTrayTooltipLocked()
+	m.vpnStateMu.Unlock()
 
 	if m.startStopMenuItem == nil {
 		// Sanity check.
@@ -102,14 +123,19 @@ func (m *Manager) OnProxyStopped() {
 		return
 	}
 
-	m.startStopMenuItem.SetTitle("Start")
-	m.startStopMenuItem.SetTooltip("Start")
+	m.startStopMenuItem.SetTitle("Start Ad Shield")
+	m.startStopMenuItem.SetTooltip("Start Ad Shield")
 }
 
 func (m *Manager) OnVPNStarted() {
 	m.vpnStateMu.Lock()
-	defer m.vpnStateMu.Unlock()
 	m.vpnActive = true
+	m.vpnStateMu.Unlock()
+
+	m.proxyStateMu.Lock()
+	m.updateTrayTooltipLocked()
+	m.proxyStateMu.Unlock()
+
 	if m.vpnStartStopItem != nil {
 		m.vpnStartStopItem.SetTitle("Disconnect VPN")
 		m.vpnStartStopItem.SetTooltip("Disconnect VPN")
@@ -118,8 +144,13 @@ func (m *Manager) OnVPNStarted() {
 
 func (m *Manager) OnVPNStopped() {
 	m.vpnStateMu.Lock()
-	defer m.vpnStateMu.Unlock()
 	m.vpnActive = false
+	m.vpnStateMu.Unlock()
+
+	m.proxyStateMu.Lock()
+	m.updateTrayTooltipLocked()
+	m.proxyStateMu.Unlock()
+
 	if m.vpnStartStopItem != nil {
 		m.vpnStartStopItem.SetTitle("Connect VPN")
 		m.vpnStartStopItem.SetTooltip("Connect to the best VPN server")
@@ -131,14 +162,14 @@ func (m *Manager) onReady(ctx context.Context) func() {
 		setIcon(m.logoBytes)
 		setTooltip(m.appName)
 
-		openMenuItem := addMenuItem("Open", "Open the application window")
+		openMenuItem := addMenuItem("Open Veilora", "Open the application window")
 		go func() {
 			for range openMenuItem.ClickedCh {
 				runtime.Show(ctx)
 			}
 		}()
 
-		m.startStopMenuItem = addMenuItem("Start", "Start")
+		m.startStopMenuItem = addMenuItem("Start Ad Shield", "Start Ad Shield")
 		go func() {
 			for range m.startStopMenuItem.ClickedCh {
 				m.proxyStateMu.Lock()
@@ -168,7 +199,7 @@ func (m *Manager) onReady(ctx context.Context) func() {
 
 		addSeparator()
 
-		quitMenuItem := addMenuItem("Quit", "Quit the application")
+		quitMenuItem := addMenuItem("Quit Veilora", "Quit the application")
 		go func() {
 			for range quitMenuItem.ClickedCh {
 				runtime.Quit(ctx)

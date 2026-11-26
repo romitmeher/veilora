@@ -1,6 +1,9 @@
-import { Button, HTMLSelect, Spinner, Icon } from '@blueprintjs/core';
+import { Button, Spinner, Icon } from '@blueprintjs/core';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { FluidSelect } from '@/components/FluidSelect';
+import { emojiFlag, OfficialFlag } from '@/components/OfficialFlag';
 
 import { StatusText } from '@/components/StatusText';
 
@@ -58,12 +61,6 @@ function pingClass(ping: number): string {
 }
 
 type SortKey = 'score' | 'ping' | 'speed';
-
-function countryFlag(code: string): string {
-  if (!code || code.length !== 2) return '🌐';
-  const upper = code.toUpperCase();
-  return String.fromCodePoint(...[...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
-}
 
 export function ServerList({
   servers,
@@ -127,32 +124,33 @@ export function ServerList({
           )}
         </div>
 
-        <HTMLSelect
+        <FluidSelect
           aria-label="Filter country"
           value={countryFilter}
-          onChange={(e) => onCountryFilterChange(e.target.value)}
+          onChange={onCountryFilterChange}
           disabled={loading || disabled}
           className="vpn-browser__select vpn-browser__select--country"
-        >
-          <option value="">All Countries ({servers.length})</option>
-          {countries.map((c) => (
-            <option key={c} value={c}>
-              {countryFlag(c)} {c}
-            </option>
-          ))}
-        </HTMLSelect>
+          options={[
+            { value: '', label: `All Countries (${servers.length})` },
+            ...countries.map((c) => ({
+              value: c,
+              label: `${emojiFlag(c)} ${c}`,
+            })),
+          ]}
+        />
 
-        <HTMLSelect
+        <FluidSelect
           aria-label="Sort servers"
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortKey)}
+          onChange={(val) => setSortBy(val as SortKey)}
           disabled={loading}
           className="vpn-browser__select vpn-browser__select--sort"
-        >
-          <option value="score">Recommended</option>
-          <option value="ping">Lowest latency</option>
-          <option value="speed">Fastest speed</option>
-        </HTMLSelect>
+          options={[
+            { value: 'score', label: 'Recommended' },
+            { value: 'ping', label: 'Lowest latency' },
+            { value: 'speed', label: 'Fastest speed' },
+          ]}
+        />
 
         <Button
           icon="refresh"
@@ -218,8 +216,8 @@ export function ServerList({
                   title={`Select ${s.hostName} (${s.ip})`}
                 >
                   <span className="vpn-td vpn-td--country">
-                    <span className="vpn-td__flag">{countryFlag(s.countryShort)}</span>
-                    <span className="vpn-td__code">{s.countryShort || '—'}</span>
+                    <OfficialFlag code={s.countryShort} />
+                    <span className="vpn-td__country-name">{s.countryLong || s.countryShort || '—'}</span>
                   </span>
 
                   <span className="vpn-td vpn-td--name">

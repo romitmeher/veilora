@@ -1,6 +1,8 @@
-import { FormGroup, Switch } from '@blueprintjs/core';
+import { FormGroup } from '@blueprintjs/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { FluidSwitch } from '@/components/FluidSwitch';
 
 import { AppToaster } from '@/common/toaster';
 import { GetUpdatePolicy, SetUpdatePolicy } from 'wails/go/config/Config';
@@ -53,11 +55,10 @@ export function AutoupdateSwitch() {
 
   return (
     <FormGroup label={t('settings.updates.automaticUpdates')} helperText={t('settings.updates.description')}>
-      <Switch
+      <FluidSwitch
         id="automaticUpdates"
         checked={state.enabled}
-        size="large"
-        onClick={() => {
+        onChange={() => {
           if (state.enabled) {
             disable();
           } else {

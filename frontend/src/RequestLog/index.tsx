@@ -1,6 +1,8 @@
-import { CardList, Card, Tag, Collapse, Intent, CompoundTag, HTMLTable, Button, HTMLSelect } from '@blueprintjs/core';
+import { CardList, Card, Tag, Collapse, Intent, CompoundTag, HTMLTable, Button } from '@blueprintjs/core';
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { FluidSelect } from '@/components/FluidSelect';
 
 import { getCurrentLocale } from '@/i18n';
 import { EventsOn } from 'wails/runtime';
@@ -108,17 +110,19 @@ export function RequestLog() {
           </Button>
         </div>
         <div className="request-log__toolbar-right">
-          <HTMLSelect
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
+          <FluidSelect
+            aria-label="Items per page"
+            value={String(pageSize)}
+            onChange={(val) => {
+              setPageSize(Number(val));
               setPage(1);
             }}
-          >
-            <option value={15}>15 / page</option>
-            <option value={30}>30 / page</option>
-            <option value={50}>50 / page</option>
-          </HTMLSelect>
+            options={[
+              { value: '15', label: '15 / page' },
+              { value: '30', label: '30 / page' },
+              { value: '50', label: '50 / page' },
+            ]}
+          />
         </div>
       </div>
 

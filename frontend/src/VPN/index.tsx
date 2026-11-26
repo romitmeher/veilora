@@ -1,7 +1,8 @@
-import { Button, Switch, InputGroup, ProgressBar, Icon, Collapse } from '@blueprintjs/core';
+import { Button, InputGroup, ProgressBar, Icon, Collapse } from '@blueprintjs/core';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 import { AppToaster } from '@/common/toaster';
+import { FluidSwitch } from '@/components/FluidSwitch';
 import { StatusText } from '@/components/StatusText';
 import { useVPNState } from '@/context/VPNStateContext';
 import {
@@ -400,13 +401,13 @@ export function VPN() {
                 <label htmlFor="vpn-autoselect-switch">Auto-select recommended relay</label>
                 <div><span>Connects to highest scoring node if no server is selected</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-autoselect-switch"
                 checked={autoSelect}
                 disabled={isTransitioning || isConnected}
-                onChange={(e) => {
-                  setAutoSelect(e.currentTarget.checked);
-                  if (e.currentTarget.checked) setSelectedServer(null);
+                onChange={(checked) => {
+                  setAutoSelect(checked);
+                  if (checked) setSelectedServer(null);
                 }}
               />
             </div>
@@ -416,11 +417,11 @@ export function VPN() {
                 <label htmlFor="vpn-autoconnect-switch">Auto-connect on launch</label>
                 <div><span>Automatically initiate VPN connection when Veilora starts</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-autoconnect-switch"
                 checked={autoConnectEngine === 'openvpn'}
-                onChange={(e) => {
-                  const val = e.currentTarget.checked ? 'openvpn' : 'off';
+                onChange={(checked) => {
+                  const val = checked ? 'openvpn' : 'off';
                   setAutoConnectEngine(val);
                   localStorage.setItem('veilora_vpn_autoconnect', val);
                 }}
@@ -432,11 +433,11 @@ export function VPN() {
                 <label htmlFor="vpn-dns-protect-switch">DNS Leak Protection</label>
                 <div><span>Enforce local resolver overrides to prevent DNS leaks</span></div>
               </div>
-              <Switch
+              <FluidSwitch
                 id="vpn-dns-protect-switch"
                 checked={dnsProtect}
                 disabled={isTransitioning || isConnected}
-                onChange={(e) => setDnsProtect(e.currentTarget.checked)}
+                onChange={(checked) => setDnsProtect(checked)}
               />
             </div>
 

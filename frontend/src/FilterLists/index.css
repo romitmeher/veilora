@@ -4,6 +4,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Category & Action Toolbar */
@@ -13,31 +15,38 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .filter-lists-categories {
   display: flex;
   align-items: center;
-  gap: 4px;
+  height: var(--control-height, 32px);
+  gap: 2px;
   background: var(--raised);
-  padding: 2px;
-  border-radius: var(--radius-sm, 4px);
-  border: 1px solid var(--line);
+  padding: 3px;
+  border-radius: var(--radius-md, 6px);
+  border: 0;
 }
 
 .filter-category-btn {
-  padding: 4px 10px;
-  border-radius: var(--radius-xs, 3px);
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 4px);
   border: 0;
   background: transparent;
   color: var(--secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: background var(--fast) ease, color var(--fast) ease;
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) var(--spring);
+}
+
+.filter-category-btn:active {
+  transform: scale(0.97);
 }
 
 .filter-category-btn.is-active {
@@ -64,32 +73,84 @@
 
 .filter-lists-search input {
   width: 100%;
-  height: 28px;
-  padding: 0 8px 0 24px;
+  height: var(--control-height, 32px);
+  padding: 0 28px;
+  background: var(--raised);
+  border: 0;
+  box-shadow: inset 0 0 0 1px transparent;
+  border-radius: var(--radius-md, 6px);
+  font-size: 12px;
+  color: var(--ink);
+  transition: background var(--fast) ease, box-shadow var(--fast) ease;
+}
+
+.filter-lists-search input::placeholder {
+  color: var(--muted);
+}
+
+.filter-lists-search input:hover {
+  background: var(--hover);
+}
+
+.filter-lists-search input:focus {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm, 4px);
-  font-size: 11px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  outline: none;
+}
+
+.filter-lists-search:hover .filter-lists-search__icon,
+.filter-lists-search:focus-within .filter-lists-search__icon {
+  color: var(--ink);
+}
+
+.filter-lists-search__clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs, 3px);
+  transition: color var(--fast) ease;
+}
+
+.filter-lists-search__clear:hover {
   color: var(--ink);
 }
 
 .filter-lists-search__icon {
   position: absolute;
-  left: 7px;
+  left: 9px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
   pointer-events: none;
+  transition: color var(--fast) ease;
 }
 
 /* Filter List Card Container */
 .filter-lists-container {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 6px);
+  border: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 /* Compact Filter List Row */
@@ -97,8 +158,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  border-bottom: 0;
+  border-radius: var(--radius-md, 6px);
   gap: 12px;
   transition: background var(--fast) ease;
 }
@@ -123,6 +185,52 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.filter-row__flags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Fluid Functionalism compact badges: 15% semantic tint mixed into surface + var(--ink) text */
+.filter-row__category-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--raised);
+  flex-shrink: 0;
+}
+
+.filter-row__category-badge--ads {
+  background: color-mix(in srgb, #3b82f6 15%, var(--surface));
+}
+
+.filter-row__category-badge--privacy {
+  background: color-mix(in srgb, #8b5cf6 15%, var(--surface));
+}
+
+.filter-row__category-badge--malware {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+}
+
+.filter-row__category-badge--regional {
+  background: color-mix(in srgb, #0ea5e9 15%, var(--surface));
+}
+
+.filter-row__category-badge--digitalWellbeing {
+  background: color-mix(in srgb, #f59e0b 15%, var(--surface));
+}
+
+.filter-row__category-badge--custom {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
 }
 
 .filter-row__name {
